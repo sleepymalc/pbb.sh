@@ -1,4 +1,4 @@
-# pbb.wtf
+# pbb.sh
 
 <p>
 	<img src="./preview.png"/>
