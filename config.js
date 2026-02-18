@@ -4,7 +4,7 @@ module.exports = {
 	tocMaxDepth: 2,
 	excerptMaxLength: 500,
 	postsForArchivePage: 3,
-	siteUrl: 'https://pbb.sh/',
+	siteUrl: 'https://pbb.sh',
 	title: 'Pingbang Hu',
 	description: 'Pingbang Hu\'s website.',
 	author: 'Pingbang Hu',
