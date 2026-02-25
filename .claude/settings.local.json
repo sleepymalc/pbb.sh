@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod +x /Users/pbb/Developer/pbb.sh/setup.sh)"
+    ]
+  }
+}
