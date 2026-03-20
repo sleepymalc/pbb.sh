@@ -216,14 +216,6 @@ module.exports = {
 						`Focus on the recent advances of data foundations of modern generative AI.`,
 				},
 				{
-					title: 'Workshop Organizer',
-					date: 'NeurIPS 2025',
-					location: 'San Diego, CA',
-					description:
-						`**[The 3rd Workshop on Regulatable ML](https://regulatableml.github.io/)**: ` +
-						`Toward bridging the gap between state-of-the-art ML safety/security research and evolving regulatory frameworks.`,
-				},
-				{
 					title: 'Reading Group Organizer',
 					date: 'Jun. 2024 - Present',
 					location: 'Virtual',
@@ -292,6 +284,14 @@ module.exports = {
 			position: 'right',
 			data: [
 				{
+					title: 'Workshop Organizer',
+					date: 'NeurIPS 2025',
+					location: 'San Diego, CA',
+					description:
+						`**[The 3rd Workshop on Regulatable ML](https://regulatableml.github.io/)**: ` +
+						`Toward bridging the gap between state-of-the-art ML safety/security research and evolving regulatory frameworks.`,
+				},
+				{
 					title: 'Conference Reviewer',
 					date: 'NA',
 					location: 'Virtual',
@@ -311,20 +311,6 @@ module.exports = {
 					location: 'Virtual',
 					description:
 						'AAAI *2025*',
-				},
-			],
-		},
-		{
-			title: 'Software Development',
-			position: 'right',
-			data: [
-				{
-					title: 'Backend Developer',
-					date: 'Oct. 2020 - Jun. 2021',
-					location: 'Virtual',
-					description:
-						'**foodall**: ' +
-						'A food order platform in Taiwan, built with *Golang*, *Gin*, and *MongoDB*, with RESTful API design.',
 				},
 			],
 		},
