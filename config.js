@@ -108,14 +108,6 @@ module.exports = {
 			title: 'Anthropic AI Safety Research Fellowship',
 		},
 		{
-			date: 'Nov. 2024',
-			title: 'Graduate Conference Travel Award',
-		},
-		{
-			date: 'Oct. 2024',
-			title: 'NeurIPS 2024 Scholar Award',
-		},
-		{
 			date: 'Oct. 2021',
 			title: 'Hong Kong, Macao and Taiwan Overseas Chinese Student Scholarship',
 		},
@@ -304,7 +296,7 @@ module.exports = {
 					date: 'NA',
 					location: 'Virtual',
 					description:
-						'ICLR *2026*, NeurIPS *2025*, ICLR *2025*, ICML *2024*, IEEE BigData *2023*',
+						'ICLR 2025/2026, NeurIPS 2025, ICML 2024/2026, IEEE BigData 2023',
 				},
 				{
 					title: 'Journal Reviewer',
