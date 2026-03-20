@@ -116,10 +116,6 @@ module.exports = {
 			title: 'NeurIPS 2024 Scholar Award',
 		},
 		{
-			date: 'Aug. 2024',
-			title: 'Excellent Internship Award at National Institute of Informatics',
-		},
-		{
 			date: 'Oct. 2021',
 			title: 'Hong Kong, Macao and Taiwan Overseas Chinese Student Scholarship',
 		},
@@ -195,7 +191,7 @@ module.exports = {
 					description:
 						'[**Pseudo-Nonlinear Data Augmentation**](../research/PNL/): ' +
 						'Develop an information-geometric data augmentation algorithm advised by [Mahito Sugiyama](https://mahito.info/index_e.html). ' +
-						'Won the **Excellent Internship Evaluation**.',
+						'Won the **Excellent Internship Evaluation** 😬',
 				},
 				{
 					title: 'Undergraduate Researcher',
