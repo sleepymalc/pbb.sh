@@ -204,41 +204,41 @@ module.exports = {
 			],
 		},
 		{
-			title: 'Reading Group',
+			title: 'Organization',
 			position: 'left',
 			data: [
 				{
-					title: 'Organizer',
-					date: 'Jun. 2024 - Present',
-					location: 'University of Illinois Urbana-Champaign',
+					title: 'Community Organizer',
+					date: 'Feb. 2026 - Present',
+					location: 'Virtual',
 					description:
-						`**Data Attribution Reading Group**: ` +
-						`Focus on the recent advances of data attribution methods in the era of Generative AI. Please see the [official website](https://trais-lab.github.io/dattri-reading-group/).`,
+						`**[Data Foundations of AI](https://data-foundations-of-ai.github.io/)**: ` +
+						`Focus on the recent advances of data foundations of modern generative AI.`,
 				},
 				{
-					title: 'Organizer',
+					title: 'Workshop Organizer',
+					date: 'NeurIPS 2025',
+					location: 'San Diego, CA',
+					description:
+						`**[The 3rd Workshop on Regulatable ML](https://regulatableml.github.io/)**: ` +
+						`Toward bridging the gap between state-of-the-art ML safety/security research and evolving regulatory frameworks.`,
+				},
+				{
+					title: 'Reading Group Organizer',
+					date: 'Jun. 2024 - Present',
+					location: 'Virtual',
+					description:
+						`**[Data Attribution Reading Group](https://trais-lab.github.io/dattri-reading-group/)**: ` +
+						`Focus on the recent advances of data attribution methods in the era of Generative AI.`,
+				},
+				{
+					title: 'Reading Group Organizer',
 					date: 'Jan. 2024 - Present',
 					location: 'University of Illinois Urbana-Champaign',
 					description:
 						`**Statistical Learning Theory**: ` +
 						`A thorough reading on [Roman Vershynin](https://www.math.uci.edu/~rvershyn/)'s [High-Dimensional Probability](https://www.math.uci.edu/~rvershyn/papers/HDP-book/HDP-book.html), focusing on statistical learning theory. [Solution](../else/HDP_solution.pdf) is available.`,
-				},
-				{
-					title: 'Presenter',
-					date: 'Oct. 2023 - Jul. 2024',
-					location: 'Virtual',
-					description:
-						`**[VIDA Reading Group](https://wanghh7.github.io/VIDY-paper-reading-group/)**: ` +
-						`A reading group focuses on recent advances in graph machine learning, and also the foundational theory for statistical learning.`,
-				},
-				{
-					title: 'Organizer',
-					date: 'May 2023 - Dec. 2023',
-					location: 'University of Illinois Urbana-Champaign',
-					description:
-						`**Sparse Graph Limit Theory**: ` +
-						`A thorough reading on [László Lovász](https://en.wikipedia.org/wiki/L%C3%A1szl%C3%B3_Lov%C3%A1sz)'s [Large networks and graph limits](https://lovasz.web.elte.hu//bookxx/hombook-almost.final.pdf), focusing on Chapter 18 and onwards.`,
-				},
+				}
 			],
 		},
 		{
