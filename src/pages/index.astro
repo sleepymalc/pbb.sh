@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/Layout.astro';
 import ResearchCard from 'astro-academic-theme/components/ResearchCard.astro';
 import { siteConfig } from '@/config';
 import { renderMarkdown } from '@/lib/markdown';
+import { highlightEntities } from '@/lib/entities';
 import { getCollection } from 'astro:content';
 
 // Get selected research
@@ -27,9 +28,11 @@ function colorsFor(tags: string[]): string[] {
 }
 
 // Render introduction markdown
-const introHtml = siteConfig.introduction
-  .map((para) => renderMarkdown(para))
-  .join('\n');
+const introHtml = highlightEntities(
+  siteConfig.introduction
+    .map((para) => renderMarkdown(para))
+    .join('\n')
+);
 ---
 
 <BaseLayout config={siteConfig} currentPath="/">
@@ -51,18 +54,23 @@ const introHtml = siteConfig.introduction
 
     .intro-content :global(.news-list li) {
       display: flex;
-      gap: 0.75em;
-      padding: 0.2em 0;
-      line-height: 1.5;
+      gap: 0.5em;
+      padding: 0.15em 0;
+      line-height: 1.45;
     }
 
     .intro-content :global(.news-date) {
       flex-shrink: 0;
-      width: 6.5em;
-      color: var(--color-text-secondary);
+      width: 5.5em;
+      font-size: 0.8em;
       font-weight: 500;
-      font-size: 0.9em;
       white-space: nowrap;
+      color: var(--color-text-secondary);
+      border-right: 2px solid var(--color-accent);
+      padding-right: 0.5em;
+      text-align: right;
+      height: fit-content;
+      margin-top: 1px;
     }
 
     .intro-content :global(.news-text) {
@@ -89,7 +97,7 @@ const introHtml = siteConfig.introduction
           if (match) {
             const date = match[1];
             const rest = html.slice(match[0].length);
-            li.innerHTML = `<span class="news-date">[${date}]</span><span class="news-text">${rest}</span>`;
+            li.innerHTML = `<span class="news-date">${date}</span><span class="news-text">${rest}</span>`;
           }
         }
       }

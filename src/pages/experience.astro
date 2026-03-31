@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/Layout.astro';
 import Timeline from 'astro-academic-theme/components/Timeline.astro';
 import TimelineItem from 'astro-academic-theme/components/TimelineItem.astro';
 import { siteConfig } from '@/config';
+import { getEntity } from '@/lib/entities';
 
 const { education, researchExperience, teachingExperience, service, awards } = siteConfig;
 ---
@@ -21,6 +22,8 @@ const { education, researchExperience, teachingExperience, service, awards } = s
           subtitle={edu.location}
           date={edu.date}
           icon={edu.icon || 'university'}
+          logo={getEntity(edu.location)?.logo}
+          logoDark={getEntity(edu.location)?.logoDark}
         />
       ))}
     </Timeline>
@@ -37,6 +40,8 @@ const { education, researchExperience, teachingExperience, service, awards } = s
             subtitle={item.organization}
             date={item.date}
             icon={item.icon || 'briefcase'}
+            logo={getEntity(item.organization)?.logo}
+            logoDark={getEntity(item.organization)?.logoDark}
           >
             <div class="tl-desc" set:html={item.description} />
           </TimelineItem>
@@ -56,6 +61,8 @@ const { education, researchExperience, teachingExperience, service, awards } = s
             subtitle={item.institution}
             date={item.date}
             icon={item.icon || 'chalkboard-user'}
+            logo={getEntity(item.institution)?.logo}
+            logoDark={getEntity(item.institution)?.logoDark}
           >
             <div class="tl-teaching-detail">
               <span class="tl-course" set:html={item.course} />

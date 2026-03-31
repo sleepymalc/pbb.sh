@@ -6,15 +6,26 @@ interface Props {
   date?: string;
   icon?: string;
   iconColor?: string;
+  logo?: string;
+  logoDark?: string;
 }
 
-const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C' } = Astro.props;
+const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', logo, logoDark } = Astro.props;
 
 ---
 
 <div class="timeline-item">
-  <div class="timeline-icon">
-    <i class={`fas fa-${icon}`} style={`color: ${iconColor}`}></i>
+  <div class:list={['timeline-icon', { 'timeline-icon-logo': !!logo }]}>
+    {logo && logoDark ? (
+      <>
+        <img src={logo} alt="" class="timeline-logo timeline-logo-light" />
+        <img src={logoDark} alt="" class="timeline-logo timeline-logo-dark" />
+      </>
+    ) : logo ? (
+      <img src={logo} alt="" class="timeline-logo" />
+    ) : (
+      <i class={`fas fa-${icon}`} style={`color: ${iconColor}`}></i>
+    )}
   </div>
   <div class="timeline-body">
     <p class="timeline-title">{title}</p>
@@ -49,6 +60,33 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C' } =
     z-index: 1;
     background: var(--color-bg-card);
     font-size: 13px;
+  }
+
+  .timeline-icon-logo {
+    width: 28px;
+    height: 28px;
+    margin-left: -4px;
+    background: var(--color-bg-card);
+    border-radius: 4px;
+  }
+
+  .timeline-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+
+  .timeline-logo-dark {
+    display: none;
+  }
+
+  :global(.dark) .timeline-logo-light {
+    display: none;
+  }
+
+  :global(.dark) .timeline-logo-dark {
+    display: block;
   }
 
   .timeline-body {
