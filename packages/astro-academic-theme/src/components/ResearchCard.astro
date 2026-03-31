@@ -1,5 +1,6 @@
 ---
 import Tag from './Tag.astro';
+import { marked } from 'marked';
 
 interface Author {
   name: string;
@@ -31,6 +32,11 @@ const formattedDate = date.toLocaleDateString('en-US', {
   month: 'short',
   day: 'numeric',
 });
+
+const TRUNCATE_THRESHOLD = 7;
+const SHOW_FIRST = 5;
+const SHOW_LAST = 2;
+const shouldTruncate = authors.length > TRUNCATE_THRESHOLD;
 
 /** Convert inline markdown bold/italic/links to HTML */
 function inlineMd(text: string): string {
@@ -64,16 +70,25 @@ function linkIcon(name: string): string | null {
 
       {authors.length > 0 && (
         <div class="authors-row">
-          {authors.map((author, i) => (
-            <span class="author">
-              {author.url ? (
-                <a href={author.url} target="_blank" rel="noopener noreferrer" set:html={inlineMd(author.name)} />
-              ) : (
-                <span set:html={inlineMd(author.name)} />
-              )}
-              {i < authors.length - 1 ? <Fragment>,&nbsp;</Fragment> : null}
-            </span>
-          ))}
+          {authors.map((author, i) => {
+            const isHidden = shouldTruncate && i >= SHOW_FIRST && i < authors.length - SHOW_LAST;
+            const isEllipsisPoint = shouldTruncate && i === SHOW_FIRST;
+            return (
+              <>
+                {isEllipsisPoint && (
+                  <span class="authors-ellipsis" role="button" tabindex="0" title="Show all authors">&hellip;,&nbsp;</span>
+                )}
+                <span class:list={['author', { 'author-hidden': isHidden }]}>
+                  {author.url ? (
+                    <a href={author.url} target="_blank" rel="noopener noreferrer" set:html={inlineMd(author.name)} />
+                  ) : (
+                    <span set:html={inlineMd(author.name)} />
+                  )}
+                  {i < authors.length - 1 ? <Fragment>,&nbsp;</Fragment> : null}
+                </span>
+              </>
+            );
+          })}
         </div>
       )}
 
@@ -100,7 +115,7 @@ function linkIcon(name: string): string | null {
 
       {excerpt && (
         <a href={href} class="excerpt-link">
-          <p class="excerpt">{excerpt}</p>
+          <p class="excerpt"><Fragment set:html={marked.parseInline(excerpt)} /></p>
         </a>
       )}
 
@@ -226,6 +241,27 @@ function linkIcon(name: string): string | null {
     color: var(--color-text);
   }
 
+  .author-hidden {
+    display: none;
+  }
+
+  .authors-row.expanded .author-hidden {
+    display: inline;
+  }
+
+  .authors-row.expanded .authors-ellipsis {
+    display: none;
+  }
+
+  .authors-ellipsis {
+    cursor: pointer;
+    color: var(--color-text-secondary);
+  }
+
+  .authors-ellipsis:hover {
+    color: var(--color-text);
+  }
+
   .info-line {
     display: flex;
     flex-wrap: wrap;
@@ -274,3 +310,11 @@ function linkIcon(name: string): string | null {
     margin-top: 1rem;
   }
 </style>
+
+<script>
+  document.querySelectorAll('.authors-ellipsis').forEach((el) => {
+    el.addEventListener('click', () => {
+      el.closest('.authors-row')?.classList.add('expanded');
+    });
+  });
+</script>

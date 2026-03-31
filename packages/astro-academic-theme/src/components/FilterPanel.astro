@@ -7,20 +7,12 @@ interface Props {
 
 const { tags, tagColors, filterId = 'filter-panel' } = Astro.props;
 
-/* Same RSuite tag color triples as Tag.astro */
-const colorMap: Record<string, { text: string; bg: string; border: string }> = {
-  magenta:  { text: '#c41d7f', bg: '#fff0f6', border: '#ffadd2' },
-  red:      { text: '#cf1322', bg: '#fff1f0', border: '#ffa39e' },
-  volcano:  { text: '#d4380d', bg: '#fff2e8', border: '#ffbb96' },
-  orange:   { text: '#d46b08', bg: '#fff7e6', border: '#ffd591' },
-  gold:     { text: '#d48806', bg: '#fffbe6', border: '#ffe58f' },
-  lime:     { text: '#7cb305', bg: '#fcffe6', border: '#eaff8f' },
-  green:    { text: '#389e0d', bg: '#f6ffed', border: '#b7eb8f' },
-  cyan:     { text: '#08979c', bg: '#e6fffb', border: '#87e8de' },
-  blue:     { text: '#096dd9', bg: '#e6f7ff', border: '#91d5ff' },
-  geekblue: { text: '#1d39c4', bg: '#f0f5ff', border: '#adc6ff' },
-  purple:   { text: '#531dab', bg: '#f9f0ff', border: '#d3adf7' },
-};
+/* Use CSS variable names so colors adapt to light/dark theme */
+const colorNames = [
+  'magenta', 'red', 'volcano', 'orange', 'gold', 'lime',
+  'green', 'cyan', 'blue', 'geekblue', 'purple',
+] as const;
+type ColorName = typeof colorNames[number];
 ---
 
 <div class="filter-panel">
@@ -28,16 +20,17 @@ const colorMap: Record<string, { text: string; bg: string; border: string }> = {
   <div class="filter-content">
     <span class="tags-label">Tags:</span>
     {tags.map((tag, i) => {
-      const cname = tagColors[i % tagColors.length];
-      const c = colorMap[cname] || { text: '#333', bg: '#f0f0f0', border: '#d9d9d9' };
+      const cname = tagColors[i % tagColors.length] as ColorName;
+      const isValid = colorNames.includes(cname);
       return (
         <button
           class="filter-tag"
           data-tag={tag}
-          data-color-text={c.text}
-          data-color-bg={c.bg}
+          data-color={isValid ? cname : 'blue'}
           data-filter-id={filterId}
-          style={`color:${c.text}; background:${c.bg};`}
+          style={isValid
+            ? `color:var(--color-tag-${cname}); background:var(--color-tag-${cname}-bg);`
+            : `color:var(--color-tag-blue); background:var(--color-tag-blue-bg);`}
         >
           {tag}
         </button>
@@ -117,20 +110,19 @@ const colorMap: Record<string, { text: string; bg: string; border: string }> = {
       btn.addEventListener('click', () => {
         const el = btn as HTMLElement;
         const tag = el.dataset.tag;
+        const cname = el.dataset.color || 'blue';
         if (!tag) return;
 
         if (activeTags.has(tag)) {
-          // Deactivate: back to tinted style
           activeTags.delete(tag);
           el.classList.remove('active');
-          el.style.background = el.dataset.colorBg || '';
-          el.style.color = el.dataset.colorText || '';
+          el.style.color = `var(--color-tag-${cname})`;
+          el.style.background = `var(--color-tag-${cname}-bg)`;
         } else {
-          // Activate: solid colored background, white text
           activeTags.add(tag);
           el.classList.add('active');
-          el.style.background = el.dataset.colorText || '';
-          el.style.color = '#fff';
+          el.style.color = `var(--color-tag-${cname})`;
+          el.style.background = `var(--color-tag-${cname}-bg)`;
         }
 
         // Filter cards

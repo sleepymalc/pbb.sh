@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/Layout.astro';
 import Tag from 'astro-academic-theme/components/Tag.astro';
 import { siteConfig } from '@/config';
 import { getCollection, render } from 'astro:content';
+import { marked } from 'marked';
 
 export async function getStaticPaths() {
   const research = await getCollection('research');
@@ -233,7 +234,7 @@ function linkIcon(name: string): string | null {
     )}
     {entry.data.excerpt && (
       <blockquote class="research-abstract">
-        {entry.data.excerpt}
+        <Fragment set:html={marked.parseInline(entry.data.excerpt)} />
       </blockquote>
     )}
     <Content />

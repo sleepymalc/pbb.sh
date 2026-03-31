@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/Layout.astro';
 import Tag from 'astro-academic-theme/components/Tag.astro';
 import { siteConfig } from '@/config';
 import { getCollection, render } from 'astro:content';
+import { marked } from 'marked';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -173,7 +174,7 @@ const formattedDate = entry.data.date.toLocaleDateString('en-US', {
     )}
     {entry.data.excerpt && (
       <blockquote class="post-abstract">
-        {entry.data.excerpt}
+        <Fragment set:html={marked.parseInline(entry.data.excerpt)} />
       </blockquote>
     )}
     <Content />

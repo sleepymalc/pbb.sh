@@ -1,5 +1,6 @@
 ---
 import Tag from './Tag.astro';
+import { marked } from 'marked';
 
 interface Props {
   title: string;
@@ -30,7 +31,10 @@ const formattedDate = date.toLocaleDateString('en-US', {
         <div class="card-image-placeholder"></div>
       )}
     </a>
-    <span class="date-badge">{formattedDate}</span>
+    <span class="date-badge">
+      <i class="far fa-calendar-alt"></i>
+      {formattedDate}
+    </span>
   </div>
   <div class="card-body">
     <h5><a href={href}>{title}</a></h5>
@@ -41,7 +45,7 @@ const formattedDate = date.toLocaleDateString('en-US', {
     </div>
     {excerpt && (
       <a href={href} class="excerpt-link">
-        <p class="excerpt">{excerpt}</p>
+        <p class="excerpt"><Fragment set:html={marked.parseInline(excerpt)} /></p>
       </a>
     )}
   </div>
@@ -80,14 +84,26 @@ const formattedDate = date.toLocaleDateString('en-US', {
   }
 
   .date-badge {
-    background: #ebbaa1;
-    color: white;
-    padding: 6px;
-    font-size: 12px;
     position: absolute;
-    top: 1px;
-    left: 6px;
-    border-radius: var(--radius-base);
+    top: 8px;
+    left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border-radius: 999px;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg-card));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  }
+
+  :global(.dark) .date-badge {
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-card));
+    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 
   .card-body {
