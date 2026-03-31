@@ -1,0 +1,202 @@
+---
+import type { SiteConfig } from '../types.js';
+import SocialLinks from './SocialLinks.astro';
+
+interface Props {
+  config: SiteConfig;
+  showUserInfo?: boolean;
+}
+
+const { config, showUserInfo = true } = Astro.props;
+
+const nameParts = config.author.split(' ');
+const firstName = nameParts.slice(0, -1).join(' ');
+const lastName = nameParts[nameParts.length - 1];
+---
+
+<!-- sidebarContent: border-radius 3rem, centered flex, transparent bg -->
+<div class="sidebar-wrap">
+  <aside class="sidebar-inner">
+    <!-- Avatar: 180px, border-radius 3rem, margin auto -->
+    <img
+      src={`/${config.avatar}`}
+      alt={config.author}
+      class="profile-avatar"
+    />
+
+    <div class="name-section">
+      <!-- Name: h2, 1.75rem, weight 200, last name weight 600 -->
+      <h2>
+        {firstName}&nbsp;<span>{lastName}</span>
+      </h2>
+
+      {config.authorAlternative && (
+        <h3>{config.authorAlternative}</h3>
+      )}
+
+      {showUserInfo ? (
+        <>
+          {/* Profession badges */}
+          {config.professions.map((prof) => (
+            <span class="badge">{prof}</span>
+          ))}
+
+          {/* Social icons */}
+          <div class="social-row">
+            <SocialLinks links={config.social} />
+          </div>
+
+          {/* Contact info */}
+          <div class="contact-block">
+            {config.location && (
+              <div class="contact-item">
+                <i class="fas fa-map-marker-alt fa-fw"></i>
+                <span>{config.location}</span>
+              </div>
+            )}
+            {config.email && (
+              <div class="contact-item">
+                <i class="fas fa-envelope fa-fw"></i>
+                <a href={`mailto:${config.email}`}>{config.email}</a>
+              </div>
+            )}
+            {config.birthday && (
+              <div class="contact-item">
+                <i class="fas fa-calendar fa-fw"></i>
+                <span>{config.birthday}</span>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div class="toc-area">
+          <hr />
+          <slot />
+        </div>
+      )}
+    </div>
+  </aside>
+</div>
+
+<style>
+  .sidebar-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .sidebar-inner {
+    padding: 2.5rem 0;
+    text-align: center;
+    width: 100%;
+  }
+
+  .profile-avatar {
+    height: 180px;
+    width: auto;
+    border-radius: 3rem;
+    margin: auto;
+    display: block;
+    object-fit: cover;
+  }
+
+  .name-section {
+    margin-top: 1rem;
+    text-align: center;
+  }
+
+  .name-section h2 {
+    font-size: 1.75rem;
+    font-weight: 200;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    color: var(--color-heading);
+  }
+
+  .name-section h2 span {
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .name-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-family: source-han-sans-simplified-c, Heiti SC, Microsoft YaHei, sans-serif;
+    margin-bottom: 0;
+    color: var(--color-heading);
+  }
+
+  .badge {
+    display: inline-block;
+    margin: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 400;
+    border-radius: 10rem;
+    padding: 0.6rem 1rem;
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-900);
+  }
+
+  .social-row {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .contact-block {
+    color: #44566C;
+    font-size: 0.937rem;
+    padding-left: 0;
+    margin-bottom: 1.3rem;
+    width: 200px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+  }
+
+  :global(.dark) .contact-block {
+    color: var(--color-heading);
+  }
+
+  .contact-item {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0;
+    gap: 0;
+  }
+
+  .contact-item :global(i) {
+    width: 2rem;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+  }
+
+  .contact-item a {
+    color: inherit;
+    transition: color .3s;
+  }
+
+  .contact-item a:hover {
+    color: var(--color-primary);
+  }
+
+  .toc-area {
+    margin-top: 1rem;
+    text-align: left;
+    padding: 0;
+  }
+
+  .toc-area hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 0 3rem 0.5rem;
+  }
+
+  @media (max-width: 767px) {
+    .contact-block {
+      max-width: 230px;
+    }
+  }
+</style>

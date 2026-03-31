@@ -1,0 +1,23 @@
+---
+interface Props {
+  showLine?: boolean;
+}
+
+const { showLine = true } = Astro.props;
+---
+
+<div class:list={['relative', showLine && 'timeline-with-line']}>
+  <slot />
+</div>
+
+<style>
+  .timeline-with-line::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background: #44566C;
+  }
+</style>

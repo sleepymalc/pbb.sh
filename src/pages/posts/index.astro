@@ -1,0 +1,43 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import PostCard from 'astro-academic-theme/components/PostCard.astro';
+import FilterPanel from 'astro-academic-theme/components/FilterPanel.astro';
+import { siteConfig } from '@/config';
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('posts');
+const posts = allPosts.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const allTags = [...new Set(posts.flatMap((p) => p.data.tags))];
+const tagColorMap = new Map<string, string>();
+allTags.forEach((tag, i) => {
+  tagColorMap.set(tag, siteConfig.tagColors[i % siteConfig.tagColors.length]);
+});
+function colorsFor(tags: string[]): string[] {
+  return tags.map((t) => tagColorMap.get(t) || siteConfig.tagColors[0]);
+}
+---
+
+<BaseLayout config={siteConfig} title="Posts" currentPath="/posts/">
+  <h1 class="title-separate">Posts</h1>
+
+  {allTags.length > 0 && (
+    <FilterPanel tags={allTags} tagColors={allTags.map(t => tagColorMap.get(t)!)} />
+  )}
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    {posts.map((post) => (
+      <div data-tags={post.data.tags.join(',')}>
+        <PostCard
+          title={post.data.title}
+          href={`/${post.data.path}/`}
+          date={post.data.date}
+          excerpt={post.data.excerpt}
+          tags={post.data.tags}
+          tagColors={colorsFor(post.data.tags)}
+          cover={post.data.cover}
+        />
+      </div>
+    ))}
+  </div>
+</BaseLayout>

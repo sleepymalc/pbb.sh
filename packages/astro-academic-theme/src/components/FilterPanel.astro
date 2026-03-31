@@ -1,0 +1,152 @@
+---
+interface Props {
+  tags: string[];
+  tagColors: string[];
+  filterId?: string;
+}
+
+const { tags, tagColors, filterId = 'filter-panel' } = Astro.props;
+
+/* Same RSuite tag color triples as Tag.astro */
+const colorMap: Record<string, { text: string; bg: string; border: string }> = {
+  magenta:  { text: '#c41d7f', bg: '#fff0f6', border: '#ffadd2' },
+  red:      { text: '#cf1322', bg: '#fff1f0', border: '#ffa39e' },
+  volcano:  { text: '#d4380d', bg: '#fff2e8', border: '#ffbb96' },
+  orange:   { text: '#d46b08', bg: '#fff7e6', border: '#ffd591' },
+  gold:     { text: '#d48806', bg: '#fffbe6', border: '#ffe58f' },
+  lime:     { text: '#7cb305', bg: '#fcffe6', border: '#eaff8f' },
+  green:    { text: '#389e0d', bg: '#f6ffed', border: '#b7eb8f' },
+  cyan:     { text: '#08979c', bg: '#e6fffb', border: '#87e8de' },
+  blue:     { text: '#096dd9', bg: '#e6f7ff', border: '#91d5ff' },
+  geekblue: { text: '#1d39c4', bg: '#f0f5ff', border: '#adc6ff' },
+  purple:   { text: '#531dab', bg: '#f9f0ff', border: '#d3adf7' },
+};
+---
+
+<div class="filter-panel">
+  <span class="filter-label">Filters</span>
+  <div class="filter-content">
+    <span class="tags-label">Tags:</span>
+    {tags.map((tag, i) => {
+      const cname = tagColors[i % tagColors.length];
+      const c = colorMap[cname] || { text: '#333', bg: '#f0f0f0', border: '#d9d9d9' };
+      return (
+        <button
+          class="filter-tag"
+          data-tag={tag}
+          data-color-text={c.text}
+          data-color-bg={c.bg}
+          data-filter-id={filterId}
+          style={`color:${c.text}; background:${c.bg};`}
+        >
+          {tag}
+        </button>
+      );
+    })}
+  </div>
+</div>
+
+<style>
+  .filter-panel {
+    position: relative;
+    border: 1px solid var(--color-border-primary);
+    border-radius: var(--radius-base);
+    margin-bottom: 1.5rem;
+  }
+
+  .filter-label {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--color-bg-card);
+    padding: 0 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .filter-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 18px 24px 12px;
+  }
+
+  .tags-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-right: 4px;
+  }
+
+  .filter-tag {
+    font-size: 11px;
+    padding: 1px 6px;
+    line-height: 18px;
+    border-radius: 3px;
+    border: none;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: all .2s;
+    opacity: 0.55;
+  }
+
+  .filter-tag:hover {
+    opacity: 0.85;
+  }
+
+  .filter-tag.active {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  function initFilterPanels() {
+    const buttons = document.querySelectorAll('.filter-tag');
+    const activeTags = new Set<string>();
+
+    // Clone to remove old listeners
+    buttons.forEach((btn) => {
+      const clone = btn.cloneNode(true) as HTMLElement;
+      btn.parentNode?.replaceChild(clone, btn);
+    });
+
+    document.querySelectorAll('.filter-tag').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const el = btn as HTMLElement;
+        const tag = el.dataset.tag;
+        if (!tag) return;
+
+        if (activeTags.has(tag)) {
+          // Deactivate: back to tinted style
+          activeTags.delete(tag);
+          el.classList.remove('active');
+          el.style.background = el.dataset.colorBg || '';
+          el.style.color = el.dataset.colorText || '';
+        } else {
+          // Activate: solid colored background, white text
+          activeTags.add(tag);
+          el.classList.add('active');
+          el.style.background = el.dataset.colorText || '';
+          el.style.color = '#fff';
+        }
+
+        // Filter cards
+        document.querySelectorAll('[data-tags]').forEach((card) => {
+          const cardEl = card as HTMLElement;
+          const cardTags = (cardEl.dataset.tags || '').split(',').map(t => t.trim());
+          if (activeTags.size === 0) {
+            cardEl.style.display = '';
+          } else {
+            cardEl.style.display = [...activeTags].every(t => cardTags.includes(t)) ? '' : 'none';
+          }
+        });
+      });
+    });
+  }
+
+  initFilterPanels();
+  document.addEventListener('astro:after-swap', initFilterPanels);
+</script>

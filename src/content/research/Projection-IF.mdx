@@ -1,0 +1,53 @@
+---
+title: "A Unified Theory of Random Projection for Influence Functions"
+tags: ["Data", "Attribution", "Theory"]
+date: 2026-02-11 00:00:00 -0500
+priority: -20260211
+path: "research/Projection-IF"
+excerpt: "A unified theory of random projection for influence functions."
+selected: true
+cover: "/research/Projection-IF/preview.png"
+venue: "ICLR 2026 Workshop DATA-FM"
+links:
+- name: "arXiv"
+  url: "https://arxiv.org/abs/2602.10449"
+- name: "GitHub"
+  url: "https://github.com/sleepymalc/Projection-IF"
+authors:
+- name: "**Pingbang Hu**"
+  url: "https://pbb.sh/"
+- name: "Yuzheng Hu"
+  url: "https://mirnegg.github.io/"
+- name: "Jiaqi W. Ma"
+  url: "https://jiaqima.github.io/"
+- name: "Han Zhao"
+  url: "https://hanzhaoml.github.io/"
+---
+
+## Brief Summary
+
+Influence functions and related data attribution scores take the form of inverse-sensitive bilinear functionals $g^{\top}F^{-1}g^{\prime}$, where $F\succeq 0$ is a curvature operator and $g,g^{\prime}$ are training and test gradients. In modern overparameterized models, forming or inverting $F\in\mathbb{R}^{d\times d}$ is prohibitive, motivating scalable influence computation via *random projection* with a sketch $P \in \mathbb{R}^{m\times d}$. This practice is commonly justified via the Johnson-Lindenstrauss (JL) lemma, which ensures approximate preservation of Euclidean geometry for a fixed dataset. However, preserving pairwise distances does not address how sketching behaves under inversion. Furthermore, there is no existing theory that explains how sketching interacts with other widely-used techniques, such as ridge regularization (replacing $F^{-1}$ with $(F+\lambda I)^{-1}$) and structured curvature approximations.
+
+We develop a unified theory characterizing when projection provably preserves influence functions, with a focus on the required sketch size $m$. When $g,g^{\prime}\in\mathrm{range}(F)$, we show that:
+
+1. **Unregularized projection**: exact preservation holds if and only if $P$ is injective on $\mathrm{range}(F)$, which necessitates $m\geq \mathrm{rank}(F)$;
+2. **Regularized projection**: ridge regularization fundamentally alters the sketching barrier, with approximation guarantees governed by the *effective dimension* of $F$ at the regularization scale $\lambda$. This dependence is both sufficient and worst-case necessary, and can be substantially smaller than $\mathrm{rank}(F)$;
+3. **Factorized influence**: for Kronecker-factored curvatures $F=A\otimes E$, the guarantees continue to hold for decoupled sketches $P=P_A\otimes P_E$, even though such sketches exhibit structured row correlations that violate canonical i.i.d. assumptions; the analysis further reveals an explicit computational–statistical trade-off inherent to factorized sketches.
+
+Beyond this range-restricted setting, we analyze **out-of-range test gradients** and quantify a sketch-induced *leakage* term that arises when test gradients have components in $\ker(F)$. This yields guarantees for influence queries on general, unseen test points.
+
+Overall, this work develops a novel theory that characterizes when projection provably preserves influence and provides principled, instance-adaptive guidance for choosing the sketch size in practice.
+
+## Citation
+
+```bash
+@misc{hu2026unified,
+      title={A Unified Theory of Random Projection for Influence Functions},
+      author={Pingbang Hu and Yuzheng Hu and Jiaqi W. Ma and Han Zhao},
+      year={2026},
+      eprint={2602.10449},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2602.10449},
+}
+```

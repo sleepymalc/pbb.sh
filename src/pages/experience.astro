@@ -1,0 +1,278 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import Timeline from 'astro-academic-theme/components/Timeline.astro';
+import TimelineItem from 'astro-academic-theme/components/TimelineItem.astro';
+import { siteConfig } from '@/config';
+
+const { education, researchExperience, teachingExperience, service, awards } = siteConfig;
+---
+
+<BaseLayout config={siteConfig} title="Experience" currentPath="/experience/">
+  <h1 class="title-separate">Experience</h1>
+
+  <!-- Education -->
+  <section class="exp-section">
+    <h2 class="section-heading">Education</h2>
+    <Timeline showLine={true}>
+      {education.map((edu) => (
+        <TimelineItem
+          title={edu.title}
+          minor={edu.minor}
+          subtitle={edu.location}
+          date={edu.date}
+          icon={edu.icon || 'university'}
+        />
+      ))}
+    </Timeline>
+  </section>
+
+  <!-- Research & Industry Experience -->
+  {researchExperience && researchExperience.length > 0 && (
+    <section class="exp-section">
+      <h2 class="section-heading">Research &amp; Industry Experience</h2>
+      <Timeline showLine={true}>
+        {researchExperience.map((item) => (
+          <TimelineItem
+            title={item.role}
+            subtitle={item.organization}
+            date={item.date}
+            icon={item.icon || 'briefcase'}
+          >
+            <div class="tl-desc" set:html={item.description} />
+          </TimelineItem>
+        ))}
+      </Timeline>
+    </section>
+  )}
+
+  <!-- Teaching -->
+  {teachingExperience && teachingExperience.length > 0 && (
+    <section class="exp-section">
+      <h2 class="section-heading">Teaching</h2>
+      <Timeline showLine={true}>
+        {teachingExperience.map((item) => (
+          <TimelineItem
+            title={item.role}
+            subtitle={item.institution}
+            date={item.date}
+            icon={item.icon || 'chalkboard-user'}
+          >
+            <div class="tl-teaching-detail">
+              <span class="tl-course" set:html={item.course} />
+              <span class="tl-level">{item.level}</span>
+            </div>
+            {item.notes && (
+              <div class="tl-notes" set:html={item.notes} />
+            )}
+          </TimelineItem>
+        ))}
+      </Timeline>
+    </section>
+  )}
+
+  <!-- Service & Community -->
+  {service && (
+    <section class="exp-section">
+      <h2 class="section-heading">Service &amp; Community</h2>
+
+      <h3 class="subsection-heading">Organizing</h3>
+      <Timeline showLine={true}>
+        {service.organizing.map((item) => (
+          <TimelineItem
+            title={item.role}
+            date={item.date}
+            icon={item.icon || 'users'}
+          >
+            <div class="tl-org-title" set:html={item.title} />
+            <div class="tl-desc" set:html={item.description} />
+          </TimelineItem>
+        ))}
+      </Timeline>
+
+      <h3 class="subsection-heading">Reviewing</h3>
+      <div class="reviewing-block">
+        <div class="reviewing-row">
+          <span class="reviewing-label">Conference</span>
+          <span class="reviewing-venues">{service.reviewing.conferences}</span>
+        </div>
+        <div class="reviewing-row">
+          <span class="reviewing-label">Journal</span>
+          <span class="reviewing-venues">{service.reviewing.journals}</span>
+        </div>
+        <div class="reviewing-row">
+          <span class="reviewing-label">Program Committee</span>
+          <span class="reviewing-venues">{service.reviewing.programCommittee}</span>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Awards & Honors -->
+  {awards && awards.length > 0 && (
+    <section class="exp-section">
+      <h2 class="section-heading">Awards &amp; Honors</h2>
+      <Timeline showLine={false}>
+        {awards.map((award) => (
+          <TimelineItem
+            title={award.title}
+            date={award.date}
+            icon="award"
+          />
+        ))}
+      </Timeline>
+    </section>
+  )}
+</BaseLayout>
+
+<style>
+  /* ============================================
+     Sections & Headings
+     ============================================ */
+  .exp-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .section-heading {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-bottom: 1rem;
+  }
+
+  .subsection-heading {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ============================================
+     Timeline slot content — descriptions
+     ============================================ */
+  .tl-desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin-top: 4px;
+  }
+
+  .tl-desc :global(a) { color: var(--color-link); }
+  .tl-desc :global(a:hover) { color: var(--color-link-hover); }
+  .tl-desc :global(strong) { font-weight: 600; color: var(--color-text); }
+
+  /* ============================================
+     Timeline slot content — teaching details
+     ============================================ */
+  .tl-teaching-detail {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .tl-course {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .tl-course :global(a) { color: var(--color-link); }
+  .tl-course :global(a:hover) { color: var(--color-link-hover); }
+
+  .tl-level {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--color-accent);
+    border: 1.5px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+    line-height: 1.5;
+    letter-spacing: 0.3px;
+  }
+
+  .tl-notes {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    font-style: italic;
+    margin-top: 3px;
+  }
+
+  .tl-notes :global(a) {
+    color: var(--color-link);
+    font-style: normal;
+  }
+
+  .tl-notes :global(em) {
+    font-style: italic;
+  }
+
+  /* ============================================
+     Timeline slot content — organizing title
+     ============================================ */
+  .tl-org-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-top: 2px;
+  }
+
+  .tl-org-title :global(a) { color: var(--color-link); }
+  .tl-org-title :global(a:hover) { color: var(--color-link-hover); }
+
+  /* ============================================
+     Reviewing — prose block (not timeline)
+     ============================================ */
+  .reviewing-block {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    padding: 4px 20px;
+    margin-left: 36px; /* align with timeline body */
+  }
+
+  .reviewing-row {
+    display: flex;
+    gap: 16px;
+    padding: 10px 0;
+    font-size: 13px;
+    line-height: 1.6;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .reviewing-row:last-child {
+    border-bottom: none;
+  }
+
+  .reviewing-label {
+    font-weight: 600;
+    color: var(--color-text);
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  .reviewing-venues {
+    color: var(--color-text-secondary);
+  }
+
+  /* ============================================
+     Mobile
+     ============================================ */
+  @media (max-width: 767px) {
+    .reviewing-block {
+      margin-left: 0;
+    }
+
+    .reviewing-row {
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .reviewing-label {
+      min-width: auto;
+    }
+  }
+</style>

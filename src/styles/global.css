@@ -1,0 +1,3 @@
+@import "tailwindcss";
+@source "../../node_modules/astro-academic-theme/src/**/*.astro";
+@import "astro-academic-theme/styles/global.css";

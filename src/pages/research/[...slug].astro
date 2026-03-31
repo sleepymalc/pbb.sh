@@ -1,0 +1,268 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import Tag from 'astro-academic-theme/components/Tag.astro';
+import { siteConfig } from '@/config';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const research = await getCollection('research');
+  return research.map((entry) => ({
+    params: { slug: entry.data.path.replace(/^research\//, '') },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+
+const formattedDate = entry.data.date.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+
+function inlineMd(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function linkIcon(name: string): string | null {
+  const n = name.toLowerCase();
+  if (n === 'github') return 'fab fa-github';
+  if (n === 'arxiv') return 'ai ai-arxiv';
+  if (n === 'paper' || n === 'pdf') return 'fas fa-file-pdf';
+  if (n === 'poster') return 'fas fa-image';
+  if (n === 'slide' || n === 'slides') return 'fas fa-desktop';
+  if (n === 'talk' || n === 'video') return 'fas fa-video';
+  if (n === 'website' || n === 'web' || n === 'demo') return 'fas fa-globe';
+  if (n === 'code') return 'fas fa-code';
+  return null;
+}
+---
+
+<BaseLayout
+  config={siteConfig}
+  title={entry.data.title}
+  description={entry.data.excerpt}
+  currentPath="/research/"
+  showUserInfo={false}
+>
+  <!-- Table of contents in sidebar -->
+  <nav slot="sidebar" class="toc-nav" id="toc-nav">
+    <h3>Table of Contents</h3>
+    <ul class="toc-list">
+      {headings.filter(h => h.depth <= 3).map((heading) => (
+        <li>
+          <a
+            href={`#${heading.slug}`}
+            data-toc-id={heading.slug}
+            style={`padding-left: ${(heading.depth) * 1}em`}
+          >
+            {heading.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+
+  <style>
+    .toc-nav {
+      overflow: auto;
+      max-height: calc(100vh - 250px);
+      max-width: 200px;
+      margin: 0.5rem auto;
+    }
+
+    .toc-nav h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-heading);
+      margin-bottom: 0.3rem;
+    }
+
+    .toc-list {
+      margin: 8px 0;
+      padding-left: 0;
+      list-style: none;
+      border-left: 1px solid var(--color-border);
+    }
+
+    .toc-list li {
+      margin: 0;
+      padding: 0;
+      line-height: 1.4;
+    }
+
+    .toc-list li:not(:last-child) {
+      margin-bottom: 2px;
+    }
+
+    .toc-list a {
+      display: block;
+      margin-left: -1px;
+      padding-left: 10px;
+      color: var(--color-text-secondary);
+      font-size: 14px;
+      white-space: nowrap;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .toc-list a:hover {
+      color: var(--color-text);
+    }
+
+    .toc-list a.toc-active {
+      color: var(--color-link);
+      font-weight: 600;
+      border-left-color: var(--color-link);
+    }
+  </style>
+
+  <script>
+    function initTOC() {
+      const tocLinks = document.querySelectorAll('.toc-list a[data-toc-id]');
+      if (!tocLinks.length) return;
+
+      const headingEls: { el: Element; id: string }[] = [];
+      tocLinks.forEach((link) => {
+        const id = (link as HTMLElement).dataset.tocId!;
+        const el = document.getElementById(id);
+        if (el) headingEls.push({ el, id });
+      });
+
+      function update() {
+        const scrollY = window.scrollY + 100;
+        let activeId = headingEls[0]?.id || '';
+        for (const h of headingEls) {
+          if ((h.el as HTMLElement).offsetTop <= scrollY) {
+            activeId = h.id;
+          }
+        }
+        tocLinks.forEach((link) => {
+          const id = (link as HTMLElement).dataset.tocId;
+          link.classList.toggle('toc-active', id === activeId);
+        });
+      }
+
+      let ticking = false;
+      window.addEventListener('scroll', () => {
+        if (!ticking) {
+          requestAnimationFrame(() => { update(); ticking = false; });
+          ticking = true;
+        }
+      });
+      update();
+    }
+
+    initTOC();
+    document.addEventListener('astro:after-swap', initTOC);
+  </script>
+
+  <h1 class="title-separate mt-4">{entry.data.title}</h1>
+
+  <!-- Authors -->
+  {entry.data.authors && entry.data.authors.length > 0 && (
+    <p class="text-sm text-[var(--color-text-secondary)] mb-2">
+      {entry.data.authors.map((author, i) => (
+        <>
+          {author.url ? (
+            <a href={author.url} target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors" set:html={inlineMd(author.name)} />
+          ) : (
+            <span set:html={inlineMd(author.name)} />
+          )}
+          {i < entry.data.authors.length - 1 && ', '}
+        </>
+      ))}
+    </p>
+  )}
+
+  <!-- Meta line -->
+  <div class="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] mb-4">
+    <span>{formattedDate}</span>
+    {entry.data.venue && (
+      <>
+        <span class="text-[var(--color-border)]">|</span>
+        <span class="font-medium">{entry.data.venue}</span>
+      </>
+    )}
+  </div>
+
+  <!-- Tags -->
+  {entry.data.tags.length > 0 && (
+    <div class="flex flex-wrap gap-1 mb-4">
+      {entry.data.tags.map((tag, i) => (
+        <Tag
+          name={tag}
+          color={siteConfig.tagColors[i % siteConfig.tagColors.length]}
+          href={`/tags/${tag.toLowerCase()}/`}
+        />
+      ))}
+    </div>
+  )}
+
+  <!-- Links -->
+  {entry.data.links && entry.data.links.length > 0 && (
+    <div class="flex flex-wrap gap-1.5 mb-6">
+      {entry.data.links.map((link) => (
+        <a
+          href={link.url}
+          target={link.url.startsWith('http') ? '_blank' : undefined}
+          rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+          class="btn-ghost"
+        >
+          {linkIcon(link.name) && <i class={linkIcon(link.name)!} style="margin-right:4px"></i>}
+          {link.name}
+        </a>
+      ))}
+    </div>
+  )}
+
+  <!-- Article content with floated cover image -->
+  <article class="markdown-body mt-6">
+    {entry.data.cover && (
+      <img
+        src={entry.data.cover}
+        alt={entry.data.title}
+        class="research-detail-cover"
+        loading="lazy"
+      />
+    )}
+    {entry.data.excerpt && (
+      <blockquote class="research-abstract">
+        {entry.data.excerpt}
+      </blockquote>
+    )}
+    <Content />
+  </article>
+
+  <style>
+    .research-detail-cover {
+      float: right;
+      max-width: 240px;
+      margin: 0 0 1rem 1.5rem;
+      border-radius: var(--radius-base);
+      object-fit: contain;
+    }
+
+    .research-abstract {
+      font-style: italic;
+      color: var(--color-text-secondary);
+      border-left: 4px solid var(--color-border);
+      padding: 0.5em 1em;
+      margin: 0 0 1.5em;
+    }
+
+    @media (max-width: 640px) {
+      .research-detail-cover {
+        float: none;
+        display: block;
+        max-width: 100%;
+        margin: 0 0 1rem 0;
+      }
+    }
+  </style>
+</BaseLayout>

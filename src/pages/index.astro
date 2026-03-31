@@ -1,0 +1,124 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import ResearchCard from 'astro-academic-theme/components/ResearchCard.astro';
+import { siteConfig } from '@/config';
+import { renderMarkdown } from '@/lib/markdown';
+import { getCollection } from 'astro:content';
+
+// Get selected research
+const allResearch = await getCollection('research');
+const selectedResearch = allResearch
+  .filter((r) => r.data.selected)
+  .sort((a, b) => {
+    const pa = a.data.priority ?? 0;
+    const pb = b.data.priority ?? 0;
+    if (pa !== pb) return pa - pb;
+    return a.data.title.localeCompare(b.data.title);
+  });
+
+// Build a stable tag→color map using ALL research tags (same order as research page)
+const allResearchTags = [...new Set(allResearch.flatMap((r) => r.data.tags))];
+const tagColorMap = new Map<string, string>();
+allResearchTags.forEach((tag, i) => {
+  tagColorMap.set(tag, siteConfig.tagColors[i % siteConfig.tagColors.length]);
+});
+function colorsFor(tags: string[]): string[] {
+  return tags.map((t) => tagColorMap.get(t) || siteConfig.tagColors[0]);
+}
+
+// Render introduction markdown
+const introHtml = siteConfig.introduction
+  .map((para) => renderMarkdown(para))
+  .join('\n');
+---
+
+<BaseLayout config={siteConfig} currentPath="/">
+  <!-- About Me -->
+  <section>
+    <h1 class="title-separate">About Me</h1>
+    <div class="markdown-body intro-content" set:html={introHtml} />
+  </section>
+
+  <style>
+    /* News list: date-aligned, scrollable, no bullets */
+    .intro-content :global(.news-list) {
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .intro-content :global(.news-list li) {
+      display: flex;
+      gap: 0.75em;
+      padding: 0.2em 0;
+      line-height: 1.5;
+    }
+
+    .intro-content :global(.news-date) {
+      flex-shrink: 0;
+      width: 6.5em;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+
+    .intro-content :global(.news-text) {
+      flex: 1;
+      min-width: 0;
+    }
+  </style>
+
+  <script>
+    function formatNewsList() {
+      // Find the News h3 and its following ul
+      const headings = document.querySelectorAll('.intro-content h3');
+      for (const h of headings) {
+        if (!h.textContent?.includes('News')) continue;
+        const ul = h.nextElementSibling;
+        if (!ul || ul.tagName !== 'UL') continue;
+
+        ul.classList.add('news-list');
+
+        for (const li of ul.querySelectorAll('li')) {
+          const html = li.innerHTML;
+          // Match [Mon. YYYY] at the start
+          const match = html.match(/^\s*\[([^\]]+)\]\s*/);
+          if (match) {
+            const date = match[1];
+            const rest = html.slice(match[0].length);
+            li.innerHTML = `<span class="news-date">[${date}]</span><span class="news-text">${rest}</span>`;
+          }
+        }
+      }
+    }
+
+    formatNewsList();
+    document.addEventListener('astro:after-swap', formatNewsList);
+  </script>
+
+  <!-- Selected Research -->
+  {selectedResearch.length > 0 && (
+    <section class="mt-8">
+      <h2 class="text-[1.562rem] font-semibold text-[var(--color-heading)] mb-4">Selected Research</h2>
+      <div class="space-y-3">
+        {selectedResearch.map((paper) => (
+          <ResearchCard
+            title={paper.data.title}
+            href={`/${paper.data.path}/`}
+            date={paper.data.date}
+            excerpt={paper.data.excerpt}
+            authors={paper.data.authors}
+            venue={paper.data.venue}
+            tags={paper.data.tags}
+            tagColors={colorsFor(paper.data.tags)}
+            links={paper.data.links}
+            cover={paper.data.cover}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+</BaseLayout>

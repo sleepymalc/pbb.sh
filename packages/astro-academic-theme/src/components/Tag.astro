@@ -1,0 +1,59 @@
+---
+interface Props {
+  name: string;
+  color?: string;
+  href?: string;
+}
+
+const { name, color, href } = Astro.props;
+
+const tagStyles: Record<string, { text: string; bg: string }> = {
+  magenta:  { text: 'var(--color-tag-magenta)',   bg: 'var(--color-tag-magenta-bg)' },
+  red:      { text: 'var(--color-tag-red)',       bg: 'var(--color-tag-red-bg)' },
+  volcano:  { text: 'var(--color-tag-volcano)',   bg: 'var(--color-tag-volcano-bg)' },
+  orange:   { text: 'var(--color-tag-orange)',    bg: 'var(--color-tag-orange-bg)' },
+  gold:     { text: 'var(--color-tag-gold)',      bg: 'var(--color-tag-gold-bg)' },
+  lime:     { text: 'var(--color-tag-lime)',      bg: 'var(--color-tag-lime-bg)' },
+  green:    { text: 'var(--color-tag-green)',     bg: 'var(--color-tag-green-bg)' },
+  cyan:     { text: 'var(--color-tag-cyan)',      bg: 'var(--color-tag-cyan-bg)' },
+  blue:     { text: 'var(--color-tag-blue)',      bg: 'var(--color-tag-blue-bg)' },
+  geekblue: { text: 'var(--color-tag-geekblue)',  bg: 'var(--color-tag-geekblue-bg)' },
+  purple:   { text: 'var(--color-tag-purple)',    bg: 'var(--color-tag-purple-bg)' },
+};
+
+const s = color ? tagStyles[color] : null;
+const inlineStyle = s
+  ? `color:${s.text}; background:${s.bg};`
+  : '';
+---
+
+{href ? (
+  <a href={href} class="tag" style={inlineStyle || undefined}>{name}</a>
+) : (
+  <span class="tag" style={inlineStyle || undefined}>{name}</span>
+)}
+
+<style>
+  .tag {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 11px;
+    line-height: 18px;
+    white-space: nowrap;
+    border: none;
+    border-radius: 3px;
+    text-decoration: none;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    transition: opacity .2s;
+    cursor: default;
+  }
+
+  a.tag {
+    cursor: pointer;
+  }
+
+  a.tag:hover {
+    opacity: 0.75;
+  }
+</style>

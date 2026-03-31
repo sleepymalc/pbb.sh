@@ -1,0 +1,73 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import PostCard from 'astro-academic-theme/components/PostCard.astro';
+import ResearchCard from 'astro-academic-theme/components/ResearchCard.astro';
+import { siteConfig } from '@/config';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const allPosts = await getCollection('posts');
+  const allResearch = await getCollection('research');
+
+  const allTags = new Set<string>();
+  [...allPosts, ...allResearch].forEach((item) => {
+    item.data.tags.forEach((tag) => allTags.add(tag.toLowerCase()));
+  });
+
+  return [...allTags].map((tag) => ({
+    params: { tag },
+    props: {
+      tag,
+      posts: allPosts.filter((p) => p.data.tags.some((t) => t.toLowerCase() === tag)),
+      research: allResearch.filter((r) => r.data.tags.some((t) => t.toLowerCase() === tag)),
+    },
+  }));
+}
+
+const { tag, posts, research } = Astro.props;
+---
+
+<BaseLayout config={siteConfig} title={`#${tag}`} currentPath="/tags/">
+  <h1 class="title-separate">#{tag}</h1>
+
+  {research.length > 0 && (
+    <section class="mb-8">
+      <h2 class="text-[1.562rem] font-semibold text-[var(--color-heading)] mb-4">Research</h2>
+      <div class="space-y-3">
+        {research.map((paper: any) => (
+          <ResearchCard
+            title={paper.data.title}
+            href={`/${paper.data.path}/`}
+            date={paper.data.date}
+            excerpt={paper.data.excerpt}
+            authors={paper.data.authors}
+            venue={paper.data.venue}
+            tags={paper.data.tags}
+            tagColors={siteConfig.tagColors}
+            links={paper.data.links}
+            cover={paper.data.cover}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+
+  {posts.length > 0 && (
+    <section>
+      <h2 class="text-[1.562rem] font-semibold text-[var(--color-heading)] mb-4">Posts</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {posts.map((post: any) => (
+          <PostCard
+            title={post.data.title}
+            href={`/${post.data.path}/`}
+            date={post.data.date}
+            excerpt={post.data.excerpt}
+            tags={post.data.tags}
+            tagColors={siteConfig.tagColors}
+            cover={post.data.cover}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+</BaseLayout>

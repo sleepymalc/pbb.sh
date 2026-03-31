@@ -1,0 +1,29 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import { siteConfig } from '@/config';
+---
+
+<BaseLayout config={siteConfig} title="Resume" currentPath="/resume/">
+  <h1 class="title-separate">Resume</h1>
+
+  <div class="w-full">
+    <div class="flex justify-center mb-4">
+      <a
+        href="/cv.pdf"
+        target="_blank"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full font-medium hover:opacity-90 transition-opacity"
+      >
+        <i class="fas fa-download"></i>
+        Download PDF
+      </a>
+    </div>
+
+    <div class="border border-[var(--color-border)] rounded-[var(--radius-base)] overflow-hidden bg-[var(--color-gray-100)]">
+      <iframe
+        src="/cv.pdf"
+        class="w-full h-[80vh]"
+        title="Resume PDF"
+      ></iframe>
+    </div>
+  </div>
+</BaseLayout>

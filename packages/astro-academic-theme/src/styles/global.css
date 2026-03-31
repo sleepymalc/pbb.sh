@@ -1,0 +1,417 @@
+/* ============================================
+   Theme: exact replica of gatsby-theme-academic
+   Using RSuite 5 default variables
+   ============================================ */
+
+@theme {
+  --color-primary: #304CFD;
+  --color-accent: #FF965D;
+  --color-heading: #44566C;
+  --color-date-badge: #ebbaa1;
+
+  --color-tag-magenta: #c41d7f;
+  --color-tag-red: #cf1322;
+  --color-tag-volcano: #d4380d;
+  --color-tag-orange: #d46b08;
+  --color-tag-gold: #d48806;
+  --color-tag-lime: #7cb305;
+  --color-tag-green: #389e0d;
+  --color-tag-cyan: #08979c;
+  --color-tag-blue: #096dd9;
+  --color-tag-geekblue: #1d39c4;
+  --color-tag-purple: #531dab;
+  --color-tag-magenta-bg: #fff0f6;
+  --color-tag-red-bg: #fff1f0;
+  --color-tag-volcano-bg: #fff2e8;
+  --color-tag-orange-bg: #fff7e6;
+  --color-tag-gold-bg: #fffbe6;
+  --color-tag-lime-bg: #fcffe6;
+  --color-tag-green-bg: #f6ffed;
+  --color-tag-cyan-bg: #e6fffb;
+  --color-tag-blue-bg: #e6f7ff;
+  --color-tag-geekblue-bg: #f0f5ff;
+  --color-tag-purple-bg: #f9f0ff;
+
+  --width-container: 1264px;
+  --radius-base: 6px;
+  --radius-content: 3rem 0 3rem 3rem;
+  --radius-full: 3rem;
+  --padding-outer: 1.87rem;
+  --padding-content: 2.5rem;
+
+  /* Exact RSuite 5 font stacks */
+  --font-sans: -apple-system, BlinkMacSystemFont, Arial, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, STXihei, sans-serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+  --font-cjk: source-han-sans-simplified-c, Heiti SC, Microsoft YaHei, sans-serif;
+}
+
+/* ============================================
+   Light theme (RSuite defaults)
+   ============================================ */
+:root {
+  color-scheme: light;
+  --color-bg: #f3f1f8;
+  --color-bg-card: #fbfaff;
+  --color-text: #2e2b3a;
+  --color-text-secondary: #868593;
+  --color-text-tertiary: #b8b6c5;
+  --color-border: #e2dff0;
+  --color-border-primary: #d4d0e5;
+  --color-gray-100: #eceaf5;
+  --color-gray-200: #e2dff0;
+  --color-gray-900: #272336;
+  --color-nav-text: #5b5672;
+  --color-link: #6b4de0;
+  --color-link-hover: #5035b8;
+  --color-code-bg: #eeeaf8;
+}
+
+/* ============================================
+   Dark theme (RSuite dark)
+   ============================================ */
+:root.dark {
+  color-scheme: dark;
+  --color-bg: #110f1a;
+  --color-bg-card: #1a1824;
+  --color-text: #e9e8f0;
+  --color-text-secondary: #a8a4b8;
+  --color-text-tertiary: #605c70;
+  --color-border: #2d2933;
+  --color-border-primary: #3f3c48;
+  --color-gray-100: #2d2933;
+  --color-gray-200: #3f3c48;
+  --color-gray-900: #ebe8f0;
+  --color-nav-text: #a8a4b8;
+  --color-heading: #cdc8d8;
+  --color-link: #8b7aff;
+  --color-link-hover: #a99bff;
+  --color-code-bg: var(--color-gray-100);
+
+  --color-tag-magenta: #fff;
+  --color-tag-red: #fff;
+  --color-tag-volcano: #fff;
+  --color-tag-orange: #fff;
+  --color-tag-gold: #fff;
+  --color-tag-lime: #fff;
+  --color-tag-green: #fff;
+  --color-tag-cyan: #fff;
+  --color-tag-blue: #fff;
+  --color-tag-geekblue: #fff;
+  --color-tag-purple: #fff;
+  --color-tag-magenta-bg: #eb2f96;
+  --color-tag-red-bg: #f5222d;
+  --color-tag-volcano-bg: #fa541c;
+  --color-tag-orange-bg: #fa8c16;
+  --color-tag-gold-bg: #faad14;
+  --color-tag-lime-bg: #a0d911;
+  --color-tag-green-bg: #52c41a;
+  --color-tag-cyan-bg: #13c2c2;
+  --color-tag-blue-bg: #1890ff;
+  --color-tag-geekblue-bg: #2f54eb;
+  --color-tag-purple-bg: #722ed1;
+}
+
+/* ============================================
+   Base (exact RSuite defaults)
+   ============================================ */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
+/* Override Tailwind's default font-family on html */
+html, body, input, button, select, textarea {
+  font-family: -apple-system, BlinkMacSystemFont, Arial, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, STXihei, sans-serif;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, Arial, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, STXihei, sans-serif;
+  font-size: 14px;
+  line-height: 1.42857143;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  letter-spacing: normal;
+  word-spacing: normal;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
+
+h1 { font-size: 1.875rem; }
+h2 { font-size: 1.562rem; }
+h3 { font-size: 1.125rem; }
+h4 { font-size: 1.1rem; }
+
+@media (max-width: 767px) {
+  h1 { font-size: 1.7rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.1rem; }
+  h4 { font-size: 1rem; }
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .3s;
+}
+
+a:hover {
+  color: var(--color-link-hover);
+  text-decoration: none;
+}
+
+ul { margin: 0; }
+
+/* Panel body override (like RSuite) */
+.rs-panel-body { padding: 0; }
+
+/* ============================================
+   Title separator (blue + orange bars)
+   ============================================ */
+.title-separate {
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
+.title-separate::before,
+.title-separate::after {
+  content: '';
+  background-color: #304CFD;
+  border-radius: 0.5rem;
+  height: 5px;
+  position: absolute;
+  bottom: -1.1rem;
+  left: 0;
+  width: 3.12rem;
+  z-index: 1;
+}
+
+.title-separate::after {
+  background-color: #FF965D;
+  width: 1rem;
+}
+
+/* ============================================
+   RSuite-like ghost button
+   ============================================ */
+.btn-ghost {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 20px;
+  border: 1px solid var(--color-text-tertiary);
+  border-radius: var(--radius-base);
+  color: var(--color-text);
+  background: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .2s;
+}
+
+.btn-ghost:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ============================================
+   Markdown body (GitHub-flavored)
+   ============================================ */
+.markdown-body {
+  font-size: 16px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  color: var(--color-text);
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3,
+.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-heading);
+}
+
+.markdown-body h1 { font-size: 1.875rem; }
+.markdown-body h2 { font-size: 1.562rem; }
+.markdown-body h3 { font-size: 1.125rem; }
+.markdown-body h4 { font-size: 1.1rem; }
+.markdown-body p { margin-top: 0; margin-bottom: 1em; }
+
+.markdown-body a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.markdown-body a:hover { text-decoration: underline; }
+.markdown-body ul { padding-left: 2em; margin-bottom: 1em; list-style-type: disc; }
+.markdown-body ol { padding-left: 2em; margin-bottom: 1em; list-style-type: decimal; }
+.markdown-body li + li { margin-top: 0.25em; }
+.markdown-body li { display: list-item; }
+
+.markdown-body blockquote {
+  margin: 0 0 1em;
+  padding: 0.5em 1em;
+  color: var(--color-text-secondary);
+  border-left: 4px solid var(--color-border);
+}
+
+.markdown-body blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body code {
+  padding: 0.2em 0.4em;
+  font-size: 85%;
+  font-family: var(--font-mono);
+  background: var(--color-code-bg);
+  border-radius: 3px;
+}
+
+.markdown-body pre {
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background: var(--color-code-bg);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border);
+  margin-bottom: 1em;
+}
+
+/* Shiki: override inline white background in light mode */
+.astro-code,
+.shiki,
+pre[class*="astro-code"] {
+  background-color: var(--color-code-bg) !important;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+}
+
+/* Shiki dual-theme: map our .dark class to Shiki's dark theme variables */
+:root.dark .astro-code,
+:root.dark .shiki,
+:root.dark pre[class*="astro-code"] {
+  background-color: var(--shiki-dark-bg, var(--color-gray-100)) !important;
+  color: var(--shiki-dark, var(--color-text)) !important;
+}
+
+:root.dark .astro-code span,
+:root.dark .shiki span {
+  color: var(--shiki-dark) !important;
+}
+
+:root.dark .markdown-body pre {
+  background: var(--color-gray-100) !important;
+}
+
+:root.dark .markdown-body pre code,
+:root.dark .astro-code code {
+  background: transparent !important;
+}
+
+:root.dark .markdown-body code {
+  background: var(--color-gray-100) !important;
+  color: var(--color-text);
+}
+.markdown-body pre code { padding: 0; background: transparent; }
+.markdown-body img { max-width: 100%; height: auto; }
+.markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+.markdown-body th, .markdown-body td { padding: 0.5em 1em; border: 1px solid var(--color-border); }
+.markdown-body th { font-weight: 600; background: var(--color-gray-100); }
+.markdown-body hr { height: 1px; margin: 1.5em 0; background: var(--color-border); border: none; }
+.markdown-body strong { font-weight: 600; }
+
+/* ============================================
+   Footnotes (GitHub-style)
+   ============================================ */
+.markdown-body .footnotes {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border);
+  margin-top: 2rem;
+  padding-top: 1rem;
+}
+
+.markdown-body .footnotes ol {
+  padding-left: 1.5em;
+  list-style-type: decimal;
+}
+
+.markdown-body .footnotes li {
+  position: relative;
+  margin-bottom: 0.4em;
+}
+
+.markdown-body .footnotes li:target::before {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  bottom: -4px;
+  left: -24px;
+  pointer-events: none;
+  content: "";
+  border: 2px solid var(--color-primary);
+  border-radius: 6px;
+}
+
+.markdown-body .footnotes li:target {
+  color: var(--color-text);
+}
+
+.markdown-body .footnotes .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+.markdown-body .footnotes p {
+  margin-bottom: 0.25em;
+}
+
+/* Footnote reference: superscript [n] style */
+.markdown-body sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+  top: -0.5em;
+}
+
+.markdown-body sup > a[data-footnote-ref] {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.markdown-body sup > a[data-footnote-ref]::before {
+  content: "[";
+}
+
+.markdown-body sup > a[data-footnote-ref]::after {
+  content: "]";
+}
+
+.markdown-body sup > a[data-footnote-ref]:hover {
+  text-decoration: underline;
+}
+
+/* Back-reference arrow */
+.markdown-body .data-footnote-backref {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-family: var(--font-mono);
+}

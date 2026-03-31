@@ -1,0 +1,66 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import { siteConfig } from '@/config';
+---
+
+<BaseLayout config={siteConfig} title="Contact" currentPath="/contact/">
+  <h1 class="title-separate">Contact</h1>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+    <!-- Contact image -->
+    <div>
+      <img
+        src="/contact.png"
+        alt="Contact"
+        class="w-full rounded-xl"
+        loading="lazy"
+      />
+    </div>
+
+    <!-- Contact form -->
+    <div>
+      {siteConfig.contactFormUrl ? (
+        <form action={siteConfig.contactFormUrl} method="POST" class="space-y-4">
+          <div>
+            <label for="name" class="block text-sm font-medium text-[var(--color-text)] mb-1">Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              class="w-full px-4 py-2 border border-[var(--color-border-primary)] rounded-[var(--radius-base)] bg-[var(--color-bg)] text-[var(--color-text)] focus:border-primary focus:outline-none transition-colors"
+            />
+          </div>
+          <div>
+            <label for="email" class="block text-sm font-medium text-[var(--color-text)] mb-1">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              class="w-full px-4 py-2 border border-[var(--color-border-primary)] rounded-[var(--radius-base)] bg-[var(--color-bg)] text-[var(--color-text)] focus:border-primary focus:outline-none transition-colors"
+            />
+          </div>
+          <div>
+            <label for="message" class="block text-sm font-medium text-[var(--color-text)] mb-1">Message</label>
+            <textarea
+              id="message"
+              name="message"
+              rows="5"
+              required
+              class="w-full px-4 py-2 border border-[var(--color-border-primary)] rounded-[var(--radius-base)] bg-[var(--color-bg)] text-[var(--color-text)] focus:border-primary focus:outline-none transition-colors resize-y"
+            ></textarea>
+          </div>
+          <button
+            type="submit"
+            class="px-6 py-2 bg-primary text-white rounded-full font-medium hover:opacity-90 transition-opacity"
+          >
+            Send Message
+          </button>
+        </form>
+      ) : (
+        <p class="text-[var(--color-text-secondary)]">Contact form is not configured.</p>
+      )}
+    </div>
+  </div>
+</BaseLayout>

@@ -1,0 +1,54 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import ResearchCard from 'astro-academic-theme/components/ResearchCard.astro';
+import FilterPanel from 'astro-academic-theme/components/FilterPanel.astro';
+import { siteConfig } from '@/config';
+import { getCollection } from 'astro:content';
+
+const allResearch = await getCollection('research');
+const research = allResearch.sort((a, b) => {
+  const pa = a.data.priority ?? 0;
+  const pb = b.data.priority ?? 0;
+  if (pa !== pb) return pa - pb;
+  return b.data.date.getTime() - a.data.date.getTime();
+});
+
+// Collect all unique tags and build a stable tag→color map
+const allTags = [...new Set(research.flatMap((r) => r.data.tags))];
+const tagColorMap = new Map<string, string>();
+allTags.forEach((tag, i) => {
+  tagColorMap.set(tag, siteConfig.tagColors[i % siteConfig.tagColors.length]);
+});
+
+/** Given a list of tag names, return their colors in the same order */
+function colorsFor(tags: string[]): string[] {
+  return tags.map((t) => tagColorMap.get(t) || siteConfig.tagColors[0]);
+}
+---
+
+<BaseLayout config={siteConfig} title="Research" currentPath="/research/">
+  <h1 class="title-separate">Research</h1>
+
+  {allTags.length > 0 && (
+    <FilterPanel tags={allTags} tagColors={allTags.map(t => tagColorMap.get(t)!)} />
+  )}
+
+  <div class="space-y-3">
+    {research.map((paper) => (
+      <div data-tags={paper.data.tags.join(',')}>
+        <ResearchCard
+          title={paper.data.title}
+          href={`/${paper.data.path}/`}
+          date={paper.data.date}
+          excerpt={paper.data.excerpt}
+          authors={paper.data.authors}
+          venue={paper.data.venue}
+          tags={paper.data.tags}
+          tagColors={colorsFor(paper.data.tags)}
+          links={paper.data.links}
+          cover={paper.data.cover}
+        />
+      </div>
+    ))}
+  </div>
+</BaseLayout>

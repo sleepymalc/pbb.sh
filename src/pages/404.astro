@@ -1,0 +1,21 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import { siteConfig } from '@/config';
+---
+
+<BaseLayout config={siteConfig} title="404 - Page Not Found">
+  <div class="text-center py-16">
+    <h1 class="text-6xl font-bold text-primary mb-4">404</h1>
+    <h2 class="text-2xl font-light text-[var(--color-heading)] mb-4">This page was lost</h2>
+    <p class="text-[var(--color-text-secondary)] mb-8">
+      The page you are looking for isn't available. Try to search again or use the go back button below.
+    </p>
+    <a
+      href="/"
+      class="inline-flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-full font-medium hover:opacity-90 transition-opacity"
+    >
+      <i class="fas fa-arrow-left"></i>
+      Go Back
+    </a>
+  </div>
+</BaseLayout>

@@ -1,0 +1,284 @@
+---
+import type { SiteConfig } from '../types.js';
+
+interface Props {
+  config: SiteConfig;
+  currentPath?: string;
+}
+
+const { config, currentPath = '/' } = Astro.props;
+
+const navItems = [
+  { label: 'About', href: '/', exact: true },
+  { label: 'Experience', href: '/experience/', exact: false },
+  { label: 'Research', href: `/${config.pages.research}/`, exact: false },
+  { label: 'Posts', href: `/${config.pages.posts}/`, exact: false },
+];
+
+function isActive(href: string, exact: boolean): boolean {
+  if (exact) return currentPath === href || currentPath === href.replace(/\/$/, '');
+  return currentPath.startsWith(href) || currentPath.startsWith(href.replace(/\/$/, ''));
+}
+---
+
+<!-- Sticky header -->
+<header class="site-header">
+  <!-- navWrap: flex row-reverse, bg card, padding 20px -->
+  <div class="nav-wrap">
+    <!-- nav: border-radius 0 3rem 0 0, height 60px -->
+    <nav class="nav-bar">
+      <ul>
+        {navItems.map((item) => (
+          <li class="nav-item">
+            {isActive(item.href, item.exact) ? (
+              <a href={item.href} class="nav-link nav-active">{item.label}</a>
+            ) : (
+              <a href={item.href} class="nav-link">{item.label}</a>
+            )}
+          </li>
+        ))}
+        <li class="nav-item">
+          <button id="theme-toggle" class="nav-link theme-btn" aria-label="Toggle theme">
+            <i class="fas fa-sun" id="theme-icon-sun"></i>
+            <i class="fas fa-moon" id="theme-icon-moon" style="display:none"></i>
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Mobile circle menu button -->
+  <div class="circle-menu" id="mobile-menu-btn" role="button" tabindex="0">
+    <div class="hamburger" id="hamburger-icon">
+      <div class="line"></div>
+      <div class="line"></div>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile overlay -->
+<div class="mobile-overlay" id="mobile-menu">
+  <div class="mobile-bg" id="mobile-bg"></div>
+  <nav class="mobile-nav">
+    <ul>
+      {navItems.map((item) => (
+        <li><a href={item.href}>{item.label}</a></li>
+      ))}
+      <li>
+        <button id="mobile-theme-toggle" class="mobile-theme-btn">
+          <i class="fas fa-adjust"></i> Theme
+        </button>
+      </li>
+    </ul>
+  </nav>
+</div>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    /* Body-colored strip behind the rounded nav — masks content scrolling underneath */
+    background: var(--color-bg);
+  }
+
+  .nav-wrap {
+    display: flex;
+    flex-direction: row-reverse;
+    background: var(--color-bg-card);
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-radius: 3rem 3rem 0 0;
+  }
+
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5F6F81;
+    font-weight: 500;
+    height: 60px;
+    letter-spacing: 0.04rem;
+    margin-left: auto;
+    padding-right: 40px;
+    position: relative;
+  }
+
+  .nav-bar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-item {
+    margin-right: 0.4rem;
+  }
+
+  .nav-link {
+    display: inline-block;
+    padding: 0.6rem 1rem;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #5F6F81;
+    text-decoration: none;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  :global(.dark) .nav-link {
+    color: var(--color-nav-text);
+  }
+
+  .nav-link:hover {
+    background: var(--color-gray-100);
+  }
+
+  .nav-active {
+    background: #304CFD !important;
+    color: #fff !important;
+  }
+
+  .theme-btn {
+    font-size: 16px;
+    padding: 0.5rem 0.7rem;
+  }
+
+  /* Hide nav on mobile */
+  @media (max-width: 768px) {
+    .nav-wrap { display: none; }
+  }
+
+  /* Circle menu (mobile only) */
+  .circle-menu {
+    background: #304CFD;
+    border-radius: 50% 0 50% 50%;
+    box-shadow: 0 24px 40px rgba(48,76,253,0.1), 0 8px 16px rgba(48,76,253,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 3.75rem;
+    width: 3.75rem;
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1101;
+    cursor: pointer;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  @media (max-width: 768px) {
+    .circle-menu {
+      pointer-events: all;
+      visibility: visible;
+    }
+  }
+
+  .hamburger {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .line {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: #fff;
+    border-radius: 4px;
+    transition: transform 0.2s ease-in-out;
+  }
+
+  /* Mobile overlay */
+  .mobile-overlay {
+    display: none;
+  }
+
+  .mobile-overlay.open {
+    display: block;
+  }
+
+  .mobile-bg {
+    position: fixed;
+    background: #304CFD;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    right: 0;
+    top: 0;
+  }
+
+  .mobile-nav {
+    position: fixed;
+    z-index: 1100;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .mobile-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: center;
+  }
+
+  .mobile-nav li {
+    margin-bottom: 1rem;
+  }
+
+  .mobile-nav a, .mobile-theme-btn {
+    color: #fff;
+    font-size: 1.5rem;
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 300;
+  }
+</style>
+
+<script>
+  function initHeader() {
+    // Theme toggle
+    const toggle = document.getElementById('theme-toggle');
+    const mobileToggle = document.getElementById('mobile-theme-toggle');
+    const sunIcon = document.getElementById('theme-icon-sun');
+    const moonIcon = document.getElementById('theme-icon-moon');
+
+    function updateIcons() {
+      const isDark = document.documentElement.classList.contains('dark');
+      if (sunIcon) sunIcon.style.display = isDark ? 'none' : '';
+      if (moonIcon) moonIcon.style.display = isDark ? '' : 'none';
+    }
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme',
+        document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+      updateIcons();
+    }
+
+    toggle?.addEventListener('click', toggleTheme);
+    mobileToggle?.addEventListener('click', toggleTheme);
+    updateIcons();
+
+    // Mobile menu
+    const btn = document.getElementById('mobile-menu-btn');
+    const menu = document.getElementById('mobile-menu');
+    let open = false;
+
+    btn?.addEventListener('click', () => {
+      open = !open;
+      menu?.classList.toggle('open', open);
+    });
+  }
+
+  initHeader();
+  document.addEventListener('astro:after-swap', initHeader);
+</script>

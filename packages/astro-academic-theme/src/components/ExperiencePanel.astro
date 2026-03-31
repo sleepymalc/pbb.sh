@@ -1,0 +1,25 @@
+---
+import type { ExperienceGroup } from '../types.js';
+
+interface Props {
+  group: ExperienceGroup;
+}
+
+const { group } = Astro.props;
+---
+
+<div class="mb-6">
+  <h3 class="text-lg font-semibold text-[var(--color-heading)] mb-4">{group.title}</h3>
+
+  <div class="space-y-0">
+    {group.data.map((item) => (
+      <div class="border-b border-[var(--color-border)] last:border-b-0 py-3 px-5">
+        <h6 class="font-semibold text-sm text-[var(--color-text)] mb-1" set:html={item.title} />
+        <p class="text-sm text-[var(--color-text-secondary)] mb-1">
+          {item.date} &middot; {item.location}
+        </p>
+        <div class="text-sm text-[var(--color-text)] markdown-body" set:html={item.description} />
+      </div>
+    ))}
+  </div>
+</div>

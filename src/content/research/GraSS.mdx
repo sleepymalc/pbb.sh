@@ -1,0 +1,48 @@
+---
+title: "GraSS: Scalable Data Attribution with Gradient Sparsification and Sparse Projection"
+tags: ["Data", "Attribution", "Algorithm"]
+date: 2025-09-18 00:00:00 -0500
+priority: -20250918
+path: "research/GraSS"
+excerpt: "We propose an efficient gradient compression algorithm to accelerate and scale gradient-based data attribution methods to billion-scale models."
+selected: true
+cover: "/research/GraSS/preview.png"
+venue: "NeurIPS 2025"
+links:
+- name: "arXiv"
+  url: "https://arxiv.org/abs/2505.18976"
+- name: "Talk"
+  url: "https://www.youtube.com/watch?v=LgTFvJTTau4"
+- name: "Poster"
+  url: "/research/GraSS/poster.pdf"
+- name: "Slide"
+  url: "/research/GraSS/slide.pdf"
+- name: "GitHub"
+  url: "https://github.com/TRAIS-Lab/GraSS"
+authors:
+- name: "**Pingbang Hu**"
+  url: "https://pbb.sh/"
+- name: Joseph Melkonian
+  url: ""
+- name: "Weijing Tang"
+  url: "https://sites.google.com/andrew.cmu.edu/weijingtang/home"
+- name: "Han Zhao"
+  url: "https://hanzhaoml.github.io/"
+- name: "Jiaqi W. Ma"
+  url: "https://jiaqima.github.io/"
+---
+
+## Brief Summary
+
+Gradient-based data attribution methods, such as influence functions, are critical for understanding the impact of individual training samples without requiring repeated model retraining. However, their scalability is often limited by the high computational and memory costs associated with per-sample gradient computation. In this work, we propose **GraSS**, a novel gradient compression algorithm and its variants **FactGraSS** for linear layers specifically, that explicitly leverage the inherent sparsity of per-sample gradients to achieve *sub-linear* space and time complexity. Extensive experiments demonstrate the effectiveness of our approach, achieving substantial speedups while preserving data influence fidelity. In particular, **FactGraSS** achieves up to 165% faster throughput on billion-scale models compared to the previous state-of-the-art baselines.
+
+## Citation
+
+```bash
+@inproceedings{hu2025grass,
+  author    = {Pingbang Hu and Joseph Melkonian and Weijing Tang and Han Zhao and Jiaqi W. Ma},
+  title     = {GraSS: Scalable Data Attribution with Gradient Sparsification and Sparse Projection},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2025}
+}
+```

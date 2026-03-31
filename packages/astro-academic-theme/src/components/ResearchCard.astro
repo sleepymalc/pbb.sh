@@ -1,0 +1,276 @@
+---
+import Tag from './Tag.astro';
+
+interface Author {
+  name: string;
+  url?: string;
+}
+
+interface Link {
+  name: string;
+  url: string;
+}
+
+interface Props {
+  title: string;
+  href: string;
+  date: Date;
+  excerpt: string;
+  authors?: Author[];
+  venue?: string;
+  tags?: string[];
+  tagColors?: string[];
+  links?: Link[];
+  cover?: string;
+}
+
+const { title, href, date, excerpt, authors = [], venue, tags = [], tagColors = [], links = [], cover } = Astro.props;
+
+const formattedDate = date.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+
+/** Convert inline markdown bold/italic/links to HTML */
+function inlineMd(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+/** Map link names to Font Awesome icon classes */
+function linkIcon(name: string): string | null {
+  const n = name.toLowerCase();
+  if (n === 'github') return 'fab fa-github';
+  if (n === 'arxiv') return 'ai ai-arxiv';
+  if (n === 'paper' || n === 'pdf') return 'fas fa-file-pdf';
+  if (n === 'poster') return 'fas fa-image';
+  if (n === 'slide' || n === 'slides') return 'fas fa-desktop';
+  if (n === 'talk' || n === 'video') return 'fas fa-video';
+  if (n === 'website' || n === 'web' || n === 'demo') return 'fas fa-globe';
+  if (n === 'code') return 'fas fa-code';
+  return null;
+}
+---
+
+<!-- RSuite Panel bordered, padding 0.8rem -->
+<div class="research-card">
+  <div class="card-grid">
+    <!-- Text: md=12/24, lg=16/24 -->
+    <div class="card-text">
+      <h5><a href={href}>{title}</a></h5>
+
+      {authors.length > 0 && (
+        <div class="authors-row">
+          {authors.map((author, i) => (
+            <span class="author">
+              {author.url ? (
+                <a href={author.url} target="_blank" rel="noopener noreferrer" set:html={inlineMd(author.name)} />
+              ) : (
+                <span set:html={inlineMd(author.name)} />
+              )}
+              {i < authors.length - 1 ? <Fragment>,&nbsp;</Fragment> : null}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <!-- Info line: date | venue | tags -->
+      <div class="info-line">
+        {date && <div>{formattedDate}</div>}
+        {venue && (
+          <>
+            <div class="divider"></div>
+            <div><span>{venue}</span></div>
+          </>
+        )}
+        {tags.length > 0 && (
+          <>
+            <div class="divider"></div>
+            <div class="tags-inline">
+              {tags.map((tag, i) => (
+                <Tag name={tag} color={tagColors[i % tagColors.length]} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {excerpt && (
+        <a href={href} class="excerpt-link">
+          <p class="excerpt">{excerpt}</p>
+        </a>
+      )}
+
+      {links.length > 0 && (
+        <div class="links-row">
+          {links.map((link) => {
+            const icon = linkIcon(link.name);
+            return (
+              <a
+                href={link.url}
+                target={link.url.startsWith('http') ? '_blank' : undefined}
+                rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                class="btn-ghost"
+              >
+                {icon && <i class={icon} style="margin-right:4px"></i>}
+                {link.name}
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
+    <!-- Image: md=12/24, lg=8/24 -->
+    <div class="card-image-col">
+      <a href={href}>
+        {cover ? (
+          <img src={cover} alt={title} class="card-image" />
+        ) : (
+          <div class="card-image-placeholder"></div>
+        )}
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .research-card {
+    padding: 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    background: var(--color-bg-card);
+    cursor: default;
+  }
+
+  .card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .card-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .card-image-col {
+    width: 25%;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 767px) {
+    .card-image-col {
+      width: 100%;
+    }
+  }
+
+  /* Fixed 16:9 container — image never overflows */
+  .card-image-col a {
+    display: block;
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%;
+    overflow: hidden;
+    background: transparent;
+    border-radius: var(--radius-base);
+  }
+
+  .card-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--radius-base);
+  }
+
+  .card-image-placeholder {
+    /* Handled by parent padding-top */
+  }
+
+  .research-card h5 {
+    font-size: 1.25rem;
+    white-space: normal;
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+  }
+
+  .research-card h5 a {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .research-card h5 a:hover {
+    color: var(--color-heading);
+  }
+
+  .authors-row {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.3rem;
+    line-height: 1.5;
+  }
+
+  .authors-row a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+
+  .authors-row a:hover {
+    color: var(--color-text);
+  }
+
+  .info-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    margin-top: 0.5rem;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+  }
+
+  .divider {
+    border-left: 1.5px solid rgba(0, 0, 0, 0.2);
+    height: 1.2em;
+    margin-left: 6px;
+    margin-right: 6px;
+    align-self: center;
+  }
+
+  :global(.dark) .divider {
+    border-left-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .tags-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .excerpt {
+    margin-top: 1rem;
+    margin-bottom: 0;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  .excerpt-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .links-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 1rem;
+  }
+</style>

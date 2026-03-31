@@ -1,0 +1,93 @@
+---
+interface Props {
+  title: string;
+  subtitle?: string;
+  minor?: string;
+  date?: string;
+  icon?: string;
+  iconColor?: string;
+}
+
+const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C' } = Astro.props;
+---
+
+<div class="timeline-item">
+  <div class="timeline-icon">
+    <i class={`fas fa-${icon}`} style={`color: ${iconColor}`}></i>
+  </div>
+  <div class="timeline-body">
+    <p class="timeline-title">{title}</p>
+    {minor && (
+      <p class="timeline-minor"><i class="fas fa-bookmark"></i> Minor in {minor}</p>
+    )}
+    {subtitle && (
+      <p class="timeline-subtitle">{subtitle}</p>
+    )}
+    {date && (
+      <p class="timeline-date">{date}</p>
+    )}
+    <slot />
+  </div>
+</div>
+
+<style>
+  .timeline-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    position: relative;
+  }
+
+  .timeline-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    background: var(--color-bg-card);
+    font-size: 13px;
+  }
+
+  .timeline-body {
+    flex: 1;
+    min-width: 0;
+    margin-top: -2px;
+  }
+
+  .timeline-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .timeline-minor {
+    font-size: 10pt;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin: 2px 0 0;
+    font-style: italic;
+  }
+
+  .timeline-minor i {
+    font-size: 9px;
+    margin-right: 4px;
+    opacity: 0.6;
+  }
+
+  .timeline-subtitle {
+    font-size: 12pt;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .timeline-date {
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+    margin: 0;
+  }
+</style>

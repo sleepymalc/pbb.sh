@@ -1,0 +1,63 @@
+---
+import type { SocialLink } from '../types.js';
+
+interface Props {
+  links: SocialLink[];
+}
+
+const { links } = Astro.props;
+
+function getIconClass(icon: string | [string, string]): string {
+  if (Array.isArray(icon)) {
+    const [prefix, name] = icon;
+    if (prefix === 'ai') return `ai ai-${name}`;
+    if (prefix === 'fab') return `fab fa-${name}`;
+    if (prefix === 'far') return `far fa-${name}`;
+    if (prefix === 'fa') return `fas fa-${name}`;
+    return `fas fa-${name}`;
+  }
+  return `fas fa-${icon}`;
+}
+---
+
+<div class="social-links">
+  {links.map((link) => (
+    <a
+      href={link.url}
+      target={link.url.startsWith('/') || link.url.startsWith('mailto:') ? undefined : '_blank'}
+      rel={link.url.startsWith('/') || link.url.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+      class="social-icon-btn"
+      title={link.label || ''}
+    >
+      <i class={getIconClass(link.icon)}></i>
+    </a>
+  ))}
+</div>
+
+<style>
+  .social-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    padding: 0.25rem 0;
+  }
+
+  .social-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    color: var(--color-heading);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .social-icon-btn:hover {
+    color: var(--color-primary);
+    background: var(--color-gray-100);
+  }
+</style>

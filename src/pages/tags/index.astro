@@ -1,0 +1,37 @@
+---
+import BaseLayout from '@/layouts/Layout.astro';
+import { siteConfig } from '@/config';
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('posts');
+const allResearch = await getCollection('research');
+
+// Collect all tags and their counts
+const tagCounts = new Map<string, number>();
+[...allPosts, ...allResearch].forEach((item) => {
+  item.data.tags.forEach((tag) => {
+    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+  });
+});
+
+const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
+---
+
+<BaseLayout config={siteConfig} title="Tags" currentPath="/tags/">
+  <h1 class="title-separate">#Tags</h1>
+
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
+    {sortedTags.map(([tag, count], i) => {
+      const colorName = siteConfig.tagColors[i % siteConfig.tagColors.length];
+      return (
+        <a
+          href={`/tags/${tag.toLowerCase()}/`}
+          class="block border border-[var(--color-border)] rounded-[var(--radius-base)] p-5 text-center hover:border-primary transition-colors"
+        >
+          <h4 class="text-lg font-semibold mb-1">#{tag}</h4>
+          <p class="text-sm text-[var(--color-text-secondary)]">{count} {count === 1 ? 'item' : 'items'}</p>
+        </a>
+      );
+    })}
+  </div>
+</BaseLayout>
