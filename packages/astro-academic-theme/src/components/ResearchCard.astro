@@ -113,41 +113,41 @@ function linkIcon(name: string): string | null {
         )}
       </div>
 
-      {excerpt && (
-        <a href={href} class="excerpt-link">
-          <p class="excerpt"><Fragment set:html={marked.parseInline(excerpt)} /></p>
-        </a>
-      )}
+      <div class="card-details">
+        <div class="card-details-inner">
+          {excerpt && (
+            <p class="excerpt"><Fragment set:html={marked.parseInline(excerpt)} /></p>
+          )}
 
-      {links.length > 0 && (
-        <div class="links-row">
-          {links.map((link) => {
-            const icon = linkIcon(link.name);
-            return (
-              <a
-                href={link.url}
-                target={link.url.startsWith('http') ? '_blank' : undefined}
-                rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
-                class="btn-ghost"
-              >
-                {icon && <i class={icon} style="margin-right:4px"></i>}
-                {link.name}
-              </a>
-            );
-          })}
+          {links.length > 0 && (
+            <div class="links-row">
+              {links.map((link) => {
+                const icon = linkIcon(link.name);
+                return (
+                  <a
+                    href={link.url}
+                    target={link.url.startsWith('http') ? '_blank' : undefined}
+                    rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    class="btn-ghost"
+                  >
+                    {icon && <i class={icon} style="margin-right:4px"></i>}
+                    {link.name}
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
 
     <!-- Image: md=12/24, lg=8/24 -->
     <div class="card-image-col">
-      <a href={href}>
-        {cover ? (
-          <img src={cover} alt={title} class="card-image" />
-        ) : (
-          <div class="card-image-placeholder"></div>
-        )}
-      </a>
+      {cover ? (
+        <img src={cover} alt={title} class="card-image" />
+      ) : (
+        <div class="card-image-placeholder"></div>
+      )}
     </div>
   </div>
 </div>
@@ -158,7 +158,7 @@ function linkIcon(name: string): string | null {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-base);
     background: var(--color-bg-card);
-    cursor: default;
+    cursor: pointer;
   }
 
   .card-grid {
@@ -176,23 +176,18 @@ function linkIcon(name: string): string | null {
   .card-image-col {
     width: 25%;
     flex-shrink: 0;
+    position: relative;
+    padding-top: 14%;
+    overflow: hidden;
+    background: transparent;
+    border-radius: var(--radius-base);
   }
 
   @media (max-width: 767px) {
     .card-image-col {
       width: 100%;
+      padding-top: 56.25%;
     }
-  }
-
-  /* Fixed 16:9 container — image never overflows */
-  .card-image-col a {
-    display: block;
-    position: relative;
-    width: 100%;
-    padding-top: 56.25%;
-    overflow: hidden;
-    background: transparent;
-    border-radius: var(--radius-base);
   }
 
   .card-image {
@@ -290,24 +285,34 @@ function linkIcon(name: string): string | null {
     gap: 4px;
   }
 
+  .card-details {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+
+  .card-details-inner {
+    overflow: hidden;
+  }
+
+  .card-details.expanded {
+    grid-template-rows: 1fr;
+  }
+
   .excerpt {
-    margin-top: 1rem;
+    margin-top: 0.75rem;
     margin-bottom: 0;
     font-size: 14px;
     color: var(--color-text-secondary);
     line-height: 1.5;
   }
 
-  .excerpt-link {
-    color: inherit;
-    text-decoration: none;
-  }
-
   .links-row {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 1rem;
+    margin-top: 0.75rem;
+    padding-bottom: 0.25rem;
   }
 
   @media (max-width: 480px) {
@@ -342,6 +347,16 @@ function linkIcon(name: string): string | null {
   document.querySelectorAll('.authors-ellipsis').forEach((el) => {
     el.addEventListener('click', () => {
       el.closest('.authors-row')?.classList.add('expanded');
+    });
+  });
+
+  document.querySelectorAll('.research-card').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      // Let actual links (title, author links, arxiv/github buttons) navigate normally
+      const target = e.target as HTMLElement;
+      if (target.closest('a')) return;
+
+      card.querySelector('.card-details')?.classList.toggle('expanded');
     });
   });
 </script>

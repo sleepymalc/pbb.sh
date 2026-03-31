@@ -31,10 +31,6 @@ const formattedDate = date.toLocaleDateString('en-US', {
         <div class="card-image-placeholder"></div>
       )}
     </a>
-    <span class="date-badge">
-      <i class="far fa-calendar-alt"></i>
-      {formattedDate}
-    </span>
   </div>
   <div class="card-body">
     <h5><a href={href}>{title}</a></h5>
@@ -83,35 +79,12 @@ const formattedDate = date.toLocaleDateString('en-US', {
     /* Already handled by the parent padding-top */
   }
 
-  .date-badge {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    border-radius: 999px;
-    color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg-card));
-    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
-  }
-
-  :global(.dark) .date-badge {
-    color: var(--color-accent);
-    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-card));
-    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
-  }
-
   .card-body {
     padding: 0.8rem;
   }
 
   .card-body h5 {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     white-space: normal;
     line-height: 1.3;
     margin-bottom: 0.4rem;

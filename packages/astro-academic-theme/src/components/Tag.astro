@@ -30,7 +30,7 @@ const inlineStyle = s
 {href ? (
   <a href={href} class="tag" style={inlineStyle || undefined}>{name}</a>
 ) : (
-  <span class="tag" style={inlineStyle || undefined}>{name}</span>
+  <span class="tag" data-tag-name={name} style={inlineStyle || undefined}>{name}</span>
 )}
 
 <style>
@@ -46,7 +46,11 @@ const inlineStyle = s
     font-weight: 500;
     letter-spacing: 0.01em;
     transition: opacity .2s;
-    cursor: default;
+    cursor: pointer;
+  }
+
+  .tag[data-tag-name]:hover {
+    opacity: 0.75;
   }
 
   a.tag {

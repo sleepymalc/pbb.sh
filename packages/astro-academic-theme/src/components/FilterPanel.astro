@@ -113,35 +113,46 @@ type ColorName = typeof colorNames[number];
       btn.parentNode?.replaceChild(clone, btn);
     });
 
+    function toggleFilter(tag: string) {
+      const filterBtn = document.querySelector(`.filter-tag[data-tag="${tag}"]`) as HTMLElement | null;
+      if (!filterBtn) return;
+      const cname = filterBtn.dataset.color || 'blue';
+
+      if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+        filterBtn.classList.remove('active');
+      } else {
+        activeTags.add(tag);
+        filterBtn.classList.add('active');
+      }
+      filterBtn.style.color = `var(--color-tag-${cname})`;
+      filterBtn.style.background = `var(--color-tag-${cname}-bg)`;
+
+      // Filter cards
+      document.querySelectorAll('[data-tags]').forEach((card) => {
+        const cardEl = card as HTMLElement;
+        const cardTags = (cardEl.dataset.tags || '').split(',').map(t => t.trim());
+        if (activeTags.size === 0) {
+          cardEl.style.display = '';
+        } else {
+          cardEl.style.display = [...activeTags].every(t => cardTags.includes(t)) ? '' : 'none';
+        }
+      });
+    }
+
     document.querySelectorAll('.filter-tag').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const el = btn as HTMLElement;
-        const tag = el.dataset.tag;
-        const cname = el.dataset.color || 'blue';
-        if (!tag) return;
+        const tag = (btn as HTMLElement).dataset.tag;
+        if (tag) toggleFilter(tag);
+      });
+    });
 
-        if (activeTags.has(tag)) {
-          activeTags.delete(tag);
-          el.classList.remove('active');
-          el.style.color = `var(--color-tag-${cname})`;
-          el.style.background = `var(--color-tag-${cname}-bg)`;
-        } else {
-          activeTags.add(tag);
-          el.classList.add('active');
-          el.style.color = `var(--color-tag-${cname})`;
-          el.style.background = `var(--color-tag-${cname}-bg)`;
-        }
-
-        // Filter cards
-        document.querySelectorAll('[data-tags]').forEach((card) => {
-          const cardEl = card as HTMLElement;
-          const cardTags = (cardEl.dataset.tags || '').split(',').map(t => t.trim());
-          if (activeTags.size === 0) {
-            cardEl.style.display = '';
-          } else {
-            cardEl.style.display = [...activeTags].every(t => cardTags.includes(t)) ? '' : 'none';
-          }
-        });
+    // Inline tags on cards trigger the same filter
+    document.querySelectorAll('[data-tag-name]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tag = (el as HTMLElement).dataset.tagName;
+        if (tag) toggleFilter(tag);
       });
     });
   }

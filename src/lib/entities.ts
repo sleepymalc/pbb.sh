@@ -26,7 +26,7 @@ export const entities: Entity[] = [
   {
     name: 'University of Michigan',
     aliases: ['UMich'],
-    color: '#00274C',
+    color: '#FFCB05',
     logo: '/logos/umich.png',
   },
   {
