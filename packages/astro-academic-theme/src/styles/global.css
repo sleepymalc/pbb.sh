@@ -459,9 +459,9 @@ pre[class*="astro-code"] {
 }
 
 :root.dark .entity-mention {
-  color: color-mix(in srgb, var(--entity-color) 70%, #fff);
-  background: color-mix(in srgb, var(--entity-color) 15%, transparent);
-  border-bottom-color: color-mix(in srgb, var(--entity-color) 50%, transparent);
+  color: color-mix(in srgb, var(--entity-color) 55%, #fff);
+  background: color-mix(in srgb, var(--entity-color) 8%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
 }
 
 :root.dark .entity-icon {
