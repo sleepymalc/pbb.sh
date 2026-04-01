@@ -5,7 +5,7 @@
 
 @theme {
   --color-primary: #304CFD;
-  --color-accent: #FF965D;
+  --color-accent: #A855F7;
   --color-heading: #44566C;
   --color-date-badge: #ebbaa1;
 
@@ -229,8 +229,8 @@ ul { margin: 0; }
 }
 
 .btn-ghost:hover {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 /* ============================================

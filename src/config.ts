@@ -21,17 +21,39 @@ export const siteConfig: SiteConfig = {
   professions: ['I speak TeX'],
 
   introduction: [
-    "I'm a third-year Ph.D. candidate at [*University of Illinois Urbana-Champaign* (UIUC)](https://illinois.edu/) advised by [Jiaqi Ma](https://jiaqima.github.io/), and I also work closely with [Han Zhao](https://hanzhaoml.github.io/). Currently, I'm also an [*Anthropic*](https://www.anthropic.com/) AI Safety Research Fellow and an incoming Ph.D. ML intern at [*Susquehanna International Group*](https://sig.com/).",
-    "Previously, I've spent time at [*Amazon AWS AI Lab*](https://aws.amazon.com/ai/) as an Applied Scientist intern, and [*National Institute of Informatics*](https://www.nii.ac.jp/en/) as a research intern. I obtained my Master degree from [UIUC](https://illinois.edu/) and [dual Bachelor degree](https://www.ji.sjtu.edu.cn/academics/ipo/study-abroad/degree-programs/) from [*University of Michigan*](https://umich.edu/) and [*Shanghai Jiao Tong University*](https://www.sjtu.edu.cn/).",
-    "Research-wise, I'm interested in the broad area of ML and AI, with the goal being to draw theoretical insights from practical problems and develop algorithms with provable guarantees and desirable properties such as *efficiency*, *robustness*, and *fairness*. Recently, my research focuses on *understanding data*, including the following three aspects:",
+    "I'm a third-year Ph.D. candidate at [*University of Illinois Urbana-Champaign*](https://illinois.edu/) (UIUC) advised by [Jiaqi Ma](https://jiaqima.github.io/), and I also work closely with [Han Zhao](https://hanzhaoml.github.io/). Currently, I'm also an [*Anthropic*](https://www.anthropic.com/) AI Safety Research Fellow and an incoming Ph.D. ML intern at [*Susquehanna International Group*](https://sig.com/).",
+    "Previously, I've spent time at [*Amazon AWS AI Lab*](https://aws.amazon.com/ai/) and [*National Institute of Informatics*](https://www.nii.ac.jp/en/). I obtained my Master degree from [*UIUC*](https://illinois.edu/) and [dual Bachelor degree](https://www.ji.sjtu.edu.cn/academics/ipo/study-abroad/degree-programs/) from [*University of Michigan*](https://umich.edu/) and [*Shanghai Jiao Tong University*](https://www.sjtu.edu.cn/).",
+  ],
+
+  researchIntro: [
+    "Research-wise, I'm interested in the broad area of ML and AI, with the goal being to draw theoretical insights from practical problems and develop algorithms with provable guarantees and desirable properties such as *efficiency*, *robustness*, and *fairness*. Recently, my research focuses on *understanding **data***, including the following three aspects:",
     '1. **Data Attribution**: Understanding how training data *influences* AI models.\n2. **Data Curation**: How to curate/generate/augment (synthetic) data that further helps models *generalize*?\n3. **Data-Centric Privacy**: Can above be done *without* compromising privacy when safety-critical or sensitive data is involved? This includes (differential) privacy, machine unlearning, etc.',
     "Previously I have worked on *graph neural networks* with [Jiaqi Ma](https://jiaqima.github.io/) and *fast graph algorithms* with [Thatchaphol Saranurak](https://sites.google.com/site/thsaranurak/). Generally speaking, I held (actually *hold*) a strong interest in theoretical stuffs that involves *geometry*.",
-    '### 🗞️ News',
-    "- [Jun. 2026] Incoming intern at [*SIG*](https://sig.com/) Deep Learning team, come hanging out in Philly!\n- [Feb. 2026] We are organizing the [Data Foundations of AI](https://data-foundations-of-ai.github.io/), come check out if you work on data as well!\n- [Jan. 2026] One paper accepted by *ICLR 2026*.\n- [Jan. 2026] Starting as an AI safety fellow at [*Anthropic*](https://www.anthropic.com/), come hanging out in San Francisco!\n- [Oct. 2025] We are organizing the *Symposium on Information Retrieval and Language Models* at UIUC!\n- [Oct. 2025] Giving a [tutorial](https://trais-lab.github.io/dattri-reading-group/recording/2025/13/) on recent tricks in computing gradient-based data attribution, including [GraSS](./research/GraSS/)!\n- [Sep. 2025] Please check out our new [survey paper](./research/Data-Attribution-Survey/) on data attribution!\n- [Sep. 2025] Two papers accepted by *NeurIPS 2025* with one first-authored and one co-first-authored!\n- [Aug. 2025] Get my M.S. Applied Math Degree at UIUC!\n- [Jul. 2025] We are organizing the [3rd Workshop on Regulatable Machine Learning](https://regulatableml.github.io/) in conjunction with *NeurIPS 2025*!\n- [Jul. 2025] Giving a talk on [Data Attribution](./else/Intro-to-DA.pdf) at the [*Guided Generation Group (GGG)*](https://github.com/GuidedGenerationGroup)!\n- [Jun. 2025] Attending the first [AI Startup School](https://events.ycombinator.com/ai-sus) held by [*Y Combinator*](https://www.ycombinator.com/), see you in San Francisco!\n- [Mar. 2025] Interning at [*Amazon AWS AI*](https://aws.amazon.com/ai/) Deep Engine Science team, come hanging out in New York!\n- [Jan. 2025] One paper accepted by *ICLR 2025*.\n- [Nov. 2024] Received the **Graduate Conference Travel Award** from UIUC!\n- [Oct. 2024] Received the **NeurIPS 2024 Scholar Award**, see you in Vancouver!\n- [Sep. 2024] Two papers accepted by *NeurIPS 2024* with one ***Spotlight***.\n- [Jun. 2024] We launched the ongoing [*Data Attribution Reading Group*](https://trais-lab.github.io/dattri-reading-group/).\n- [May 2024] Interning at [*National Institute of Informatics*](https://www.nii.ac.jp/en/), come hanging out in Tokyo!",
-    '',
-    '### 🔖 Misc',
-    "I'm from Taiwan 🇹🇼! In my spare time, I enjoy [*street photography*](https://www.instagram.com/streetmalc/) 📷 and playing drums 🥁.",
   ],
+
+  news: [
+    { date: 'Jun. 2026', text: "Incoming intern at [*SIG*](https://sig.com/) Deep Learning team, come hanging out in Philly!" },
+    { date: 'Feb. 2026', text: "We are organizing the [Data Foundations of AI](https://data-foundations-of-ai.github.io/), come check out if you work on data as well!" },
+    { date: 'Jan. 2026', text: "One paper accepted by *ICLR 2026*." },
+    { date: 'Jan. 2026', text: "Starting as an AI safety fellow at [*Anthropic*](https://www.anthropic.com/), come hanging out in San Francisco!" },
+    { date: 'Oct. 2025', text: "We are organizing the *Symposium on Information Retrieval and Language Models* at UIUC!" },
+    { date: 'Oct. 2025', text: "Giving a [tutorial](https://trais-lab.github.io/dattri-reading-group/recording/2025/13/) on recent tricks in computing gradient-based data attribution, including [GraSS](./research/GraSS/)!" },
+    { date: 'Sep. 2025', text: "Please check out our new [survey paper](./research/Data-Attribution-Survey/) on data attribution!" },
+    { date: 'Sep. 2025', text: "Two papers accepted by *NeurIPS 2025* with one first-authored and one co-first-authored!" },
+    { date: 'Aug. 2025', text: "Get my M.S. Applied Math Degree at UIUC!" },
+    { date: 'Jul. 2025', text: "We are organizing the [3rd Workshop on Regulatable Machine Learning](https://regulatableml.github.io/) in conjunction with *NeurIPS 2025*!" },
+    { date: 'Jul. 2025', text: "Giving a talk on [Data Attribution](./else/Intro-to-DA.pdf) at the [*Guided Generation Group (GGG)*](https://github.com/GuidedGenerationGroup)!" },
+    { date: 'Jun. 2025', text: "Attending the first [AI Startup School](https://events.ycombinator.com/ai-sus) held by [*Y Combinator*](https://www.ycombinator.com/), see you in San Francisco!" },
+    { date: 'Mar. 2025', text: "Interning at [*Amazon AWS AI*](https://aws.amazon.com/ai/) Deep Engine Science team, come hanging out in New York!" },
+    { date: 'Jan. 2025', text: "One paper accepted by *ICLR 2025*." },
+    { date: 'Nov. 2024', text: "Received the **Graduate Conference Travel Award** from UIUC!" },
+    { date: 'Oct. 2024', text: "Received the **NeurIPS 2024 Scholar Award**, see you in Vancouver!" },
+    { date: 'Sep. 2024', text: "Two papers accepted by *NeurIPS 2024* with one ***Spotlight***." },
+    { date: 'Jun. 2024', text: "We launched the ongoing [*Data Attribution Reading Group*](https://trais-lab.github.io/dattri-reading-group/)." },
+    { date: 'May 2024', text: "Interning at [*National Institute of Informatics*](https://www.nii.ac.jp/en/), come hanging out in Tokyo!" },
+  ],
+
+  misc: "I'm from Taiwan 🇹🇼! In my spare time, I enjoy [*street photography*](https://www.instagram.com/streetmalc/) 📷 and playing drums 🥁.",
 
   education: [
     {

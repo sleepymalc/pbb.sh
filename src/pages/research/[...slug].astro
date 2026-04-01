@@ -199,7 +199,7 @@ function linkIcon(name: string): string | null {
         <Tag
           name={tag}
           color={siteConfig.tagColors[i % siteConfig.tagColors.length]}
-          href={`/tags/${tag.toLowerCase()}/`}
+          href={`/research?tag=${encodeURIComponent(tag)}`}
         />
       ))}
     </div>

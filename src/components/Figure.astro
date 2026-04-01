@@ -1,0 +1,28 @@
+---
+interface Props {
+  src: string;
+  alt?: string;
+}
+
+const { src, alt = '' } = Astro.props;
+---
+
+<img src={src} alt={alt} class="note-figure" />
+
+<style>
+  .note-figure {
+    float: right;
+    width: 18%;
+    margin: 0 0 0.75rem 1rem;
+    border-radius: 0.375rem;
+  }
+
+  @media (max-width: 640px) {
+    .note-figure {
+      float: none;
+      width: 50%;
+      margin: 0.5rem auto 0.75rem;
+      display: block;
+    }
+  }
+</style>

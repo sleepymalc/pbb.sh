@@ -1,0 +1,63 @@
+---
+interface Props {
+  title: string;
+  id?: string;
+  pdf?: string;
+  latex?: string;
+}
+
+const { title, id, pdf, latex } = Astro.props;
+---
+
+<h4 class="course-heading" id={id}>
+  <span>{title}</span>
+  {(pdf || latex) && (
+    <span class="course-links">
+      {pdf && (
+        <a href={pdf} class="course-link" title="PDF">
+          <i class="fas fa-file-pdf"></i> PDF
+        </a>
+      )}
+      {latex && (
+        <a href={latex} target="_blank" rel="noopener noreferrer" class="course-link" title="LaTeX source">
+          <i class="fas fa-code"></i> LaTeX
+        </a>
+      )}
+    </span>
+  )}
+</h4>
+
+<style>
+  .course-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .course-links {
+    display: inline-flex;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 400;
+    position: relative;
+    top: -1px;
+  }
+
+  .course-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.3rem;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .course-link:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+</style>

@@ -20,6 +20,7 @@ export interface SiteConfig {
 
   professions: string[];
   introduction: string[];
+  researchIntro?: string[];
 
   education: Education[];
   social: SocialLink[];
@@ -29,6 +30,9 @@ export interface SiteConfig {
   researchExperience?: ResearchExperience[];
   teachingExperience?: TeachingExperience[];
   service?: ServiceSection;
+
+  news?: NewsItem[];
+  misc?: string;
 
   tagColors: string[];
   tags: TagDefinition[];
@@ -117,6 +121,11 @@ export interface TagDefinition {
   name: string;
   description: string;
   color: string;
+}
+
+export interface NewsItem {
+  date: string;
+  text: string;
 }
 
 export interface WakatimeConfig {

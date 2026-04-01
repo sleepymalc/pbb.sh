@@ -155,6 +155,10 @@ type ColorName = typeof colorNames[number];
         if (tag) toggleFilter(tag);
       });
     });
+
+    // Auto-activate tag from URL ?tag= param
+    const urlTag = new URLSearchParams(window.location.search).get('tag');
+    if (urlTag) toggleFilter(urlTag);
   }
 
   initFilterPanels();

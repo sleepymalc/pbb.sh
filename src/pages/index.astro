@@ -33,6 +33,22 @@ const introHtml = highlightEntities(
     .map((para) => renderMarkdown(para))
     .join('\n')
 );
+
+// Render research intro markdown
+const researchIntroHtml = highlightEntities(
+  (siteConfig.researchIntro ?? [])
+    .map((p) => renderMarkdown(p))
+    .join('\n')
+);
+
+// Render news items
+const newsItems = (siteConfig.news ?? []).map((item) => ({
+  date: item.date,
+  html: highlightEntities(renderMarkdown(item.text)),
+}));
+
+// Render misc
+const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
 ---
 
 <BaseLayout config={siteConfig} currentPath="/">
@@ -42,27 +58,97 @@ const introHtml = highlightEntities(
     <div class="markdown-body intro-content" set:html={introHtml} />
   </section>
 
+  <!-- Research -->
+  {researchIntroHtml && (
+    <section class="mt-6">
+      <h3 class="section-heading">🔬 Research</h3>
+      <div class="markdown-body research-content" set:html={researchIntroHtml} />
+    </section>
+  )}
+
+  <!-- News -->
+  {newsItems.length > 0 && (
+    <section class="mt-6">
+      <h3 class="section-heading">🗞️ News</h3>
+      <ul class="news-list">
+        {newsItems.map((item) => (
+          <li>
+            <span class="news-date">{item.date}</span>
+            <span class="news-text" set:html={item.html} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <!-- Misc -->
+  {miscHtml && (
+    <section class="mt-6">
+      <h3 class="section-heading">🔖 Misc</h3>
+      <div class="markdown-body" set:html={miscHtml} />
+    </section>
+  )}
+
   <style>
-    /* News list: date-aligned, scrollable, no bullets */
-    .intro-content :global(.news-list) {
-      max-height: 280px;
+    .section-heading {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--color-heading);
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 2px solid var(--color-accent);
+      display: inline-block;
+    }
+
+    /* Italic keywords in research prose: subtle accent underline */
+    .research-content :global(p em) {
+      font-style: italic;
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+      text-underline-offset: 2px;
+      text-decoration-thickness: 1.5px;
+    }
+
+    /* Bold text in research prose (e.g., "data"): accent colored */
+    .research-content :global(p strong) {
+      color: var(--color-accent);
+    }
+
+    /* Direction titles in the numbered list */
+    .research-content :global(ol strong) {
+      color: var(--color-accent);
+      cursor: default;
+      transition: text-shadow 0.3s ease;
+    }
+
+    .research-content :global(ol strong:hover) {
+      animation: keyword-glow 1.5s ease-in-out infinite;
+    }
+
+    @keyframes keyword-glow {
+      0%, 100% { text-shadow: 0 0 4px color-mix(in srgb, var(--color-accent) 40%, transparent); }
+      50% { text-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 70%, transparent); }
+    }
+
+    .news-list {
+      max-height: 180px;
       overflow-y: auto;
       padding-right: 0.5rem;
       padding-left: 0;
       list-style: none;
     }
 
-    .intro-content :global(.news-list li) {
+    .news-list li {
       display: flex;
       gap: 0.5em;
       padding: 0.15em 0;
       line-height: 1.45;
     }
 
-    .intro-content :global(.news-date) {
+    .news-date {
       flex-shrink: 0;
       width: 5.5em;
-      font-size: 0.8em;
+      font-size: 1em;
       font-weight: 500;
       white-space: nowrap;
       color: var(--color-text-secondary);
@@ -73,45 +159,54 @@ const introHtml = highlightEntities(
       margin-top: 1px;
     }
 
-    .intro-content :global(.news-text) {
+    .news-text {
       flex: 1;
       min-width: 0;
     }
-  </style>
 
-  <script>
-    function formatNewsList() {
-      // Find the News h3 and its following ul
-      const headings = document.querySelectorAll('.intro-content h3');
-      for (const h of headings) {
-        if (!h.textContent?.includes('News')) continue;
-        const ul = h.nextElementSibling;
-        if (!ul || ul.tagName !== 'UL') continue;
-
-        ul.classList.add('news-list');
-
-        for (const li of ul.querySelectorAll('li')) {
-          const html = li.innerHTML;
-          // Match [Mon. YYYY] at the start
-          const match = html.match(/^\s*\[([^\]]+)\]\s*/);
-          if (match) {
-            const date = match[1];
-            const rest = html.slice(match[0].length);
-            li.innerHTML = `<span class="news-date">${date}</span><span class="news-text">${rest}</span>`;
-          }
-        }
-      }
+    /* Strip wrapping <p> tags from inline markdown in news items */
+    .news-text :global(p) {
+      margin: 0;
+      display: inline;
     }
 
-    formatNewsList();
-    document.addEventListener('astro:after-swap', formatNewsList);
-  </script>
+    .research-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+      scroll-snap-type: y mandatory;
+    }
+
+    .research-list > :global(*) {
+      scroll-snap-align: start;
+    }
+
+    @media (max-width: 640px) {
+      .research-list {
+        flex-direction: row;
+        max-height: none;
+        overflow-y: visible;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        padding-right: 0;
+        padding-bottom: 0.5rem;
+      }
+
+      .research-list > :global(*) {
+        flex: 0 0 85%;
+      }
+    }
+  </style>
 
   <!-- Selected Research -->
   {selectedResearch.length > 0 && (
     <section class="mt-8">
-      <h2 class="text-[1.562rem] font-semibold text-[var(--color-heading)] mb-4">Selected Research</h2>
-      <div class="space-y-3">
+      <h3 class="section-heading">📄 Selected Research</h3>
+      <div class="research-list">
         {selectedResearch.map((paper) => (
           <ResearchCard
             title={paper.data.title}

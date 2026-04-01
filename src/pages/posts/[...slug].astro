@@ -156,7 +156,7 @@ const formattedDate = entry.data.date.toLocaleDateString('en-US', {
         <Tag
           name={tag}
           color={siteConfig.tagColors[i % siteConfig.tagColors.length]}
-          href={`/tags/${tag.toLowerCase()}/`}
+          href={`/posts?tag=${encodeURIComponent(tag)}`}
         />
       ))}
     </div>
