@@ -62,6 +62,7 @@ export interface SocialLink {
 export interface Award {
   date: string;
   title: string;
+  organization?: string;
 }
 
 export interface Interest {

@@ -5,7 +5,8 @@ import Sidebar from '../components/Sidebar.astro';
 import SocialLinks from '../components/SocialLinks.astro';
 import Footer from '../components/Footer.astro';
 import type { SiteConfig } from '../types.js';
-import katex from 'katex';
+import { getNavItems, isNavActive } from '../lib/nav.js';
+import { renderInlineKatex } from '../lib/katex-utils.js';
 
 interface Props {
   config: SiteConfig;
@@ -26,27 +27,12 @@ const {
 const pageTitle = title ? `${title} | ${config.title}` : config.title;
 const pageDescription = description || config.description;
 
-// Compute active nav item for title rendering
-const navItems = [
-  { label: 'About', href: '/', exact: true },
-  { label: 'Experience', href: '/experience/', exact: false },
-  { label: 'Research', href: `/${config.pages.research}/`, exact: false },
-  { label: 'Posts', href: `/${config.pages.posts}/`, exact: false },
-];
-
-function isNavActive(href: string, exact: boolean): boolean {
-  if (exact) return currentPath === href || currentPath === href.replace(/\/$/, '');
-  return currentPath.startsWith(href) || currentPath.startsWith(href.replace(/\/$/, ''));
-}
-
-const activeNavItem = navItems.find(item => isNavActive(item.href, item.exact));
+const navItems = getNavItems(config);
+const activeNavItem = navItems.find(item => isNavActive(currentPath, item.href, item.exact));
 const mainPaths = navItems.flatMap(n => [n.href, n.href.replace(/\/$/, '')]);
 const isMainTabPage = mainPaths.includes(currentPath);
 
-const mobileQuoteHtml = config.quote
-  ? config.quote.replace(/\$([^$]+)\$/g, (_match: string, tex: string) =>
-      katex.renderToString(tex, { throwOnError: false }))
-  : '';
+const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
 ---
 
 <!doctype html>
@@ -106,9 +92,9 @@ const mobileQuoteHtml = config.quote
                   <div class="mobile-social">
                     <SocialLinks links={config.social} />
                   </div>
-                  {mobileQuoteHtml && (
+                  {quoteHtml && (
                     <span class="mobile-quote">
-                      <span class="mobile-quote-mark">&ldquo;</span><span set:html={mobileQuoteHtml} /><span class="mobile-quote-mark">&rdquo;</span>
+                      <span class="mobile-quote-mark">&ldquo;</span><span set:html={quoteHtml} /><span class="mobile-quote-mark">&rdquo;</span>
                     </span>
                   )}
                 </div>
@@ -123,7 +109,7 @@ const mobileQuoteHtml = config.quote
             <!-- Sidebar column: md=8/24, lg=7/24 -->
             <div class="sidebar-col">
               <div class="sidebar-affix">
-                <Sidebar config={config} showUserInfo={showUserInfo}>
+                <Sidebar config={config} showUserInfo={showUserInfo} quoteHtml={quoteHtml}>
                   <slot name="sidebar" />
                 </Sidebar>
               </div>
@@ -136,7 +122,7 @@ const mobileQuoteHtml = config.quote
                     {activeNavItem.label}
                   </h1>
                   <nav class="page-nav-tabs">
-                    {navItems.filter(item => !isNavActive(item.href, item.exact)).map(item => (
+                    {navItems.filter(item => !isNavActive(currentPath, item.href, item.exact)).map(item => (
                       <a
                         href={item.href}
                         class="page-nav-link"
@@ -240,7 +226,6 @@ const mobileQuoteHtml = config.quote
 
     .main-wrapper {
       overflow: clip;
-      overflow-clip-margin: content-box;
     }
   }
 

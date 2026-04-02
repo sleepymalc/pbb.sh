@@ -1,23 +1,18 @@
 ---
 import type { SiteConfig } from '../types.js';
 import SocialLinks from './SocialLinks.astro';
-import katex from 'katex';
 
 interface Props {
   config: SiteConfig;
   showUserInfo?: boolean;
+  quoteHtml?: string;
 }
 
-const { config, showUserInfo = true } = Astro.props;
+const { config, showUserInfo = true, quoteHtml = '' } = Astro.props;
 
 const nameParts = config.author.split(' ');
 const firstName = nameParts.slice(0, -1).join(' ');
 const lastName = nameParts[nameParts.length - 1];
-
-const quoteHtml = config.quote
-  ? config.quote.replace(/\$([^$]+)\$/g, (_match: string, tex: string) =>
-      katex.renderToString(tex, { throwOnError: false }))
-  : '';
 ---
 
 <!-- sidebarContent: border-radius 3rem, centered flex, transparent bg -->
@@ -40,49 +35,44 @@ const quoteHtml = config.quote
         <h3>{config.authorAlternative}</h3>
       )}
 
-      {showUserInfo ? (
-        <>
-          {/* Profession badges */}
-          {config.professions.map((prof) => (
-            <span class="badge">{prof}</span>
-          ))}
+      {config.professions.map((prof) => (
+        <span class="badge">{prof}</span>
+      ))}
 
-          {/* Social icons */}
-          <div class="social-row">
-            <SocialLinks links={config.social} />
+      <div class="social-row">
+        <SocialLinks links={config.social} />
+      </div>
+
+      <div class="contact-block">
+        {config.location && (
+          <div class="contact-item">
+            <i class="fas fa-map-marker-alt fa-fw"></i>
+            <span>{config.location}</span>
           </div>
-
-          {/* Contact info */}
-          <div class="contact-block">
-            {config.location && (
-              <div class="contact-item">
-                <i class="fas fa-map-marker-alt fa-fw"></i>
-                <span>{config.location}</span>
-              </div>
-            )}
-            {config.email && (
-              <div class="contact-item">
-                <i class="fas fa-envelope fa-fw"></i>
-                <a href={`mailto:${config.email}`}>{config.email}</a>
-              </div>
-            )}
-            {config.birthday && (
-              <div class="contact-item">
-                <i class="fas fa-calendar fa-fw"></i>
-                <span>{config.birthday}</span>
-              </div>
-            )}
+        )}
+        {config.email && (
+          <div class="contact-item">
+            <i class="fas fa-envelope fa-fw"></i>
+            <a href={`mailto:${config.email}`}>{config.email}</a>
           </div>
+        )}
+        {config.birthday && (
+          <div class="contact-item">
+            <i class="fas fa-calendar fa-fw"></i>
+            <span>{config.birthday}</span>
+          </div>
+        )}
+      </div>
 
-          {quoteHtml && (
-            <div class="sidebar-quote">
-              <span class="quote-mark open">&ldquo;</span>
-              <span class="sidebar-quote-text" set:html={quoteHtml} />
-              <span class="quote-mark close">&rdquo;</span>
-            </div>
-          )}
-        </>
-      ) : (
+      {quoteHtml && (
+        <div class="sidebar-quote">
+          <span class="quote-mark open">&ldquo;</span>
+          <span class="sidebar-quote-text" set:html={quoteHtml} />
+          <span class="quote-mark close">&rdquo;</span>
+        </div>
+      )}
+
+      {!showUserInfo && (
         <div class="toc-area">
           <hr />
           <slot />

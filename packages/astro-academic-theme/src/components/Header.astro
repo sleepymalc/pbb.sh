@@ -1,5 +1,6 @@
 ---
 import type { SiteConfig } from '../types.js';
+import { getNavItems, isNavActive } from '../lib/nav.js';
 
 interface Props {
   config: SiteConfig;
@@ -9,18 +10,7 @@ interface Props {
 
 const { config, currentPath = '/', hideTabs = false } = Astro.props;
 
-const navItems = [
-  { label: 'About', href: '/', exact: true },
-  { label: 'Experience', href: '/experience/', exact: false },
-  { label: 'Research', href: `/${config.pages.research}/`, exact: false },
-  { label: 'Posts', href: `/${config.pages.posts}/`, exact: false },
-];
-
-function isActive(href: string, exact: boolean): boolean {
-  if (exact) return currentPath === href || currentPath === href.replace(/\/$/, '');
-  return currentPath.startsWith(href) || currentPath.startsWith(href.replace(/\/$/, ''));
-}
-
+const navItems = getNavItems(config);
 ---
 
 <!-- Sticky header -->
@@ -30,7 +20,7 @@ function isActive(href: string, exact: boolean): boolean {
       <nav class="nav-bar">
         <ul>
           {navItems.map((item) => {
-            const active = isActive(item.href, item.exact);
+            const active = isNavActive(currentPath, item.href, item.exact);
             return (
               <li class="nav-item">
                 <a
