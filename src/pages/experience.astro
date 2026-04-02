@@ -9,8 +9,6 @@ const { education, researchExperience, teachingExperience, service, awards } = s
 ---
 
 <BaseLayout config={siteConfig} title="Experience" currentPath="/experience/">
-  <h1 class="title-separate">Experience</h1>
-
   <!-- Education -->
   <section class="exp-section">
     <h2 class="section-heading">Education</h2>
@@ -24,6 +22,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
           icon={edu.icon || 'university'}
           logo={getEntity(edu.location)?.logo}
           logoDark={getEntity(edu.location)?.logoDark}
+          entityColor={getEntity(edu.location)?.color}
         />
       ))}
     </Timeline>
@@ -42,6 +41,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
             icon={item.icon || 'briefcase'}
             logo={getEntity(item.organization)?.logo}
             logoDark={getEntity(item.organization)?.logoDark}
+            entityColor={getEntity(item.organization)?.color}
           >
             <div class="tl-desc" set:html={item.description} />
           </TimelineItem>
@@ -63,6 +63,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
             icon={item.icon || 'chalkboard-user'}
             logo={getEntity(item.institution)?.logo}
             logoDark={getEntity(item.institution)?.logoDark}
+            entityColor={getEntity(item.institution)?.color}
           >
             <div class="tl-teaching-detail">
               <span class="tl-course" set:html={item.course} />

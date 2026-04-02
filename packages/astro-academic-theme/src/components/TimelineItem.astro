@@ -8,9 +8,10 @@ interface Props {
   iconColor?: string;
   logo?: string;
   logoDark?: string;
+  entityColor?: string;
 }
 
-const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', logo, logoDark } = Astro.props;
+const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', logo, logoDark, entityColor } = Astro.props;
 
 ---
 
@@ -33,7 +34,9 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
       <p class="timeline-minor"><i class="fas fa-bookmark"></i> Minor in {minor}</p>
     )}
     {subtitle && (
-      <p class="timeline-subtitle">{subtitle}</p>
+      entityColor
+        ? <p class="timeline-subtitle timeline-subtitle-entity" style={`--entity-color: ${entityColor}`}>{subtitle}</p>
+        : <p class="timeline-subtitle">{subtitle}</p>
     )}
     {date && (
       <p class="timeline-date">{date}</p>
@@ -122,6 +125,22 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
     font-weight: 400;
     color: var(--color-text-secondary);
     margin: 0;
+  }
+
+  .timeline-subtitle-entity {
+    font-weight: 600;
+    color: var(--entity-color);
+    background: color-mix(in srgb, var(--entity-color) 10%, transparent);
+    border-bottom: 2px solid color-mix(in srgb, var(--entity-color) 40%, transparent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    width: fit-content;
+  }
+
+  :global(.dark) .timeline-subtitle-entity {
+    color: color-mix(in srgb, var(--entity-color) 55%, #fff);
+    background: color-mix(in srgb, var(--entity-color) 8%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
   }
 
   .timeline-date {

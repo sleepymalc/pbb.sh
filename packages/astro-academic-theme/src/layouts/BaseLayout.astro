@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from 'astro:transitions';
 import Header from '../components/Header.astro';
 import Sidebar from '../components/Sidebar.astro';
 import SocialLinks from '../components/SocialLinks.astro';
@@ -23,6 +24,23 @@ const {
 
 const pageTitle = title ? `${title} | ${config.title}` : config.title;
 const pageDescription = description || config.description;
+
+// Compute active nav item for title rendering
+const navItems = [
+  { label: 'About', href: '/', exact: true },
+  { label: 'Experience', href: '/experience/', exact: false },
+  { label: 'Research', href: `/${config.pages.research}/`, exact: false },
+  { label: 'Posts', href: `/${config.pages.posts}/`, exact: false },
+];
+
+function isNavActive(href: string, exact: boolean): boolean {
+  if (exact) return currentPath === href || currentPath === href.replace(/\/$/, '');
+  return currentPath.startsWith(href) || currentPath.startsWith(href.replace(/\/$/, ''));
+}
+
+const activeNavItem = navItems.find(item => isNavActive(item.href, item.exact));
+const mainPaths = navItems.flatMap(n => [n.href, n.href.replace(/\/$/, '')]);
+const isMainTabPage = mainPaths.includes(currentPath);
 ---
 
 <!doctype html>
@@ -34,6 +52,7 @@ const pageDescription = description || config.description;
     <meta name="author" content={config.author} />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{pageTitle}</title>
+    <ClientRouter />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -48,7 +67,17 @@ const pageDescription = description || config.description;
       crossorigin="anonymous" />
 
     <script is:inline>
-      (function(){var s=localStorage.getItem('theme'),d=window.matchMedia('(prefers-color-scheme:dark)').matches;if(s==='dark'||(!s&&d))document.documentElement.classList.add('dark')})();
+      (function(){
+        var s=localStorage.getItem('theme'),d=window.matchMedia('(prefers-color-scheme:dark)').matches;
+        if(s==='dark'||(!s&&d))document.documentElement.classList.add('dark');
+        if(!window._themeSwap){
+          document.addEventListener('astro:before-swap',function(e){
+            e.newDocument.documentElement.classList.toggle('dark',
+              document.documentElement.classList.contains('dark'));
+          });
+          window._themeSwap=true;
+        }
+      })();
     </script>
   </head>
 
@@ -57,7 +86,7 @@ const pageDescription = description || config.description;
     <div class="outer-padding">
       <div class="container">
         <!-- Header + content form one seamless card shape -->
-        <Header config={config} currentPath={currentPath} />
+        <Header config={config} currentPath={currentPath} hideTabs={isMainTabPage} />
         <div class="main-wrapper">
           <!-- Compact mobile profile bar (visible only on mobile) -->
           {showUserInfo && (
@@ -85,11 +114,29 @@ const pageDescription = description || config.description;
             </div>
             <!-- Content column: md=16/24, lg=17/24 -->
             <div class="content-col">
+              {isMainTabPage && activeNavItem && (
+                <div class="page-nav-row">
+                  <h1 class="title-separate" transition:name={`tab-${activeNavItem.label.toLowerCase()}`}>
+                    {activeNavItem.label}
+                  </h1>
+                  <nav class="page-nav-tabs">
+                    {navItems.filter(item => !isNavActive(item.href, item.exact)).map(item => (
+                      <a
+                        href={item.href}
+                        class="page-nav-link"
+                        transition:name={`tab-${item.label.toLowerCase()}`}
+                      >
+                        {item.label}
+                      </a>
+                    ))}
+                  </nav>
+                </div>
+              )}
               <slot />
-              <Footer />
             </div>
           </div>
         </div>
+        <Footer />
       </div>
     </div>
   </body>
@@ -118,6 +165,9 @@ const pageDescription = description || config.description;
     width: 100%;
     margin-left: auto;
     margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
   }
 
   @media (min-width: 2045px) {
@@ -129,8 +179,6 @@ const pageDescription = description || config.description;
   /* The whole content area including sidebar */
   .main-wrapper {
     border-radius: 0 0 3rem 3rem;
-    min-height: calc(100vh - 6rem);
-    margin-bottom: 4rem;
     background: var(--color-bg-card);
   }
 
@@ -177,6 +225,41 @@ const pageDescription = description || config.description;
     .main-wrapper {
       overflow: hidden;
     }
+  }
+
+  /* Page nav row: title + tabs on same line */
+  .page-nav-row {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 2.5rem;
+  }
+
+  .page-nav-row :global(.title-separate) {
+    margin-bottom: 0;
+  }
+
+  .page-nav-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+
+  .page-nav-link {
+    padding: 0.4rem 0.8rem;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #5F6F81;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+
+  :global(.dark) .page-nav-link {
+    color: var(--color-nav-text);
+  }
+
+  .page-nav-link:hover {
+    background: var(--color-gray-100);
   }
 
   .sidebar-affix {

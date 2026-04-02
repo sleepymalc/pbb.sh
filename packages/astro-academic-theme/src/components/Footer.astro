@@ -7,9 +7,15 @@ const formatted = now.toLocaleDateString('en-US', {
 });
 ---
 
-<footer class="mt-12">
-  <hr class="border-[var(--color-border)]" />
+<footer>
   <p class="text-center text-sm text-[var(--color-text-tertiary)] py-4">
     Last Updated on {formatted}
   </p>
 </footer>
+
+<style>
+  footer {
+    margin-top: auto;
+    padding-bottom: 1rem;
+  }
+</style>

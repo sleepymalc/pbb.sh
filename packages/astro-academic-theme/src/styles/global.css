@@ -212,6 +212,32 @@ ul { margin: 0; }
 }
 
 /* ============================================
+   Tab transition animations
+   ============================================ */
+/* Gentle page-level crossfade */
+::view-transition-old(root) {
+  animation: page-fade 0.3s ease-out both;
+}
+
+::view-transition-new(root) {
+  animation: page-fade 0.3s ease-in 0.15s both reverse;
+}
+
+@keyframes page-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Tab labels: just inherit the page fade, morph handles the rest */
+::view-transition-group(tab-about),
+::view-transition-group(tab-experience),
+::view-transition-group(tab-research),
+::view-transition-group(tab-posts) {
+  animation-duration: 0.4s;
+  animation-timing-function: ease;
+}
+
+/* ============================================
    RSuite-like ghost button
    ============================================ */
 .btn-ghost {

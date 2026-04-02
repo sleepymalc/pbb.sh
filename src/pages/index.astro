@@ -54,7 +54,6 @@ const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
 <BaseLayout config={siteConfig} currentPath="/">
   <!-- About Me -->
   <section>
-    <h1 class="title-separate">About Me</h1>
     <div class="markdown-body intro-content" set:html={introHtml} />
   </section>
 
@@ -174,7 +173,7 @@ const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
-      max-height: 260px;
+      max-height: 420px;
       overflow-y: auto;
       padding-right: 0.5rem;
       scroll-snap-type: y mandatory;

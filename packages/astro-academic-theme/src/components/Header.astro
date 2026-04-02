@@ -4,9 +4,10 @@ import type { SiteConfig } from '../types.js';
 interface Props {
   config: SiteConfig;
   currentPath?: string;
+  hideTabs?: boolean;
 }
 
-const { config, currentPath = '/' } = Astro.props;
+const { config, currentPath = '/', hideTabs = false } = Astro.props;
 
 const navItems = [
   { label: 'About', href: '/', exact: true },
@@ -19,32 +20,36 @@ function isActive(href: string, exact: boolean): boolean {
   if (exact) return currentPath === href || currentPath === href.replace(/\/$/, '');
   return currentPath.startsWith(href) || currentPath.startsWith(href.replace(/\/$/, ''));
 }
+
 ---
 
 <!-- Sticky header -->
 <header class="site-header">
-  <!-- navWrap: flex row-reverse, bg card, padding 20px -->
   <div class="nav-wrap">
-    <!-- nav: border-radius 0 3rem 0 0, height 60px -->
-    <nav class="nav-bar">
-      <ul>
-        {navItems.map((item) => (
-          <li class="nav-item">
-            {isActive(item.href, item.exact) ? (
-              <a href={item.href} class="nav-link nav-active">{item.label}</a>
-            ) : (
-              <a href={item.href} class="nav-link">{item.label}</a>
-            )}
-          </li>
-        ))}
-        <li class="nav-item">
-          <button id="theme-toggle" class="nav-link theme-btn" aria-label="Toggle theme">
-            <i class="fas fa-sun" id="theme-icon-sun"></i>
-            <i class="fas fa-moon" id="theme-icon-moon" style="display:none"></i>
-          </button>
-        </li>
-      </ul>
-    </nav>
+    {!hideTabs && (
+      <nav class="nav-bar">
+        <ul>
+          {navItems.map((item) => {
+            const active = isActive(item.href, item.exact);
+            return (
+              <li class="nav-item">
+                <a
+                  href={item.href}
+                  class:list={['nav-link', { 'nav-active': active }]}
+                  transition:name={`tab-${item.label.toLowerCase()}`}
+                >
+                  {item.label}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    )}
+    <button id="theme-toggle" class="nav-link theme-btn" aria-label="Toggle theme">
+      <i class="fas fa-sun" id="theme-icon-sun"></i>
+      <i class="fas fa-moon" id="theme-icon-moon" style="display:none"></i>
+    </button>
   </div>
 
   <!-- Mobile hamburger button -->
@@ -88,7 +93,7 @@ function isActive(href: string, exact: boolean): boolean {
 
   .nav-wrap {
     display: flex;
-    flex-direction: row-reverse;
+    align-items: center;
     background: var(--color-bg-card);
     padding-top: 8px;
     padding-bottom: 8px;
@@ -98,13 +103,11 @@ function isActive(href: string, exact: boolean): boolean {
   .nav-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
     color: #5F6F81;
     font-weight: 500;
     height: 40px;
     letter-spacing: 0.04rem;
     margin-left: auto;
-    padding-right: 40px;
     position: relative;
   }
 
@@ -150,6 +153,8 @@ function isActive(href: string, exact: boolean): boolean {
   .theme-btn {
     font-size: 16px;
     padding: 0.5rem 0.7rem;
+    margin-left: auto;
+    margin-right: 1.5rem;
   }
 
   /* Hide desktop nav on mobile, show hamburger */

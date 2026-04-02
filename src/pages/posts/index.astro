@@ -19,8 +19,6 @@ function colorsFor(tags: string[]): string[] {
 ---
 
 <BaseLayout config={siteConfig} title="Posts" currentPath="/posts/">
-  <h1 class="title-separate">Posts</h1>
-
   {allTags.length > 0 && (
     <FilterPanel tags={allTags} tagColors={allTags.map(t => tagColorMap.get(t)!)} />
   )}
