@@ -128,13 +128,20 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
   }
 
   .timeline-subtitle-entity {
-    font-weight: 600;
+    font-size: 10pt;
+    font-weight: 500;
     color: var(--entity-color);
-    background: color-mix(in srgb, var(--entity-color) 10%, transparent);
-    border-bottom: 2px solid color-mix(in srgb, var(--entity-color) 40%, transparent);
-    padding: 1px 6px;
-    border-radius: 4px;
+    background: color-mix(in srgb, var(--entity-color) 8%, transparent);
+    border-bottom: 1.5px solid color-mix(in srgb, var(--entity-color) 30%, transparent);
+    padding: 0px 5px;
+    border-radius: 3px;
     width: fit-content;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .timeline-subtitle-entity:hover {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--entity-color) 50%, transparent),
+                0 0 16px color-mix(in srgb, var(--entity-color) 25%, transparent);
   }
 
   :global(.dark) .timeline-subtitle-entity {

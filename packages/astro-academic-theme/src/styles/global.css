@@ -472,6 +472,12 @@ pre[class*="astro-code"] {
   background: color-mix(in srgb, var(--entity-color) 10%, transparent);
   border-bottom: 2px solid color-mix(in srgb, var(--entity-color) 40%, transparent);
   white-space: nowrap;
+  transition: box-shadow 0.3s ease;
+}
+
+.entity-mention:hover {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--entity-color) 50%, transparent),
+              0 0 16px color-mix(in srgb, var(--entity-color) 25%, transparent);
 }
 
 .entity-icon {

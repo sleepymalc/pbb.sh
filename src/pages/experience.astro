@@ -99,18 +99,20 @@ const { education, researchExperience, teachingExperience, service, awards } = s
 
       <h3 class="subsection-heading">Reviewing</h3>
       <div class="reviewing-block">
-        <div class="reviewing-row">
-          <span class="reviewing-label">Conference</span>
-          <span class="reviewing-venues">{service.reviewing.conferences}</span>
-        </div>
-        <div class="reviewing-row">
-          <span class="reviewing-label">Journal</span>
-          <span class="reviewing-venues">{service.reviewing.journals}</span>
-        </div>
-        <div class="reviewing-row">
-          <span class="reviewing-label">Program Committee</span>
-          <span class="reviewing-venues">{service.reviewing.programCommittee}</span>
-        </div>
+        {[
+          { label: 'Conference', venues: service.reviewing.conferences },
+          { label: 'Journal', venues: service.reviewing.journals },
+          { label: 'PC', venues: service.reviewing.programCommittee },
+        ].map(({ label, venues }) => (
+          <div class="reviewing-row">
+            <span class="reviewing-label">{label}</span>
+            <div class="reviewing-chips">
+              {venues.split(',').map(v => v.trim()).filter(Boolean).map(v => (
+                <span class="reviewing-chip">{v}</span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   )}
@@ -123,8 +125,12 @@ const { education, researchExperience, teachingExperience, service, awards } = s
         {awards.map((award) => (
           <TimelineItem
             title={award.title}
+            subtitle={award.organization}
             date={award.date}
             icon="award"
+            logo={getEntity(award.organization)?.logo}
+            logoDark={getEntity(award.organization)?.logoDark}
+            entityColor={getEntity(award.organization)?.color}
           />
         ))}
       </Timeline>
@@ -192,14 +198,14 @@ const { education, researchExperience, teachingExperience, service, awards } = s
   .tl-level {
     display: inline-block;
     font-size: 10px;
-    font-weight: 600;
-    padding: 2px 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-    color: var(--color-accent);
-    border: 1.5px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    border: 1px solid var(--color-border);
     line-height: 1.5;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
   }
 
   .tl-notes {
@@ -235,35 +241,42 @@ const { education, researchExperience, teachingExperience, service, awards } = s
      Reviewing — prose block (not timeline)
      ============================================ */
   .reviewing-block {
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-base);
-    padding: 4px 20px;
-    margin-left: 36px; /* align with timeline body */
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-left: 36px;
   }
 
   .reviewing-row {
     display: flex;
-    gap: 16px;
-    padding: 10px 0;
-    font-size: 13px;
-    line-height: 1.6;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .reviewing-row:last-child {
-    border-bottom: none;
+    align-items: baseline;
+    gap: 10px;
   }
 
   .reviewing-label {
+    font-size: 12px;
     font-weight: 600;
-    color: var(--color-text);
-    min-width: 140px;
+    color: var(--color-text-secondary);
+    width: 80px;
     flex-shrink: 0;
+    letter-spacing: 0.3px;
   }
 
-  .reviewing-venues {
-    color: var(--color-text-secondary);
+  .reviewing-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .reviewing-chip {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+    padding: 2px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
   }
 
   /* ============================================
@@ -276,7 +289,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
 
     .reviewing-row {
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
     }
 
     .reviewing-label {
