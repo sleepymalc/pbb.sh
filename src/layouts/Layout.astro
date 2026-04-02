@@ -1,6 +1,7 @@
 ---
 import '@/styles/global.css';
 import BaseLayout from 'astro-academic-theme/layouts/BaseLayout.astro';
+import Analytics from '@vercel/analytics/astro';
 import type { SiteConfig } from 'astro-academic-theme';
 
 interface Props {
@@ -18,4 +19,5 @@ const props = Astro.props;
   <slot />
   <slot name="sidebar" slot="sidebar" />
   <slot name="mobile-sidebar" slot="mobile-sidebar" />
+  <Analytics />
 </BaseLayout>
