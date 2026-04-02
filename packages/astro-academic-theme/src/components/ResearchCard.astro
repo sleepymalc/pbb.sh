@@ -191,6 +191,22 @@ function linkIcon(name: string): string | null {
     }
   }
 
+  @media (max-width: 640px) {
+    .card-grid {
+      flex-direction: column;
+    }
+
+    .card-image-col {
+      width: 100%;
+      padding-top: 30%;
+      order: -1;
+    }
+
+    .card-text {
+      width: 100%;
+    }
+  }
+
   .card-image {
     position: absolute;
     top: 0;

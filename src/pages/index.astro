@@ -42,11 +42,18 @@ const researchIntroHtml = highlightEntities(
 );
 
 // Render news items
-const newsItems = (siteConfig.news ?? []).map((item) => ({
-  date: item.date,
-  html: highlightEntities(renderMarkdown(item.text)),
-  papers: item.papers,
-}));
+const newsItems = (siteConfig.news ?? []).map((item) => {
+  const parts = item.date.split(/\s+/);
+  const month = parts.length > 1 ? parts[0] : '';
+  const year = parts.length > 1 ? parts[1] : item.date;
+  return {
+    date: item.date,
+    month,
+    year,
+    html: highlightEntities(renderMarkdown(item.text)),
+    papers: item.papers,
+  };
+});
 
 // Render misc
 const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
@@ -73,7 +80,10 @@ const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
       <ul class="news-list">
         {newsItems.map((item) => (
           <li>
-            <span class="news-date">{item.date}</span>
+            <span class="news-date">
+              <span class="news-date-month">{item.month}</span>
+              <span class="news-date-year">{item.year}</span>
+            </span>
             <div class="news-body">
               <span class="news-text" set:html={item.html} />
               {item.papers && item.papers.length > 0 && (
@@ -225,6 +235,18 @@ const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
 
     .research-list > :global(*) {
       scroll-snap-align: start;
+    }
+
+    @media (max-width: 480px) {
+      .news-date {
+        width: auto;
+        font-size: 0.7em;
+        padding: 2px 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        line-height: 1.3;
+      }
     }
 
     @media (max-width: 640px) {

@@ -28,6 +28,7 @@ function getIconClass(icon: string | [string, string]): string {
       rel={link.url.startsWith('/') || link.url.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
       class="social-icon-btn"
       title={link.label || ''}
+      data-social={link.url}
     >
       <i class={getIconClass(link.icon)}></i>
     </a>

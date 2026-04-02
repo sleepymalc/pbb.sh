@@ -499,8 +499,9 @@ pre[class*="astro-code"] {
   border-radius: 4px;
   background: color-mix(in srgb, var(--entity-color) 5%, transparent);
   border-bottom: 2px solid color-mix(in srgb, var(--entity-color) 18%, transparent);
-  white-space: nowrap;
   transition: box-shadow 0.3s ease;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .entity-mention:hover {
