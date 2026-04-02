@@ -21,7 +21,7 @@ export const entities: Entity[] = [
     name: 'University of Illinois Urbana-Champaign',
     aliases: ['UIUC'],
     color: '#E84A27',
-    logo: '/logos/uiuc.png',
+    logo: '/logos/uiuc.svg',
   },
   {
     name: 'University of Michigan',
@@ -50,13 +50,13 @@ export const entities: Entity[] = [
   {
     name: 'Susquehanna International Group',
     aliases: ['SIG', 'SIG Deep Learning Team'],
-    color: '#003366',
+    color: '#2E6DB4',
     logo: '/logos/sig.jpeg',
   },
   {
     name: 'National Institute of Informatics',
     aliases: ['NII'],
-    color: '#1B4F72',
+    color: '#7B5EA7',
     logo: '/logos/nii.png',
   },
 ];

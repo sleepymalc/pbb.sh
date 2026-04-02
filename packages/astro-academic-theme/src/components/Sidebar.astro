@@ -1,6 +1,7 @@
 ---
 import type { SiteConfig } from '../types.js';
 import SocialLinks from './SocialLinks.astro';
+import katex from 'katex';
 
 interface Props {
   config: SiteConfig;
@@ -12,6 +13,11 @@ const { config, showUserInfo = true } = Astro.props;
 const nameParts = config.author.split(' ');
 const firstName = nameParts.slice(0, -1).join(' ');
 const lastName = nameParts[nameParts.length - 1];
+
+const quoteHtml = config.quote
+  ? config.quote.replace(/\$([^$]+)\$/g, (_match: string, tex: string) =>
+      katex.renderToString(tex, { throwOnError: false }))
+  : '';
 ---
 
 <!-- sidebarContent: border-radius 3rem, centered flex, transparent bg -->
@@ -67,6 +73,14 @@ const lastName = nameParts[nameParts.length - 1];
               </div>
             )}
           </div>
+
+          {quoteHtml && (
+            <div class="sidebar-quote">
+              <span class="quote-mark open">&ldquo;</span>
+              <span class="sidebar-quote-text" set:html={quoteHtml} />
+              <span class="quote-mark close">&rdquo;</span>
+            </div>
+          )}
         </>
       ) : (
         <div class="toc-area">
@@ -180,6 +194,40 @@ const lastName = nameParts[nameParts.length - 1];
 
   .contact-item a:hover {
     color: var(--color-primary);
+  }
+
+  .sidebar-quote {
+    margin: 0 auto;
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+
+  .quote-mark {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.6rem;
+    line-height: 0;
+    color: var(--color-accent);
+    opacity: 0.6;
+    vertical-align: -0.25em;
+  }
+
+  .quote-mark.open {
+    margin-right: 2px;
+  }
+
+  .quote-mark.close {
+    margin-left: 2px;
+  }
+
+  .sidebar-quote-text {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    letter-spacing: 0.3px;
+  }
+
+  .sidebar-quote-text :global(.katex) {
+    font-style: normal;
   }
 
   .toc-area {

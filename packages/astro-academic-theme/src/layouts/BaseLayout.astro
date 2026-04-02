@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar.astro';
 import SocialLinks from '../components/SocialLinks.astro';
 import Footer from '../components/Footer.astro';
 import type { SiteConfig } from '../types.js';
+import katex from 'katex';
 
 interface Props {
   config: SiteConfig;
@@ -41,6 +42,11 @@ function isNavActive(href: string, exact: boolean): boolean {
 const activeNavItem = navItems.find(item => isNavActive(item.href, item.exact));
 const mainPaths = navItems.flatMap(n => [n.href, n.href.replace(/\/$/, '')]);
 const isMainTabPage = mainPaths.includes(currentPath);
+
+const mobileQuoteHtml = config.quote
+  ? config.quote.replace(/\$([^$]+)\$/g, (_match: string, tex: string) =>
+      katex.renderToString(tex, { throwOnError: false }))
+  : '';
 ---
 
 <!doctype html>
@@ -95,12 +101,22 @@ const isMainTabPage = mainPaths.includes(currentPath);
               <div class="mobile-profile-info">
                 <div class="mobile-profile-text">
                   <span class="mobile-name">{config.author}</span>
-                  {config.professions[0] && <span class="mobile-role">{config.professions[0]}</span>}
                 </div>
-                <div class="mobile-social">
-                  <SocialLinks links={config.social} />
+                <div class="mobile-social-row">
+                  <div class="mobile-social">
+                    <SocialLinks links={config.social} />
+                  </div>
+                  {mobileQuoteHtml && (
+                    <span class="mobile-quote">
+                      <span class="mobile-quote-mark">&ldquo;</span><span set:html={mobileQuoteHtml} /><span class="mobile-quote-mark">&rdquo;</span>
+                    </span>
+                  )}
                 </div>
               </div>
+              <button class="mobile-theme-btn" id="mobile-theme-toggle" aria-label="Toggle theme">
+                <i class="fas fa-sun" id="mobile-theme-icon-sun"></i>
+                <i class="fas fa-moon" id="mobile-theme-icon-moon" style="display:none"></i>
+              </button>
             </div>
           )}
           <div class="layout-grid">
@@ -223,7 +239,8 @@ const isMainTabPage = mainPaths.includes(currentPath);
     }
 
     .main-wrapper {
-      overflow: hidden;
+      overflow: clip;
+      overflow-clip-margin: content-box;
     }
   }
 
@@ -278,21 +295,25 @@ const isMainTabPage = mainPaths.includes(currentPath);
     display: none;
     align-items: center;
     gap: 12px;
-    padding: 1rem 1.5rem;
+    padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--color-border);
   }
 
   @media (max-width: 767px) {
     .mobile-profile {
       display: flex;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--color-bg-card);
     }
   }
 
   .mobile-avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-    object-fit: cover;
+    width: 110px;
+    height: auto;
+    border-radius: 22px;
+    object-fit: contain;
     flex-shrink: 0;
   }
 
@@ -306,8 +327,14 @@ const isMainTabPage = mainPaths.includes(currentPath);
     flex-direction: column;
   }
 
-  .mobile-social {
+  .mobile-social-row {
+    display: flex;
+    align-items: center;
     margin-top: 4px;
+  }
+
+  .mobile-social {
+    flex-shrink: 0;
   }
 
   .mobile-social :global(.social-links) {
@@ -317,20 +344,49 @@ const isMainTabPage = mainPaths.includes(currentPath);
   }
 
   .mobile-social :global(.social-icon-btn) {
-    width: 1.75rem;
-    height: 1.75rem;
-    font-size: 0.9rem;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.05rem;
   }
 
   .mobile-name {
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--color-heading);
     line-height: 1.3;
   }
 
-  .mobile-role {
+  .mobile-theme-btn {
+    align-self: flex-start;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: var(--color-gray-100);
+    color: var(--color-text);
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-quote {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
     font-size: 12px;
     color: var(--color-text-secondary);
+    margin-left: auto;
+  }
+
+  .mobile-quote :global(.katex) {
+    font-style: normal;
+  }
+
+  .mobile-quote-mark {
+    font-size: 14px;
+    color: var(--color-accent);
+    opacity: 0.6;
   }
 </style>

@@ -18,7 +18,8 @@ export const siteConfig: SiteConfig = {
     research: 'research',
   },
 
-  professions: ['I speak TeX'],
+  professions: [],
+  quote: 'I speak $\\TeX$',
 
   introduction: [
     "I'm a third-year Ph.D. candidate at [*University of Illinois Urbana-Champaign*](https://illinois.edu/) (UIUC) advised by [Jiaqi Ma](https://jiaqima.github.io/), and I also work closely with [Han Zhao](https://hanzhaoml.github.io/). Currently, I'm also an [*Anthropic*](https://www.anthropic.com/) AI Safety Research Fellow and an incoming Ph.D. ML intern at [*Susquehanna International Group*](https://sig.com/).",

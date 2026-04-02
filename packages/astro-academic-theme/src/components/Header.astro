@@ -52,35 +52,7 @@ function isActive(href: string, exact: boolean): boolean {
     </button>
   </div>
 
-  <!-- Mobile hamburger button -->
-  <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu">
-    <i class="fas fa-bars"></i>
-  </button>
 </header>
-
-<!-- Mobile slide-down menu -->
-<div class="mobile-overlay" id="mobile-menu">
-  <div class="mobile-backdrop" id="mobile-backdrop"></div>
-  <nav class="mobile-drawer">
-    <div class="mobile-drawer-header">
-      <button id="mobile-menu-close" class="mobile-close-btn" aria-label="Close menu">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    <ul>
-      {navItems.map((item) => (
-        <li>
-          <a href={item.href} class:list={[isActive(item.href, item.exact) && 'active']}>
-            {item.label}
-          </a>
-        </li>
-      ))}
-    </ul>
-    <button id="mobile-theme-toggle" class="mobile-theme-btn">
-      <i class="fas fa-adjust"></i> Theme
-    </button>
-  </nav>
-</div>
 
 <style>
   .site-header {
@@ -157,142 +129,21 @@ function isActive(href: string, exact: boolean): boolean {
     margin-right: 1.5rem;
   }
 
-  /* Hide desktop nav on mobile, show hamburger */
-  .mobile-menu-btn {
-    display: none;
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 1101;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    border: none;
-    background: var(--color-bg-card);
-    color: var(--color-text);
-    font-size: 18px;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    align-items: center;
-    justify-content: center;
-  }
-
   @media (max-width: 768px) {
     .nav-wrap { display: none; }
-    .mobile-menu-btn { display: flex; }
-  }
-
-  /* Mobile overlay + drawer */
-  .mobile-overlay {
-    display: none;
-  }
-
-  .mobile-overlay.open {
-    display: block;
-  }
-
-  .mobile-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.3);
-    z-index: 1000;
-  }
-
-  .mobile-drawer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 260px;
-    max-width: 75vw;
-    height: 100%;
-    z-index: 1100;
-    background: var(--color-bg-card);
-    padding: 1rem 1.25rem;
-    box-shadow: -4px 0 16px rgba(0,0,0,0.1);
-    overflow-y: auto;
-  }
-
-  .mobile-drawer-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 1rem;
-  }
-
-  .mobile-close-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    border: none;
-    background: var(--color-gray-100);
-    color: var(--color-text);
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .mobile-drawer ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .mobile-drawer li {
-    margin-bottom: 4px;
-  }
-
-  .mobile-drawer a {
-    display: block;
-    padding: 10px 12px;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--color-text);
-    text-decoration: none;
-    transition: background 0.15s;
-  }
-
-  .mobile-drawer a:hover,
-  .mobile-drawer a.active {
-    background: var(--color-gray-100);
-    color: var(--color-primary);
-  }
-
-  .mobile-theme-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 12px;
-    margin-top: 8px;
-    border-radius: 10px;
-    border: none;
-    background: none;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--color-text);
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .mobile-theme-btn:hover {
-    background: var(--color-gray-100);
   }
 </style>
 
 <script>
   function initHeader() {
-    // Theme toggle
+    // Theme toggles (desktop + mobile)
     const toggle = document.getElementById('theme-toggle');
     const mobileToggle = document.getElementById('mobile-theme-toggle');
-    const sunIcon = document.getElementById('theme-icon-sun');
-    const moonIcon = document.getElementById('theme-icon-moon');
 
     function updateIcons() {
       const isDark = document.documentElement.classList.contains('dark');
-      if (sunIcon) sunIcon.style.display = isDark ? 'none' : '';
-      if (moonIcon) moonIcon.style.display = isDark ? '' : 'none';
+      document.querySelectorAll('[id$="theme-icon-sun"]').forEach(el => (el as HTMLElement).style.display = isDark ? 'none' : '');
+      document.querySelectorAll('[id$="theme-icon-moon"]').forEach(el => (el as HTMLElement).style.display = isDark ? '' : 'none');
     }
 
     function toggleTheme() {
@@ -305,24 +156,6 @@ function isActive(href: string, exact: boolean): boolean {
     toggle?.addEventListener('click', toggleTheme);
     mobileToggle?.addEventListener('click', toggleTheme);
     updateIcons();
-
-    // Mobile menu
-    const btn = document.getElementById('mobile-menu-btn');
-    const menu = document.getElementById('mobile-menu');
-    const closeBtn = document.getElementById('mobile-menu-close');
-    const backdrop = document.getElementById('mobile-backdrop');
-
-    function openMenu() { menu?.classList.add('open'); }
-    function closeMenu() { menu?.classList.remove('open'); }
-
-    btn?.addEventListener('click', openMenu);
-    closeBtn?.addEventListener('click', closeMenu);
-    backdrop?.addEventListener('click', closeMenu);
-
-    // Close on nav link click
-    menu?.querySelectorAll('a').forEach((link) => {
-      link.addEventListener('click', closeMenu);
-    });
   }
 
   initHeader();

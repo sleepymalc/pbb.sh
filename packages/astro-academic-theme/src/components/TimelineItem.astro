@@ -92,6 +92,11 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
     display: block;
   }
 
+  /* Brighten single-variant logos in dark mode */
+  :global(.dark) .timeline-logo:not(.timeline-logo-light):not(.timeline-logo-dark) {
+    filter: brightness(1.6);
+  }
+
   .timeline-body {
     flex: 1;
     min-width: 0;

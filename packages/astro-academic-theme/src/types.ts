@@ -19,6 +19,7 @@ export interface SiteConfig {
   };
 
   professions: string[];
+  quote?: string;
   introduction: string[];
   researchIntro?: string[];
 
