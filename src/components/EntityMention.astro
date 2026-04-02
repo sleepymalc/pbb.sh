@@ -8,12 +8,13 @@ interface Props {
 const { name } = Astro.props;
 const entity = getEntity(name);
 const color = entity?.color ?? 'inherit';
+const colorDark = entity?.colorDark ?? color;
 const logo = entity?.logo;
 const logoDark = entity?.logoDark;
 ---
 
 {entity ? (
-  <em class="entity-mention" style={`--entity-color: ${color}`}>
+  <em class="entity-mention" style={`--entity-color: ${color}; --entity-color-dark: ${colorDark}`}>
     {logo && logoDark ? (
       <>
         <img src={logo} alt="" class="entity-icon entity-icon-light" />

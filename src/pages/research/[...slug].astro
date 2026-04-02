@@ -163,7 +163,7 @@ function linkIcon(name: string): string | null {
     document.addEventListener('astro:after-swap', initTOC);
   </script>
 
-  <h1 class="title-separate mt-4">{entry.data.title}</h1>
+  <h1 class="post-title mt-4">{entry.data.title}</h1>
 
   <!-- Authors -->
   {entry.data.authors && entry.data.authors.length > 0 && (
@@ -205,23 +205,6 @@ function linkIcon(name: string): string | null {
     </div>
   )}
 
-  <!-- Links -->
-  {entry.data.links && entry.data.links.length > 0 && (
-    <div class="flex flex-wrap gap-1.5 mb-6">
-      {entry.data.links.map((link) => (
-        <a
-          href={link.url}
-          target={link.url.startsWith('http') ? '_blank' : undefined}
-          rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
-          class="btn-ghost"
-        >
-          {linkIcon(link.name) && <i class={linkIcon(link.name)!} style="margin-right:4px"></i>}
-          {link.name}
-        </a>
-      ))}
-    </div>
-  )}
-
   <!-- Article content with floated cover image -->
   <article class="markdown-body mt-6">
     {entry.data.cover && (
@@ -237,6 +220,24 @@ function linkIcon(name: string): string | null {
         <Fragment set:html={marked.parseInline(entry.data.excerpt)} />
       </blockquote>
     )}
+
+    <!-- Links -->
+    {entry.data.links && entry.data.links.length > 0 && (
+      <div class="research-links">
+        {entry.data.links.map((link) => (
+          <a
+            href={link.url}
+            target={link.url.startsWith('http') ? '_blank' : undefined}
+            rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+            class="btn-ghost"
+          >
+            {linkIcon(link.name) && <i class={linkIcon(link.name)!} style="margin-right:4px"></i>}
+            {link.name}
+          </a>
+        ))}
+      </div>
+    )}
+
     <Content />
   </article>
 
@@ -254,7 +255,14 @@ function linkIcon(name: string): string | null {
       color: var(--color-text-secondary);
       border-left: 4px solid var(--color-border);
       padding: 0.5em 1em;
-      margin: 0 0 1.5em;
+      margin: 0 0 0.75em;
+    }
+
+    .research-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 1.5em;
     }
 
     @media (max-width: 640px) {

@@ -45,6 +45,7 @@ const researchIntroHtml = highlightEntities(
 const newsItems = (siteConfig.news ?? []).map((item) => ({
   date: item.date,
   html: highlightEntities(renderMarkdown(item.text)),
+  papers: item.papers,
 }));
 
 // Render misc
@@ -73,7 +74,21 @@ const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
         {newsItems.map((item) => (
           <li>
             <span class="news-date">{item.date}</span>
-            <span class="news-text" set:html={item.html} />
+            <div class="news-body">
+              <span class="news-text" set:html={item.html} />
+              {item.papers && item.papers.length > 0 && (
+                <span class="news-papers">
+                  {item.papers.map((p, i) => (
+                    <>
+                      {i > 0 && <span class="news-paper-sep">&middot;</span>}
+                      <a href={p.href} class="news-paper-link">
+                        <i class={p.icon || 'fas fa-file-lines'}></i> {p.title}
+                      </a>
+                    </>
+                  ))}
+                </span>
+              )}
+            </div>
           </li>
         ))}
       </ul>
@@ -139,27 +154,63 @@ const miscHtml = siteConfig.misc ? renderMarkdown(siteConfig.misc) : '';
 
     .news-date {
       flex-shrink: 0;
-      width: 5.5em;
-      font-size: 1em;
+      width: 6.5em;
+      font-size: 0.8em;
+      font-family: var(--font-mono);
       font-weight: 500;
       white-space: nowrap;
+      text-align: center;
       color: var(--color-text-secondary);
-      border-right: 2px solid var(--color-accent);
-      padding-right: 0.5em;
-      text-align: right;
+      border: 1px solid var(--color-border);
+      padding: 1px 8px;
+      border-radius: 999px;
       height: fit-content;
-      margin-top: 1px;
+      margin-top: 3px;
+    }
+
+    .news-body {
+      flex: 1;
+      min-width: 0;
     }
 
     .news-text {
-      flex: 1;
-      min-width: 0;
+      display: inline;
     }
 
     /* Strip wrapping <p> tags from inline markdown in news items */
     .news-text :global(p) {
       margin: 0;
       display: inline;
+    }
+
+    .news-papers {
+      display: inline;
+      margin-left: 0.4em;
+    }
+
+    .news-paper-link {
+      font-size: 0.8em;
+      color: var(--color-link);
+      text-decoration: none;
+      border: 1px solid color-mix(in srgb, var(--color-link) 30%, transparent);
+      padding: 0px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    .news-paper-link:hover {
+      background: color-mix(in srgb, var(--color-link) 10%, transparent);
+    }
+
+    .news-paper-link i {
+      font-size: 0.85em;
+      margin-right: 2px;
+    }
+
+    .news-paper-sep {
+      margin: 0 3px;
+      color: var(--color-text-tertiary);
     }
 
     .research-list {

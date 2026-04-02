@@ -35,21 +35,37 @@ export const siteConfig: SiteConfig = {
   news: [
     { date: 'Jun. 2026', text: "💼 Incoming intern at [*SIG*](https://sig.com/) Deep Learning team, come hanging out in Philly!" },
     { date: 'Feb. 2026', text: "🏛️ We are organizing the [Data Foundations of AI](https://data-foundations-of-ai.github.io/), come check out if you work on data as well!" },
-    { date: 'Jan. 2026', text: "📝 One paper accepted by *ICLR 2026*." },
+    { date: 'Jan. 2026', text: "📝 One paper accepted by *ICLR 2026*.", papers: [
+      { title: 'PNL', href: './research/PNL/' },
+    ] },
     { date: 'Jan. 2026', text: "💼 Starting as an AI safety fellow at [*Anthropic*](https://www.anthropic.com/), come hanging out in San Francisco!" },
     { date: 'Oct. 2025', text: "🏛️ We are organizing the *Symposium on Information Retrieval and Language Models* at *UIUC*!" },
-    { date: 'Oct. 2025', text: "🎤 Giving a [tutorial](https://trais-lab.github.io/dattri-reading-group/recording/2025/13/) on recent tricks in computing gradient-based data attribution, including [GraSS](./research/GraSS/)!" },
-    { date: 'Sep. 2025', text: "📝 Please check out our new [survey paper](./research/Data-Attribution-Survey/) on data attribution!" },
-    { date: 'Sep. 2025', text: "📝 Two papers accepted by *NeurIPS 2025* with one first-authored and one co-first-authored!" },
+    { date: 'Oct. 2025', text: "🎤 Giving a [tutorial](https://trais-lab.github.io/dattri-reading-group/recording/2025/13/) on recent tricks in computing gradient-based data attribution!", papers: [
+      { title: 'GraSS', href: './research/GraSS/' },
+    ] },
+    { date: 'Sep. 2025', text: "📝 Please check out our new survey paper on data attribution!", papers: [
+      { title: 'Survey', href: './research/Data-Attribution-Survey/' },
+    ] },
+    { date: 'Sep. 2025', text: "📝 Two papers accepted by *NeurIPS 2025*!", papers: [
+      { title: 'GraSS', href: './research/GraSS/' },
+      { title: 'Unlearning', href: './research/Unlearning-Sample-Inference-Game/' },
+    ] },
     { date: 'Aug. 2025', text: "🎓 Get my M.S. Applied Math Degree at *UIUC*!" },
     { date: 'Jul. 2025', text: "🏛️ We are organizing the [3rd Workshop on Regulatable Machine Learning](https://regulatableml.github.io/) in conjunction with *NeurIPS 2025*!" },
-    { date: 'Jul. 2025', text: "🎤 Giving a talk on [Data Attribution](./else/Intro-to-DA.pdf) at the [*Guided Generation Group (GGG)*](https://github.com/GuidedGenerationGroup)!" },
+    { date: 'Jul. 2025', text: "🎤 Giving a talk on Data Attribution at the [*Guided Generation Group (GGG)*](https://github.com/GuidedGenerationGroup)!", papers: [
+      { title: 'Slide', href: './else/Intro-to-DA.pdf', icon: 'fas fa-desktop' },
+    ] },
     { date: 'Jun. 2025', text: "✈️ Attending the first [AI Startup School](https://events.ycombinator.com/ai-sus) held by [*Y Combinator*](https://www.ycombinator.com/), see you in San Francisco!" },
     { date: 'Mar. 2025', text: "💼 Interning at [*Amazon AWS AI*](https://aws.amazon.com/ai/) Deep Engine Science team, come hanging out in New York!" },
-    { date: 'Jan. 2025', text: "📝 One paper accepted by *ICLR 2025*." },
+    { date: 'Jan. 2025', text: "📝 One paper accepted by *ICLR 2025*.", papers: [
+      { title: 'Adversarial DA', href: './research/Adversarial-Attack-on-Data-Attribution/' },
+    ] },
     { date: 'Nov. 2024', text: "🏆 Received the **Graduate Conference Travel Award** from *UIUC*!" },
     { date: 'Oct. 2024', text: "🏆 Received the **NeurIPS 2024 Scholar Award**, see you in Vancouver!" },
-    { date: 'Sep. 2024', text: "📝 Two papers accepted by *NeurIPS 2024* with one ***Spotlight***." },
+    { date: 'Sep. 2024', text: "📝 Two papers accepted by *NeurIPS 2024* with one ***Spotlight***.", papers: [
+      { title: 'dattri', href: './research/dattri/' },
+      { title: 'MISS', href: './research/MISS/' },
+    ] },
     { date: 'Jun. 2024', text: "📖 We launched the ongoing [*Data Attribution Reading Group*](https://trais-lab.github.io/dattri-reading-group/)." },
     { date: 'May 2024', text: "💼 Interning at [*NII*](https://www.nii.ac.jp/en/), come hanging out in Tokyo!" },
   ],
@@ -148,17 +164,17 @@ export const siteConfig: SiteConfig = {
     {
       role: 'Undergraduate Researcher',
       organization: 'University of Michigan',
-      date: 'Mar. 2022 - Dec. 2022',
+      date: 'May 2022 - Apr. 2023',
       description:
-        '<strong>Detection Sets</strong>: Design the first almost linear time algorithm on finding minimal balanced cuts advised by <a href="https://sites.google.com/site/thsaranurak/">Thatchaphol Saranurak</a>.',
+        '<strong>Deep Learning Foundation</strong>: Develop various techniques to understand deep neural networks advised by <a href="https://weihu.me/">Wei Hu</a> under the <a href="https://sure.engin.umich.edu/">SURE Program</a>.',
       icon: 'microscope',
     },
     {
       role: 'Undergraduate Researcher',
       organization: 'University of Michigan',
-      date: 'May 2022 - Apr. 2023',
+      date: 'Mar. 2022 - Dec. 2022',
       description:
-        '<strong>Deep Learning Foundation</strong>: Develop various techniques to understand deep neural networks advised by <a href="https://weihu.me/">Wei Hu</a> under the <a href="https://sure.engin.umich.edu/">SURE Program</a>.',
+        '<strong>Detection Sets</strong>: Design the first almost linear time algorithm on finding minimal balanced cuts advised by <a href="https://sites.google.com/site/thsaranurak/">Thatchaphol Saranurak</a>.',
       icon: 'microscope',
     },
   ],
@@ -213,8 +229,8 @@ export const siteConfig: SiteConfig = {
     organizing: [
       {
         role: 'Workshop Organizer',
-        title: '<a href="https://regulatableml.github.io/">The 3rd Workshop on Regulatable ML</a>',
-        date: 'NeurIPS 2025',
+        title: '<a href="https://regulatableml.github.io/">The 3rd Workshop on Regulatable ML</a> @NeurIPS 2025',
+        date: 'Dec. 2025',
         description: 'Toward bridging the gap between state-of-the-art ML safety/security research and evolving regulatory frameworks.',
         icon: 'users',
       },
@@ -235,7 +251,7 @@ export const siteConfig: SiteConfig = {
       {
         role: 'Reading Group Organizer',
         title: 'Statistical Learning Theory',
-        date: 'Jan. 2024 - Present',
+        date: 'Jan. 2024 - Jan. 2025',
         description:
           'A thorough reading on <a href="https://www.math.uci.edu/~rvershyn/">Roman Vershynin</a>\'s <a href="https://www.math.uci.edu/~rvershyn/papers/HDP-book/HDP-book.html">High-Dimensional Probability</a>. <a href="/else/HDP_solution.pdf">Solution</a> available.',
         icon: 'book-open',

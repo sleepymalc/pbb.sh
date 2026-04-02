@@ -4,7 +4,7 @@ import Tag from 'astro-academic-theme/components/Tag.astro';
 import { siteConfig } from '@/config';
 import { getCollection, render } from 'astro:content';
 import { marked } from 'marked';
-import { highlightEntities } from '@/lib/entities';
+import { entities } from '@/lib/entities';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -22,6 +22,12 @@ const formattedDate = entry.data.date.toLocaleDateString('en-US', {
   month: 'short',
   day: 'numeric',
 });
+
+/** Serializable entity map for client-side heading highlights. */
+const entityMap: Record<string, { color: string; colorDark: string; logo: string }> = {};
+for (const e of entities) {
+  entityMap[e.name] = { color: e.color, colorDark: e.colorDark ?? e.color, logo: e.logo ?? '' };
+}
 ---
 
 <BaseLayout
@@ -144,7 +150,7 @@ const formattedDate = entry.data.date.toLocaleDateString('en-US', {
     document.addEventListener('astro:after-swap', initTOC);
   </script>
 
-  <h1 class="title-separate mt-4" style="font-family: var(--font-mono);">{entry.data.title}</h1>
+  <h1 class="post-title" style="font-family: var(--font-mono);">{entry.data.title}</h1>
 
   <p class="text-sm text-[var(--color-text-tertiary)] mb-4">
     Posted {formattedDate}
@@ -181,23 +187,14 @@ const formattedDate = entry.data.date.toLocaleDateString('en-US', {
     <Content />
   </article>
 
-  <script is:inline>
+  <script is:inline define:vars={{ entityMap }}>
     (function() {
-      const entities = {
-        'University of Illinois Urbana-Champaign': { color: '#E84A27', logo: '/logos/uiuc.svg' },
-        'University of Michigan': { color: '#FFCB05', logo: '/logos/umich.png' },
-        'Shanghai Jiao Tong University': { color: '#9D2235', logo: '/logos/sjtu.png' },
-        'Anthropic': { color: '#D4A574', logo: '/logos/anthropic.svg' },
-        'Amazon AWS AI Lab': { color: '#FF9900', logo: '/logos/amazon.png' },
-        'Susquehanna International Group': { color: '#2E6DB4', logo: '/logos/sig.jpeg' },
-        'National Institute of Informatics': { color: '#7B5EA7', logo: '/logos/nii.png' },
-      };
       document.querySelectorAll('.markdown-body h2, .markdown-body h3').forEach(function(h) {
         var text = h.textContent.trim();
-        var e = entities[text];
+        var e = entityMap[text];
         if (!e) return;
         var logo = '<img src="' + e.logo + '" alt="" class="entity-icon" />';
-        h.innerHTML = '<em class="entity-mention" style="--entity-color:' + e.color + '">' + logo + text + '</em>';
+        h.innerHTML = '<em class="entity-mention" style="--entity-color:' + e.color + '; --entity-color-dark:' + e.colorDark + '">' + logo + text + '</em>';
       });
     })();
   </script>

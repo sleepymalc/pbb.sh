@@ -128,6 +128,7 @@ export interface TagDefinition {
 export interface NewsItem {
   date: string;
   text: string;
+  papers?: { title: string; href: string; icon?: string }[];
 }
 
 export interface WakatimeConfig {

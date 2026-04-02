@@ -33,6 +33,10 @@ const mainPaths = navItems.flatMap(n => [n.href, n.href.replace(/\/$/, '')]);
 const isMainTabPage = mainPaths.includes(currentPath);
 
 const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
+
+const nameParts = config.author.split(' ');
+const firstName = nameParts.slice(0, -1).join(' ');
+const lastName = nameParts[nameParts.length - 1];
 ---
 
 <!doctype html>
@@ -48,6 +52,7 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
       integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
       crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -81,14 +86,22 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
         <Header config={config} currentPath={currentPath} hideTabs={isMainTabPage} />
         <div class="main-wrapper">
           <!-- Compact mobile profile bar (visible only on mobile) -->
-          {showUserInfo && (
             <div class="mobile-profile">
               <img src={`/${config.avatar}`} alt={config.author} class="mobile-avatar" />
               <div class="mobile-profile-info">
-                <div class="mobile-profile-text">
-                  <span class="mobile-name">{config.author}</span>
+                <div class="mobile-row">
+                  <div class="mobile-name-block">
+                    <span class="mobile-name">{firstName}&nbsp;<span class="mobile-name-last">{lastName}</span></span>
+                    {config.authorAlternative && (
+                      <span class="mobile-name-alt">{config.authorAlternative}</span>
+                    )}
+                  </div>
+                  <button class="mobile-theme-btn" id="mobile-theme-toggle" aria-label="Toggle theme">
+                    <i class="fas fa-sun" id="mobile-theme-icon-sun"></i>
+                    <i class="fas fa-moon" id="mobile-theme-icon-moon" style="display:none"></i>
+                  </button>
                 </div>
-                <div class="mobile-social-row">
+                <div class="mobile-row">
                   <div class="mobile-social">
                     <SocialLinks links={config.social} />
                   </div>
@@ -99,12 +112,7 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
                   )}
                 </div>
               </div>
-              <button class="mobile-theme-btn" id="mobile-theme-toggle" aria-label="Toggle theme">
-                <i class="fas fa-sun" id="mobile-theme-icon-sun"></i>
-                <i class="fas fa-moon" id="mobile-theme-icon-moon" style="display:none"></i>
-              </button>
             </div>
-          )}
           <div class="layout-grid">
             <!-- Sidebar column: md=8/24, lg=7/24 -->
             <div class="sidebar-col">
@@ -116,11 +124,18 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
             </div>
             <!-- Content column: md=16/24, lg=17/24 -->
             <div class="content-col">
+              {!isMainTabPage && activeNavItem && (
+                <a href={activeNavItem.href} class="back-link">
+                  <i class="fas fa-arrow-left"></i> {activeNavItem.label}
+                </a>
+              )}
               {isMainTabPage && activeNavItem && (
                 <div class="page-nav-row">
-                  <h1 class="title-separate" transition:name={`tab-${activeNavItem.label.toLowerCase()}`}>
-                    {activeNavItem.label}
-                  </h1>
+                  <a href={activeNavItem.href} class="title-separate-link" transition:name={`tab-${activeNavItem.label.toLowerCase()}`}>
+                    <h1 class="title-separate">
+                      {activeNavItem.label}
+                    </h1>
+                  </a>
                   <nav class="page-nav-tabs">
                     {navItems.filter(item => !isNavActive(currentPath, item.href, item.exact)).map(item => (
                       <a
@@ -153,7 +168,7 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
   }
 
   .outer-padding {
-    padding: 0 1.87rem 1.87rem;
+    padding: 3rem 1.87rem 1.87rem;
   }
 
   @media (max-width: 768px) {
@@ -167,9 +182,6 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
   }
 
   @media (min-width: 2045px) {
@@ -184,9 +196,9 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
     background: var(--color-bg-card);
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1023px) {
     .main-wrapper {
-      border-radius: 1.5rem;
+      border-radius: 3rem;
     }
   }
 
@@ -204,24 +216,24 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
   .content-col {
     width: 66.67%;
     padding: 2.5rem;
-    padding-left: 0;
+    padding-left: 1.5rem;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1024px) {
     .sidebar-col { display: block; }
   }
 
-  @media (min-width: 992px) {
+  @media (min-width: 1200px) {
     .sidebar-col { width: 29.17%; }
     .content-col { width: 70.83%; }
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 1023px) {
     .sidebar-col { display: none; width: 100%; }
     .content-col {
       width: 100%;
       padding: 1.5rem;
-      padding-top: 0;
+      padding-top: 1.25rem;
     }
 
     .main-wrapper {
@@ -234,6 +246,30 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
     display: flex;
     align-items: baseline;
     margin-bottom: 2.5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    margin-bottom: 0.75rem;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--color-link);
+  }
+
+  .back-link i {
+    margin-right: 4px;
+    font-size: 0.75rem;
+  }
+
+  .title-separate-link {
+    text-decoration: none;
+    color: inherit;
   }
 
   .page-nav-row :global(.title-separate) {
@@ -269,7 +305,7 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
     top: 80px;
   }
 
-  @media (max-width: 991px) {
+  @media (max-width: 1199px) {
     .sidebar-affix {
       position: static;
     }
@@ -278,13 +314,13 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
   /* Mobile profile bar */
   .mobile-profile {
     display: none;
-    align-items: center;
+    align-items: stretch;
     gap: 12px;
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--color-border);
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 1023px) {
     .mobile-profile {
       display: flex;
       position: sticky;
@@ -305,21 +341,15 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
   .mobile-profile-info {
     flex: 1;
     min-width: 0;
-  }
-
-  .mobile-profile-text {
     display: flex;
     flex-direction: column;
+    justify-content: center;
   }
 
-  .mobile-social-row {
+  .mobile-row {
     display: flex;
     align-items: center;
-    margin-top: 4px;
-  }
-
-  .mobile-social {
-    flex-shrink: 0;
+    justify-content: space-between;
   }
 
   .mobile-social :global(.social-links) {
@@ -334,23 +364,41 @@ const quoteHtml = config.quote ? renderInlineKatex(config.quote) : '';
     font-size: 1.05rem;
   }
 
+  .mobile-name-block {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
   .mobile-name {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 200;
+    letter-spacing: 1.5px;
     color: var(--color-heading);
     line-height: 1.3;
   }
 
+  .mobile-name-last {
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .mobile-name-alt {
+    font-size: 16px;
+    font-weight: 400;
+    font-family: 'Ma Shan Zheng', cursive;
+    color: var(--color-heading);
+  }
+
   .mobile-theme-btn {
-    align-self: flex-start;
     flex-shrink: 0;
     width: 36px;
     height: 36px;
     border-radius: 10px;
     border: none;
-    background: var(--color-gray-100);
+    background: none;
     color: var(--color-text);
-    font-size: 15px;
+    font-size: 16px;
     cursor: pointer;
     display: flex;
     align-items: center;

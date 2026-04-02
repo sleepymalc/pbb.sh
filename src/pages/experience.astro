@@ -23,6 +23,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
           logo={getEntity(edu.location)?.logo}
           logoDark={getEntity(edu.location)?.logoDark}
           entityColor={getEntity(edu.location)?.color}
+          entityColorDark={getEntity(edu.location)?.colorDark}
         />
       ))}
     </Timeline>
@@ -42,6 +43,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
             logo={getEntity(item.organization)?.logo}
             logoDark={getEntity(item.organization)?.logoDark}
             entityColor={getEntity(item.organization)?.color}
+            entityColorDark={getEntity(item.organization)?.colorDark}
           >
             <div class="tl-desc" set:html={item.description} />
           </TimelineItem>
@@ -64,6 +66,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
             logo={getEntity(item.institution)?.logo}
             logoDark={getEntity(item.institution)?.logoDark}
             entityColor={getEntity(item.institution)?.color}
+            entityColorDark={getEntity(item.institution)?.colorDark}
           >
             <div class="tl-teaching-detail">
               <span class="tl-course" set:html={item.course} />
@@ -84,7 +87,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
       <h2 class="section-heading">Service &amp; Community</h2>
 
       <h3 class="subsection-heading">Organizing</h3>
-      <Timeline showLine={true}>
+      <Timeline showLine={false}>
         {service.organizing.map((item) => (
           <TimelineItem
             title={item.role}
@@ -131,6 +134,7 @@ const { education, researchExperience, teachingExperience, service, awards } = s
             logo={getEntity(award.organization)?.logo}
             logoDark={getEntity(award.organization)?.logoDark}
             entityColor={getEntity(award.organization)?.color}
+            entityColorDark={getEntity(award.organization)?.colorDark}
           />
         ))}
       </Timeline>
@@ -151,6 +155,9 @@ const { education, researchExperience, teachingExperience, service, awards } = s
     font-weight: 600;
     color: var(--color-heading);
     margin-bottom: 1rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 2px solid var(--color-accent);
+    display: inline-block;
   }
 
   .subsection-heading {
@@ -244,7 +251,6 @@ const { education, researchExperience, teachingExperience, service, awards } = s
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    margin-left: 36px;
   }
 
   .reviewing-row {

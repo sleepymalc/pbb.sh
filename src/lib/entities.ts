@@ -8,8 +8,10 @@ export interface Entity {
   name: string;
   /** Alternative names / abbreviations to also match */
   aliases?: string[];
-  /** Brand color */
+  /** Brand color (light mode) */
   color: string;
+  /** Brand color (dark mode) — defaults to color if not set */
+  colorDark?: string;
   /** Path to logo image in /public (optional, for experience page) */
   logo?: string;
   /** Alternative logo for dark mode */
@@ -21,29 +23,34 @@ export const entities: Entity[] = [
     name: 'University of Illinois Urbana-Champaign',
     aliases: ['UIUC'],
     color: '#E84A27',
+    colorDark: '#E84A27',
     logo: '/logos/uiuc.svg',
   },
   {
     name: 'University of Michigan',
     aliases: ['UMich'],
     color: '#FFCB05',
+    colorDark: '#FFCB05',
     logo: '/logos/umich.png',
   },
   {
     name: 'Shanghai Jiao Tong University',
     aliases: ['SJTU'],
     color: '#9D2235',
+    colorDark: '#9D2235',
     logo: '/logos/sjtu.png',
   },
   {
     name: 'Anthropic',
-    color: '#D4A574',
+    color: '#C4813A',
+    colorDark: '#D4A574',
     logo: '/logos/anthropic.svg',
   },
   {
     name: 'Amazon AWS AI Lab',
     aliases: ['Amazon AWS AI'],
     color: '#FF9900',
+    colorDark: '#FF9900',
     logo: '/logos/amazon.png',
     logoDark: '/logos/amazon-dark.png',
   },
@@ -51,13 +58,16 @@ export const entities: Entity[] = [
     name: 'Susquehanna International Group',
     aliases: ['SIG', 'SIG Deep Learning Team'],
     color: '#2E6DB4',
+    colorDark: '#2E6DB4',
     logo: '/logos/sig.jpeg',
   },
   {
     name: 'National Institute of Informatics',
     aliases: ['NII'],
     color: '#7B5EA7',
+    colorDark: '#7B5EA7',
     logo: '/logos/nii.png',
+    logoDark: '/logos/nii.png',
   },
 ];
 
@@ -87,8 +97,9 @@ export function highlightEntities(html: string): string {
 
     // Pattern: <em>Name</em>
     const emPattern = new RegExp(`<em>(${escapedName})</em>`, 'g');
+    const darkColor = entity.colorDark ?? entity.color;
     html = html.replace(emPattern, (_match, text) => {
-      return `<em class="entity-mention" style="--entity-color: ${entity.color}">${logoHtml}${text}</em>`;
+      return `<em class="entity-mention" style="--entity-color: ${entity.color}; --entity-color-dark: ${darkColor}">${logoHtml}${text}</em>`;
     });
   }
   return html;

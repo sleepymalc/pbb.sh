@@ -9,9 +9,10 @@ interface Props {
   logo?: string;
   logoDark?: string;
   entityColor?: string;
+  entityColorDark?: string;
 }
 
-const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', logo, logoDark, entityColor } = Astro.props;
+const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', logo, logoDark, entityColor, entityColorDark } = Astro.props;
 
 ---
 
@@ -29,13 +30,10 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
     )}
   </div>
   <div class="timeline-body">
-    <p class="timeline-title">{title}</p>
-    {minor && (
-      <p class="timeline-minor"><i class="fas fa-bookmark"></i> Minor in {minor}</p>
-    )}
+    <p class="timeline-title">{title}{minor && <span class="timeline-minor"> · Minor in {minor}</span>}</p>
     {subtitle && (
       entityColor
-        ? <p class="timeline-subtitle timeline-subtitle-entity" style={`--entity-color: ${entityColor}`}>{subtitle}</p>
+        ? <p class="entity-mention entity-mention-sm" style={`--entity-color: ${entityColor}; --entity-color-dark: ${entityColorDark || entityColor}`}>{subtitle}</p>
         : <p class="timeline-subtitle">{subtitle}</p>
     )}
     {date && (
@@ -62,6 +60,7 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
     justify-content: center;
     z-index: 1;
     background: var(--color-bg-card);
+    box-shadow: 0 0 0 4px var(--color-bg-card);
     font-size: 13px;
   }
 
@@ -92,8 +91,7 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
     display: block;
   }
 
-  /* Brighten single-variant logos in dark mode */
-  :global(.dark) .timeline-logo:not(.timeline-logo-light):not(.timeline-logo-dark) {
+  :global(.dark) .timeline-logo-dark[src$="nii.png"] {
     filter: brightness(1.6);
   }
 
@@ -113,16 +111,9 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
 
   .timeline-minor {
     font-size: 10pt;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--color-text-secondary);
-    margin: 2px 0 0;
     font-style: italic;
-  }
-
-  .timeline-minor i {
-    font-size: 9px;
-    margin-right: 4px;
-    opacity: 0.6;
   }
 
   .timeline-subtitle {
@@ -130,29 +121,6 @@ const { title, subtitle, minor, date, icon = 'school', iconColor = '#44566C', lo
     font-weight: 400;
     color: var(--color-text-secondary);
     margin: 0;
-  }
-
-  .timeline-subtitle-entity {
-    font-size: 10pt;
-    font-weight: 500;
-    color: var(--entity-color);
-    background: color-mix(in srgb, var(--entity-color) 8%, transparent);
-    border-bottom: 1.5px solid color-mix(in srgb, var(--entity-color) 30%, transparent);
-    padding: 0px 5px;
-    border-radius: 3px;
-    width: fit-content;
-    transition: box-shadow 0.3s ease;
-  }
-
-  .timeline-subtitle-entity:hover {
-    box-shadow: 0 0 8px color-mix(in srgb, var(--entity-color) 50%, transparent),
-                0 0 16px color-mix(in srgb, var(--entity-color) 25%, transparent);
-  }
-
-  :global(.dark) .timeline-subtitle-entity {
-    color: color-mix(in srgb, var(--entity-color) 55%, #fff);
-    background: color-mix(in srgb, var(--entity-color) 8%, transparent);
-    border-bottom-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
   }
 
   .timeline-date {
