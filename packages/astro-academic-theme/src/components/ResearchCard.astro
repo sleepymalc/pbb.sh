@@ -361,19 +361,24 @@ function linkIcon(name: string): string | null {
 </style>
 
 <script>
-  document.querySelectorAll('.authors-ellipsis').forEach((el) => {
-    el.addEventListener('click', () => {
-      el.closest('.authors-row')?.classList.add('expanded');
+  function initResearchCards() {
+    document.querySelectorAll('.authors-ellipsis').forEach((el) => {
+      el.addEventListener('click', () => {
+        el.closest('.authors-row')?.classList.add('expanded');
+      });
     });
-  });
 
-  document.querySelectorAll('.research-card').forEach((card) => {
-    card.addEventListener('click', (e) => {
-      // Let actual links (title, author links, arxiv/github buttons) navigate normally
-      const target = e.target as HTMLElement;
-      if (target.closest('a')) return;
+    document.querySelectorAll('.research-card').forEach((card) => {
+      card.addEventListener('click', (e) => {
+        // Let actual links (title, author links, arxiv/github buttons) navigate normally
+        const target = e.target as HTMLElement;
+        if (target.closest('a')) return;
 
-      card.querySelector('.card-details')?.classList.toggle('expanded');
+        card.querySelector('.card-details')?.classList.toggle('expanded');
+      });
     });
-  });
+  }
+
+  initResearchCards();
+  document.addEventListener('astro:after-swap', initResearchCards);
 </script>

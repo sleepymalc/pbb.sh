@@ -47,6 +47,15 @@ const lastName = nameParts[nameParts.length - 1];
     <meta name="description" content={pageDescription} />
     <meta name="author" content={config.author} />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={config.siteUrl} />
+    <meta property="og:image" content={`${config.siteUrl}/favicon.png`} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDescription} />
+    <meta name="twitter:image" content={`${config.siteUrl}/favicon.png`} />
     <title>{pageTitle}</title>
     <ClientRouter />
 
