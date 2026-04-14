@@ -23,7 +23,7 @@ export const siteConfig: SiteConfig = {
 
   introduction: [
     "I'm a third-year Ph.D. candidate at [*University of Illinois Urbana-Champaign*](https://illinois.edu/) (UIUC) advised by [Jiaqi Ma](https://jiaqima.github.io/), and I also work closely with [Han Zhao](https://hanzhaoml.github.io/). Currently, I'm also an [*Anthropic*](https://www.anthropic.com/) AI Safety Research Fellow and an incoming Ph.D. ML intern at [*Susquehanna International Group*](https://sig.com/).",
-    "Previously, I've spent time at [*Amazon AWS AI Lab*](https://aws.amazon.com/ai/) and [*National Institute of Informatics*](https://www.nii.ac.jp/en/). I obtained my Master degree from [*UIUC*](https://illinois.edu/) and [dual Bachelor degree](https://www.ji.sjtu.edu.cn/academics/ipo/study-abroad/degree-programs/) from [*University of Michigan*](https://umich.edu/) and [*Shanghai Jiao Tong University*](https://www.sjtu.edu.cn/).",
+    "Previously, I've spent time at [*Amazon AWS AI Lab*](https://aws.amazon.com/ai/) and [*National Institute of Informatics*](https://www.nii.ac.jp/en/). I obtained my Master degree from [*UIUC*](https://illinois.edu/) and [dual Bachelor degree](https://gc.sjtu.edu.cn/academics/ipo/study-abroad/degree-programs/) from [*University of Michigan*](https://umich.edu/) and [*Shanghai Jiao Tong University*](https://www.sjtu.edu.cn/).",
   ],
 
   researchIntro: [
