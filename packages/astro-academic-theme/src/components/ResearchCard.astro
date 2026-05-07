@@ -23,9 +23,10 @@ interface Props {
   tagColors?: string[];
   links?: Link[];
   cover?: string;
+  tagHrefBase?: string;
 }
 
-const { title, href, date, excerpt, authors = [], venue, tags = [], tagColors = [], links = [], cover } = Astro.props;
+const { title, href, date, excerpt, authors = [], venue, tags = [], tagColors = [], links = [], cover, tagHrefBase } = Astro.props;
 
 const formattedDate = date.toLocaleDateString('en-US', {
   year: 'numeric',
@@ -106,7 +107,11 @@ function linkIcon(name: string): string | null {
             <div class="divider"></div>
             <div class="tags-inline">
               {tags.map((tag, i) => (
-                <Tag name={tag} color={tagColors[i % tagColors.length]} />
+                <Tag
+                  name={tag}
+                  color={tagColors[i % tagColors.length]}
+                  href={tagHrefBase ? `${tagHrefBase}?tag=${encodeURIComponent(tag)}` : undefined}
+                />
               ))}
             </div>
           </>
