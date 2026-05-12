@@ -1,0 +1,36 @@
+---
+title: "Dr. Post-Training: A Data Regularization Perspective on LLM Post-Training"
+tags: ["Data", "Algorithm", "Theory"]
+date: 2026-05-08 00:00:00 -0500
+priority: -20260508
+path: "research/Dr-Post-Training"
+excerpt: "We reconceptualize general data in LLM post-training as a data-induced regularizer, unifying existing data selection methods along a bias-variance spectrum."
+selected: true
+links:
+- name: "arXiv"
+  url: "https://arxiv.org/abs/2605.07063"
+authors:
+- name: "**Pingbang Hu**"
+  url: "https://pbb.sh/"
+- name: "Xueshen Liu"
+  url: "https://xenshinu.github.io/"
+- name: "Z. Morley Mao"
+  url: "https://web.eecs.umich.edu/~zmao/"
+- name: "Jiaqi W. Ma"
+  url: "https://jiaqima.github.io/"
+---
+
+## Brief Summary
+
+LLM post-training often suffers from overfitting to a scarce target objective, motivating the common practice of mixing in general data. Existing approaches treat this as a *data selection* problem—choosing which general samples to include—but the underlying mechanism remains unclear. In this work, we propose a new perspective: general data acts as a **data-induced regularizer** that constrains target model updates to a feasible set defined by the general data itself. Concretely, we project target updates onto this feasible set rather than selecting samples from it. Under this lens, existing data selection methods correspond to specific points on a bias-variance spectrum, and we introduce a family of methods that expose the full tradeoff. Across SFT, RLHF, and RLVR, our approach consistently improves over data selection baselines with minimal computational overhead.
+
+## Citation
+
+```bibtex
+@article{hu2026dr,
+  title={Dr. Post-Training: A Data Regularization Perspective on LLM Post-Training},
+  author={Hu, Pingbang and Liu, Xueshen and Mao, Z Morley and Ma, Jiaqi W},
+  journal={arXiv preprint arXiv:2605.07063},
+  year={2026}
+}
+```
