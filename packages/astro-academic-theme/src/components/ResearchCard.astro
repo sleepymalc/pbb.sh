@@ -79,14 +79,11 @@ function linkIcon(name: string): string | null {
                 {isEllipsisPoint && (
                   <span class="authors-ellipsis" role="button" tabindex="0" title="Show all authors">&hellip;,&nbsp;</span>
                 )}
-                <span class:list={['author', { 'author-hidden': isHidden }]}>
-                  {author.url ? (
+                <span class:list={['author', { 'author-hidden': isHidden }]}>{author.url ? (
                     <a href={author.url} target="_blank" rel="noopener noreferrer" set:html={inlineMd(author.name)} />
                   ) : (
                     <span set:html={inlineMd(author.name)} />
-                  )}
-                  {i < authors.length - 1 ? <Fragment>,&nbsp;</Fragment> : null}
-                </span>
+                  )}{i < authors.length - 1 ? <Fragment>,&nbsp;</Fragment> : null}</span>
               </>
             );
           })}
