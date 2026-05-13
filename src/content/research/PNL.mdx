@@ -20,9 +20,25 @@ authors:
   url: "https://mahito.info/index_e.html"
 ---
 
-## Brief Summary
+## Problem
 
-We propose a simple yet novel data augmentation method for general data modalities based on energy-based modeling and principles from information geometry. Unlike most existing learning-based data augmentation methods, which rely on learning latent representations with generative models, our proposed framework enables an intuitive construction of a geometrically aware latent space that represents the structure of the data itself, supporting efficient and explicit encoding and decoding procedures. We then present and discuss how to design latent spaces that will subsequently control the augmentation with the proposed algorithm. Empirical results demonstrate that our data augmentation method achieves competitive performance in downstream tasks compared to other baselines, while offering fine-grained controllability that is lacking in the existing literature.
+Data augmentation is most valuable precisely when training data is scarce — yet that is also when learning a high-quality generative model is hardest. Learning-based augmentation methods inherit this paradox: they are computationally intensive to train, and at small data scales the latent spaces they produce tend to be entangled and domain-specific. More fundamentally, the transformation a generative model applies during augmentation is *opaque*. There is no interpretable handle on which directions in latent space correspond to which semantic properties of the data, and no principled way to specify, for instance, that augmentation should vary color but preserve shape. Learning-free alternatives such as principal component analysis (PCA) or singular value decomposition (SVD) are interpretable but suffer from a different problem: reconstructing high-dimensional data from a low-dimensional code without a learned decoder is ill-posed, and the resulting reconstructions are often poor.
+
+## Key Idea
+
+The paper grounds data augmentation in *energy-based modeling* and *information geometry*, yielding the **Pseudo-Nonlinear (PNL) augmentation** framework. The central insight is that a dataset of structured objects (images, audio, tabular vectors) can be embedded into a *dually-flat statistical manifold* — a space whose geometry is controlled by energy parameters and whose sub-manifolds have an exact, closed-form projection theory. Because the latent space is defined by energy minimization rather than learned from data, it inherits the intrinsic structure of the data *by construction*, not by approximation. Crucially, the practitioner can *design* the sub-manifold used for augmentation, directly specifying which statistical interactions are preserved and which are allowed to vary.
+
+## Approach
+
+Each data point is first mapped to a probability distribution via a normalizing embedding $\varphi$, then projected onto a low-dimensional *e-flat base sub-manifold* $\mathcal{B} \subseteq \mathcal{S}$ by minimizing KL divergence — an operation the information-geometric structure makes exact and efficient. This projection is the encoder: $\text{Enc} = \text{Proj}_{\mathcal{B}} \circ \varphi$. For positive tensors, a natural family of sub-manifolds is the *$\ell$-body approximation* $\mathcal{M}_\ell$, which retains only interaction parameters of order at most $\ell$. Choosing $\ell$ directly controls the granularity of structure the latent representation captures — a small $\ell$ preserves coarse shape; a larger $\ell$ preserves fine color-texture relationships.
+
+Decoding an augmented latent point $w^* \in \mathcal{B}$ is the harder direction. Rather than training a separate decoder, the framework uses a *backward projection*: find the $k$ nearest encoded neighbors of $w^*$ in the training set, form their *local data sub-manifold* $\mathcal{D}$, and project $w^*$ onto $\mathcal{D}$. The decoded sample is then $z^* = \varphi^{-1}(\text{Proj}_{\mathcal{D}}(w^*))$. Because the projection is onto actual data geometry rather than a learned approximation, the reconstruction is grounded and interpretable.
+
+The full augmentation loop is: (1) encode all training samples into $\mathcal{B}$; (2) generate new latent points $w^*$ by interpolating or perturbing within $\mathcal{B}$; (3) decode each $w^*$ via backward projection. Transformations that are linear in the manifold's intrinsic coordinates become *curved* in the ambient data space — hence "pseudo-nonlinear."
+
+## Result
+
+Across six datasets spanning images (MNIST, CIFAR-10), audio (Speech Commands), and tabular data (Connectionist Bench, Taiwanese Bankruptcy, Wine Quality), PNL augmentation matches or outperforms autoencoders, mixup, and manifold mixup in downstream classification accuracy. The gains are largest on small datasets: on Connectionist Bench (208 samples), PNL cuts the standard deviation of test accuracy from 8.58% to 4.54%, reflecting meaningfully more stable generalization. Beyond accuracy, PNL offers *fine-grained controllability* that prior learning-based methods lack — by varying the sub-manifold order $\ell$, practitioners can explicitly target specific structural properties of the data, an operating point unavailable in any existing augmentation framework.
 
 ## Citation
 

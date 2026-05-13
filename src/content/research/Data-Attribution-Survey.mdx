@@ -65,9 +65,21 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Brief Summary
+## Problem
 
-Training data is the fuel of modern artificial intelligence (AI), fundamentally shaping the capabilities, limitations, and biases of AI systems. The emergence of large-scale generative models has elevated the importance of understanding how data influences their behaviors, bringing the field of data attribution to the forefront. This survey provides a comprehensive overview of data attribution, covering its methods, applications, and evaluation protocols, with a particular emphasis on the challenges and opportunities arising in the era of generative AI. We start by introducing a conceptual framework for attribution centered on three core questions: what to attribute (model behaviors), attribute to what (training entities), and how to attribute (influence measures). Within this framework, we systematically review major attribution approaches, including those based on influence functions, weighted marginal contributions, training dynamics, and simulators. We then examine key applications of data attribution, such as data selection, fact tracing, adversarial attacks and defenses, and the emerging data economy. Finally, we critically assess common evaluation criteria, including the quality of counterfactual predictions, utility in downstream tasks, and computational efficiency. We conclude with a forward-looking perspective on the future of data attribution, highlighting key open challenges and promising directions for future research.
+Training data fundamentally shapes what a model can do, what it gets wrong, and what biases it inherits — yet as generative AI has scaled, pinning down *which data drives which behavior* has become both more consequential and harder to answer. A body of work on **data attribution** has grown to address this, but it has developed unevenly: methods, application domains, and evaluation protocols have each accumulated their own conventions with little cross-talk. The field lacks a unified treatment that brings these threads together.
+
+## Key Idea
+
+The survey organizes the entire literature around the **What-What-How Attribution Framework** — three questions that any attribution problem must answer: *what to attribute* (the model behavior of interest), *attribute to what* (the training entities held responsible), and *how to attribute* (the influence measure used to assign credit). This framing cuts across all method families and application settings, giving the field a common vocabulary and exposing structural similarities that domain-specific reviews have obscured.
+
+## Approach
+
+Under that framework the survey proceeds on three fronts. First, it systematically covers the major attribution method families: **influence functions** (gradient-based approximations of leave-one-out retraining), **weighted marginal contributions** (data-Shapley and related cooperative-game estimators), **training dynamics** methods (tracing data effects through the learning trajectory), and **simulators** (surrogate models that predict counterfactual outcomes). Second, it maps these methods onto their principal applications — data selection and curation, fact tracing and source identification, adversarial attacks and defenses, and the emerging **data economy** (valuation, licensing, and compensation). Third, it examines the evaluation landscape, assessing how well attributors predict counterfactual outcomes, whether those predictions translate to downstream utility, and what the computational cost looks like at generative-AI scale.
+
+## Result
+
+The survey closes with a forward-looking account of what the field still needs. Open challenges include scaling attribution faithfully to large generative models, handling the multi-step attribution chains that arise in instruction-tuned and RLHF-trained systems, and establishing evaluation benchmarks that reflect real-world utility rather than proxy metrics. The authors identify the data economy as a particularly fertile direction: as data becomes a tradeable asset, principled attribution methods will be essential for valuation, provenance, and fair compensation.
 
 ## Citation
 

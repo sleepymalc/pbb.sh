@@ -24,19 +24,35 @@ authors:
   url: "https://hanzhaoml.github.io/"
 ---
 
-## Brief Summary
+## Problem
 
-Influence functions and related data attribution scores take the form of inverse-sensitive bilinear functionals $g^{\top}F^{-1}g^{\prime}$, where $F\succeq 0$ is a curvature operator and $g,g^{\prime}$ are training and test gradients. In modern overparameterized models, forming or inverting $F\in\mathbb{R}^{d\times d}$ is prohibitive, motivating scalable influence computation via *random projection* with a sketch $P \in \mathbb{R}^{m\times d}$. This practice is commonly justified via the Johnson-Lindenstrauss (JL) lemma, which ensures approximate preservation of Euclidean geometry for a fixed dataset. However, preserving pairwise distances does not address how sketching behaves under inversion. Furthermore, there is no existing theory that explains how sketching interacts with other widely-used techniques, such as ridge regularization (replacing $F^{-1}$ with $(F+\lambda I)^{-1}$) and structured curvature approximations.
+Influence function-based data attribution scores are bilinear functionals of the form $g^\top F^{-1} g'$, where $F$ is a curvature operator (e.g., the Hessian or Fisher information matrix) and $g, g'$ are training and test gradients. In modern overparameterized models, $F \in \mathbb{R}^{d \times d}$ is far too large to form or invert directly, so practitioners compress gradients via **random projection** — multiplying by a sketch matrix $P \in \mathbb{R}^{m \times d}$ and replacing the original score with $g^\top P^\top (P F P^\top)^{-1} P g'$.
 
-We develop a unified theory characterizing when projection provably preserves influence functions, with a focus on the required sketch size $m$. When $g,g^{\prime}\in\mathrm{range}(F)$, we show that:
+The standard justification for this substitution invokes the **Johnson–Lindenstrauss (JL) lemma**, which guarantees that a random projection approximately preserves pairwise Euclidean distances. But inversion is *not* a Euclidean operation. The JL lemma says nothing about what happens to $F^{-1}$ under projection, and it is silent on two settings that dominate practice: ridge regularization (replacing $F$ with $F + \lambda I$) and structured, Kronecker-factored curvature approximations such as **KFAC** (Kronecker-Factored Approximate Curvature). The result is a gap between the guarantees practitioners cite and the computations they actually run.
 
-1. **Unregularized projection**: exact preservation holds if and only if $P$ is injective on $\mathrm{range}(F)$, which necessitates $m\geq \mathrm{rank}(F)$;
-2. **Regularized projection**: ridge regularization fundamentally alters the sketching barrier, with approximation guarantees governed by the *effective dimension* of $F$ at the regularization scale $\lambda$. This dependence is both sufficient and worst-case necessary, and can be substantially smaller than $\mathrm{rank}(F)$;
-3. **Factorized influence**: for Kronecker-factored curvatures $F=A\otimes E$, the guarantees continue to hold for decoupled sketches $P=P_A\otimes P_E$, even though such sketches exhibit structured row correlations that violate canonical i.i.d. assumptions; the analysis further reveals an explicit computational–statistical trade-off inherent to factorized sketches.
+## Key Idea
 
-Beyond this range-restricted setting, we analyze **out-of-range test gradients** and quantify a sketch-induced *leakage* term that arises when test gradients have components in $\ker(F)$. This yields guarantees for influence queries on general, unseen test points.
+This paper develops a **unified theory** that precisely characterizes when random projection provably preserves influence-function scores. Rather than appealing to Euclidean geometry, the analysis works directly with the *inverse-sensitive* structure of the bilinear form. The central object is the $\lambda$-whitened influence subspace $B := F^{1/2}(F + \lambda I)^{-1/2}$, whose spectral properties govern how faithfully a sketch can reproduce $g^\top (F + \lambda I)^{-1} g'$.
 
-Overall, this work develops a novel theory that characterizes when projection provably preserves influence and provides principled, instance-adaptive guidance for choosing the sketch size in practice.
+The theory pins down, with matching upper and lower bounds, the minimum sketch dimension $m$ required in each practically relevant regime, turning what was an informal folk argument into instance-adaptive, quantitative guidance.
+
+## Approach
+
+The paper analyzes three nested regimes for $g, g' \in \mathrm{range}(F)$, plus an extension to out-of-range test gradients:
+
+- **Unregularized** ($\lambda = 0$): Exact preservation of $\tau_0(g, g') = g^\top F^{-1} g'$ requires $P$ to be *injective* on $\mathrm{range}(F)$. This is a hard necessity: if any direction in $\mathrm{range}(F)$ collapses under $P$, no multiplicative approximation guarantee is possible. The minimum sketch size is therefore $m \geq \mathrm{rank}(F)$.
+
+- **Regularized** (ridge $F + \lambda I$): Ridge regularization fundamentally relaxes the requirement. Directions where the eigenvalue $\lambda_j(F) \ll \lambda$ are already dampened by $\lambda$ in the denominator and need not be preserved accurately by $P$. The binding quantity is the *effective dimension* $d_\lambda(F) := \mathrm{tr}\!\left(F(F + \lambda I)^{-1}\right)$, which counts only the eigenvalues that are *large relative to* $\lambda$. A sketch of size $m = \Omega\!\left((d_\lambda(F) + \log(1/\delta))/\varepsilon^2\right)$ suffices for an $\varepsilon$-relative approximation with probability $1 - \delta$, and matching lower bounds show this is tight. When regularization is strong or the spectrum decays quickly, $d_\lambda(F) \ll \mathrm{rank}(F)$, enabling substantially cheaper sketches.
+
+- **Factorized curvature** ($F = A \otimes E$): Practical second-order methods such as KFAC represent the curvature as a Kronecker product and use decoupled sketches $P = P_A \otimes P_E$. Rows of a Kronecker sketch have structured correlations that violate the i.i.d. assumptions underlying standard concentration bounds. The analysis introduces a dedicated factorized covariance deviation bound that controls $\|B^\top(P^\top P - I)B\|_2$ through factor-level primitives, allowing the resolvent perturbation argument to go through. This exposes an explicit *computational–statistical tradeoff*: factorized sketches require sketch sizes scaling as $\tilde{\Omega}(\varepsilon^{-4} \cdot d_{\lambda_E}(A) \cdot d_{\lambda_A}(E))$ versus $\varepsilon^{-2}$ for an unfactorized approach — a direct quantification of the cost of imposing Kronecker structure.
+
+When test gradients have components in $\ker(F)$ — i.e., they are *out of range* — the sketch introduces an additional *leakage* error. The paper quantifies this term explicitly, showing it depends on the magnitude of the out-of-range component $g'_\perp$, the regularization scale $\lambda$, and the spectral norm of $F$.
+
+## Result
+
+For $g, g' \in \mathrm{range}(F)$, the sketched score satisfies $|\tilde{\tau}_\lambda(g, g') - \tau_\lambda(g, g')| \leq \varepsilon \sqrt{\tau_0(g, g)} \sqrt{\tau_0(g', g')}$ with high probability under the sketch-size conditions above. For out-of-range test gradients, leakage is bounded by $\varepsilon \|g\|_2 \|g'_\perp\|_2 (1/\lambda + 2\|F\|_2/\lambda^2)$.
+
+Together, the three regimes give **principled, instance-adaptive guidance** for choosing sketch sizes in practice: use $\mathrm{rank}(F)$ when there is no regularization, switch to the (often much smaller) *effective dimension* once ridge regularization is present, and account for the additional $\varepsilon^{-2}$ factor when Kronecker-factored sketches are used. The results show that the JL lemma, while suggestive, systematically *underestimates* the required sketch size in the unregularized case and *overestimates* it in the regularized one.
 
 ## Citation
 

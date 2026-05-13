@@ -1,3 +1,370 @@
 @import "tailwindcss";
 @source "../../node_modules/astro-academic-theme/src/**/*.astro";
 @import "astro-academic-theme/styles/global.css";
+
+/* ==============================================================
+   Research detail page — Pion-inspired typography & rhythm
+   ============================================================== */
+
+.markdown-body.research-detail {
+  font-size: 16.5px;
+  line-height: 1.78;
+  letter-spacing: 0.005em;
+}
+
+.markdown-body.research-detail > p {
+  margin: 0 0 1.2em;
+}
+
+/* --- TL;DR card: first paragraph in the body (works whether or not a hero figure precedes it) --- */
+.markdown-body.research-detail > p:first-of-type {
+  position: relative;
+  display: flow-root; /* establish a BFC so the card respects the floated cover */
+  margin: 1.5em 0 2em;
+  padding: 1.15em 1.4em;
+  font-size: 1.06em;
+  line-height: 1.7;
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-bg-card));
+  border-left: 4px solid var(--color-accent);
+  border-radius: 0 var(--radius-base) var(--radius-base) 0;
+}
+
+.markdown-body.research-detail > p:first-of-type > strong:first-child {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* --- Section headings: clear hierarchy + leading accent bar --- */
+.markdown-body.research-detail h2 {
+  position: relative;
+  font-size: 1.6rem;
+  margin-top: 2.6em;
+  margin-bottom: 1em;
+  padding-bottom: 0.45em;
+  color: var(--color-heading);
+}
+
+.markdown-body.research-detail h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    var(--color-accent) 0,
+    var(--color-accent) 2.75rem,
+    var(--color-border) 2.75rem
+  );
+}
+
+.markdown-body.research-detail h3 {
+  font-size: 1.2rem;
+  margin-top: 2em;
+  margin-bottom: 0.55em;
+  color: var(--color-heading);
+}
+
+.markdown-body.research-detail h3::before {
+  content: "";
+  display: inline-block;
+  width: 0.45em;
+  height: 0.45em;
+  margin-right: 0.55em;
+  vertical-align: 0.18em;
+  border-radius: 1px;
+  background: var(--color-accent);
+}
+
+/* --- "Why X" cards: any UL whose items start with a bold headline --- */
+.markdown-body.research-detail ul:has(> li > strong:first-child) {
+  list-style: none;
+  padding-left: 0;
+  margin: 1.4em 0 1.8em;
+  display: grid;
+  gap: 0.65em;
+}
+
+.markdown-body.research-detail ul:has(> li > strong:first-child) > li {
+  margin: 0;
+  padding: 0.9em 1.1em 0.95em;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  border-radius: var(--radius-base);
+  line-height: 1.6;
+  transition: border-left-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.markdown-body.research-detail ul:has(> li > strong:first-child) > li:hover {
+  border-left-color: var(--color-accent);
+  transform: translateX(2px);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.markdown-body.research-detail ul:has(> li > strong:first-child) > li > strong:first-child {
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+/* --- Tables: shaded rows, tabular numbers, polished frame --- */
+.markdown-body.research-detail table {
+  display: table;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  margin: 1.25em 0 1.85em;
+  font-size: 0.95em;
+}
+
+.markdown-body.research-detail th {
+  background: var(--color-gray-100);
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.65em 1em;
+}
+
+.markdown-body.research-detail td {
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.6em 1em;
+}
+
+.markdown-body.research-detail tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-body.research-detail tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--color-bg-card) 65%, transparent);
+}
+
+.markdown-body.research-detail td:not(:first-child),
+.markdown-body.research-detail th:not(:first-child) {
+  text-align: right;
+}
+
+/* --- Equations: subtle background, more vertical breathing --- */
+.markdown-body.research-detail .katex-display {
+  margin: 1.55em 0;
+  padding: 0.85em 1em;
+  background: color-mix(in srgb, var(--color-bg-card) 55%, transparent);
+  border-radius: var(--radius-base);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* --- Code / pseudo-code blocks --- */
+.markdown-body.research-detail pre {
+  padding: 1.2em 1.3em;
+  line-height: 1.6;
+  border-radius: var(--radius-base);
+  font-size: 0.9em;
+}
+
+/* --- Inline code --- */
+.markdown-body.research-detail :not(pre) > code {
+  font-size: 0.88em;
+  padding: 0.15em 0.4em;
+}
+
+/* --- Body figures: rounded with subtle shadow --- */
+.markdown-body.research-detail img {
+  display: block;
+  margin: 1.85em auto;
+  border-radius: var(--radius-base);
+  box-shadow: 0 2px 14px color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+/* Hero figure: the first figure-block in the body, centered, generous spacing */
+.markdown-body.research-detail > .figure-block:first-of-type {
+  margin-top: 0.5em;
+  margin-bottom: 2em;
+}
+
+.markdown-body.research-detail .figure-block.figure-hero img {
+  max-width: 100%;
+  margin: 0 auto 0.6em;
+}
+
+/* Row of side-by-side figures */
+.markdown-body.research-detail .figure-row {
+  display: flex;
+  gap: 1.2em;
+  align-items: flex-start;
+  margin: 1.85em 0;
+}
+
+.markdown-body.research-detail .figure-row > .figure-block {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .markdown-body.research-detail .figure-row {
+    flex-direction: column;
+  }
+}
+
+/* Caption-like legend block below a figure row */
+.markdown-body.research-detail .figure-legend {
+  margin: -0.5em auto 1.75em;
+  padding: 0.55em 1em;
+  font-size: 0.88em;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  text-align: center;
+  max-width: 92%;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.85em;
+}
+
+/* 2x2 figure grid */
+.markdown-body.research-detail .figure-grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2em;
+  margin: 1.85em 0;
+}
+
+.markdown-body.research-detail .figure-grid-2x2 > .figure-block {
+  margin: 0;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .markdown-body.research-detail .figure-grid-2x2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.markdown-body.research-detail .figure-block {
+  margin: 1.85em 0;
+}
+
+.markdown-body.research-detail .figure-block img {
+  margin: 0 auto 0.6em;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+}
+
+/* Dark theme: invert lightness while preserving hue so the cream-on-light
+   figure becomes ink-on-dark; accent colors (pink/red) stay recognisable. */
+:root.dark .markdown-body.research-detail .figure-block img {
+  filter: invert(0.92) hue-rotate(180deg);
+  border-color: color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.markdown-body.research-detail .figure-block figcaption {
+  font-size: 0.88em;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 0 auto;
+  max-width: 90%;
+}
+
+.markdown-body.research-detail .figure-block.figure-right {
+  float: right;
+  width: 42%;
+  margin: 0.4em 0 1em 1.5em;
+  shape-outside: margin-box;
+}
+
+@media (max-width: 720px) {
+  .markdown-body.research-detail .figure-block.figure-right {
+    float: none;
+    width: 100%;
+    margin: 1.5em 0;
+  }
+}
+
+/* Section headings should clear floats from earlier sections */
+.markdown-body.research-detail h2 {
+  clear: both;
+}
+
+/* --- Algorithm box --- */
+.markdown-body.research-detail .algorithm {
+  margin: 1.75em 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+  font-size: 0.92em;
+}
+
+.markdown-body.research-detail .algorithm > p:first-child {
+  margin: 0;
+  padding: 0.6em 1.1em;
+  background: var(--color-gray-100);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-heading);
+  letter-spacing: 0.01em;
+}
+
+.markdown-body.research-detail .algorithm > p:first-child strong:first-child {
+  color: var(--color-accent);
+  letter-spacing: 0.04em;
+}
+
+.markdown-body.research-detail .algorithm > ol {
+  margin: 0;
+  padding: 0.9em 1.25em 1em 3em;
+  font-family: var(--font-mono);
+  line-height: 1.85;
+  list-style: decimal;
+}
+
+.markdown-body.research-detail .algorithm > ol > li {
+  margin: 0;
+  padding: 0;
+  padding-left: 0.3em;
+}
+
+.markdown-body.research-detail .algorithm > ol > li::marker {
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-body.research-detail .algorithm-indent {
+  display: inline-block;
+  width: 1.4em;
+}
+
+.markdown-body.research-detail .algorithm-comment {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-family: var(--font-sans);
+  margin-left: 0.6em;
+}
+
+/* --- Workshop / aside callouts: original blockquote slot, now more visible --- */
+.markdown-body.research-detail blockquote {
+  margin: 1.5em 0;
+  padding: 0.85em 1.2em;
+  border-left: 3px solid color-mix(in srgb, var(--color-link) 65%, var(--color-border));
+  background: color-mix(in srgb, var(--color-link) 4%, var(--color-bg-card));
+  border-radius: 0 var(--radius-base) var(--radius-base) 0;
+  color: var(--color-text);
+}
+
+/* --- Citation block: monospaced, contained --- */
+.markdown-body.research-detail h2:has(+ pre) + pre {
+  font-size: 0.82em;
+}
+
+:root.dark .markdown-body.research-detail > p:first-of-type {
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-card));
+}
+
+:root.dark .markdown-body.research-detail ul:has(> li > strong:first-child) > li {
+  background: color-mix(in srgb, var(--color-bg-card) 80%, transparent);
+}

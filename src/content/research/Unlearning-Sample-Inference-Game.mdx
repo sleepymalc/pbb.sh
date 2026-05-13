@@ -22,30 +22,29 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Brief Summary
+## Problem
 
-Despite the fast-paced development of the *machine unlearning* community, the evaluation of the performance of machine unlearning algorithms remains a big open problem due to the lack of a unified framework and rigorous justification. In this work, we theoretically formalized the *unlearning sample inference game* for provable and reliable empirical evaluation of machine unlearning algorithms, tackling one of the most foundational problems in this field.
+Machine unlearning (MU) — the task of selectively removing the influence of specific training data from a deployed model — has matured rapidly, yet *evaluating* unlearning algorithms remains a long-standing open problem. The dominant evaluation paradigm relies on membership inference attacks (MIAs): measure how well an adversary can detect whether a data point was used during training, and treat that attack success rate as a proxy for removal quality. This approach is fundamentally brittle. Crucially, retraining from scratch is the gold-standard for data removal, yet it is not guaranteed to minimise MIA success compared to approximate methods — meaning the theoretically optimal algorithm can *appear worse* under the very metric meant to assess it. Results also shift with the choice of attack, dataset composition, and evaluation protocol, with no unified theoretical framework in sight.
 
-### Unlearning Sample Inference Game
+## Key Idea
 
-The idea is simple: we split the data into three parts called *retain* set, *forget* set, and *test* set, and request the defender to learn on the retain set plus the forget set, and then unlearn the forget set at the end. On the other hand, we throw a bunch of data to the adversary from either only the forget set or the test set, and let the adversary guess which set we're using. Intuitively, if the forget set's information is left in the unlearned model, then the adversary can just feed the data we throw to it to the unlearned model, and infer something non-trivial.
+We introduce the **unlearning sample inference game**, a cryptographic-style two-player framework. The data is split into three disjoint parts: a *retain* set $\mathcal{R}$, a *forget* set $\mathcal{F}$, and a *test* set $\mathcal{T}$. The defender (challenger) trains a model on $\mathcal{R} \cup \mathcal{F}$ and then unlearns $\mathcal{F}$. The adversary is given samples drawn from *either* $\mathcal{F}$ or $\mathcal{T}$ — but not told which — and must guess the source. Intuitively, if the unlearned model has genuinely forgotten $\mathcal{F}$, the adversary gains no advantage from querying it; the forget-set samples look no different from the never-seen test-set samples.
 
 <p align="center">
-	<img src="./Figures/flow.png"/>
+    <img src="./Figures/flow.png"/>
 </p>
 
-It turns out that using the idea of **advantage**, we can formalize a natural metric called *Unlearning Quality* $\mathcal{Q}$ that measures the quality of the unlearning algorithm. We then prove that
+## Approach
 
-1. For the gold-standard unlearning method, i.e., the retraining method, we always have $\mathcal{Q} = 1$.
-2. For some *$(\epsilon , \delta )$-certified removal method*,[^1] we always have $\mathcal{Q} \geq \frac{4 - 4 \delta }{e^{\epsilon } + 1} - 1$.
+Using the notion of **advantage** — the difference in the adversary's success rate across the two scenarios — we define **Unlearning Quality** $\mathcal{Q} = 1 - \sup_{\mathcal{A}} \operatorname{Adv}(\mathcal{A}, \text{Ul})$, where the supremum ranges over all adversaries. Higher $\mathcal{Q}$ means better unlearning. The framework comes with two provable guarantees: (1) for the gold-standard retraining method, $\mathcal{Q} = 1$ always holds; (2) for any $(\epsilon, \delta)$-certified removal method,[^1] $\mathcal{Q} \geq \frac{4 - 4\delta}{e^{\epsilon} + 1} - 1$. To our knowledge, this is the first unlearning evaluation metric with formal guarantees of either kind.
+
+Computing $\mathcal{Q}$ exactly requires enumerating an exponential number of dataset splits, which is infeasible in practice. We therefore propose an efficient approximation — the **SWAP test** — which selects one random split, computes the advantage, then swaps $\mathcal{F}$ and $\mathcal{T}$ and averages the two results. This two-split procedure provably preserves the zero-grounding property ($\mathcal{Q} = 1$ for retraining) while reducing computation to a practical level.
 
 [^1]: [https://arxiv.org/abs/1911.03030](https://arxiv.org/abs/1911.03030)
 
-To our knowledge, this is the first unlearning performance metric that achieves such formal guarantees.
+## Result
 
-### Practical Evaluation
-
-In practice, $\mathcal{Q}$ is impossible to evaluate due to the complexity. Hence, we further propose an efficient approximation algorithm to compute $\mathcal{Q}$, and demonstrate the efficacy on real-life datasets.
+Empirically, $\mathcal{Q}$ produces consistent, stable rankings of unlearning algorithms across varying dataset sizes and unlearning-portion parameters $\alpha$, where existing MIA-based metrics fluctuate. When evaluated against differentially private baselines with known $(\epsilon, \delta)$ budgets, $\mathcal{Q}$ exhibits the theoretically predicted negative correlation with $\epsilon$, directly validating the certified-removal lower bound. Standard MIA AUC and prior composite scores fail both tests. This makes $\mathcal{Q}$ the first empirically demonstrated unlearning metric that is simultaneously grounded in theory and practical to compute.
 
 ## Citation
 

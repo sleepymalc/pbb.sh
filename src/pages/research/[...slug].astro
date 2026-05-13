@@ -205,22 +205,8 @@ function linkIcon(name: string): string | null {
     </div>
   )}
 
-  <!-- Article content with floated cover image -->
-  <article class="markdown-body mt-6">
-    {entry.data.cover && (
-      <img
-        src={entry.data.cover}
-        alt={entry.data.title}
-        class="research-detail-cover"
-        loading="lazy"
-      />
-    )}
-    {entry.data.excerpt && (
-      <blockquote class="research-abstract">
-        <Fragment set:html={marked.parseInline(entry.data.excerpt)} />
-      </blockquote>
-    )}
-
+  <!-- Article content -->
+  <article class="markdown-body research-detail mt-6">
     <!-- Links -->
     {entry.data.links && entry.data.links.length > 0 && (
       <div class="research-links">
@@ -242,36 +228,11 @@ function linkIcon(name: string): string | null {
   </article>
 
   <style>
-    .research-detail-cover {
-      float: right;
-      max-width: 240px;
-      margin: 0 0 1rem 1.5rem;
-      border-radius: var(--radius-base);
-      object-fit: contain;
-    }
-
-    .research-abstract {
-      font-style: italic;
-      color: var(--color-text-secondary);
-      border-left: 4px solid var(--color-border);
-      padding: 0.5em 1em;
-      margin: 0 0 0.75em;
-    }
-
     .research-links {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin-bottom: 1.5em;
-    }
-
-    @media (max-width: 640px) {
-      .research-detail-cover {
-        float: none;
-        display: block;
-        max-width: 100%;
-        margin: 0 0 1rem 0;
-      }
     }
   </style>
 </BaseLayout>

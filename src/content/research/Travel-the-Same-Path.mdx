@@ -18,10 +18,18 @@ authors:
   url: "https://pbb.sh/"
 ---
 
-## Overview
+## Problem
 
-Inspired by [*Exact Combinatorial Optimization with Graph Convolutional Neural Networks*](https://arxiv.org/abs/1906.01629), this project explores using **imitation learning** to speed up exact solvers for the [traveling salesman problem (TSP)](https://en.wikipedia.org/wiki/Travelling_salesman_problem). The key insight is that *accelerating only the decision-making steps of an exact algorithm can preserve exactness* while significantly reducing solve time.
+The Traveling Salesman Problem (**TSP**) asks for the shortest tour visiting every city exactly once and returning to the start. It is NP-hard, so the number of candidate solutions grows super-polynomially with the number of cities. Exact solvers — those that guarantee a provably optimal tour — pay for this guarantee with heavy computation: state-of-the-art exact solvers like SCIP are practical only on small instances, and solve time can explode even for modest problem sizes.
+
+## Key Idea
+
+Rather than abandoning exactness for a learned heuristic, we leave the exact algorithm's *structure* intact and accelerate only its *decision-making steps* — specifically, which variable to branch on at each node of the search tree. Because the final solution is still derived by the exact algorithm, optimality is never sacrificed. This idea follows directly from [*Exact Combinatorial Optimization with Graph Convolutional Neural Networks*](https://arxiv.org/abs/1906.01629), which showed the same principle for general mixed-integer programs.
 
 ## Approach
 
-We formulate TSP as an integer linear program and solve it via **branch and bound**. Since branching involves a sequence of variable-selection decisions, we model it as a Markov Decision Process and train a Graph Convolutional Neural Network to imitate the branching strategy of SCIP. The model learns to predict which variable to branch on at each step, and the methodology generalizes to any exact algorithm that involves sequential decision-making (e.g., cutting planes).
+TSP is formulated as an Integer Linear Program (**ILP**) and solved via *branch and bound*, a search procedure that recursively partitions the solution space and prunes subproblems that cannot improve the current best tour. At each branching step the solver must choose which ILP variable to fix next — a discrete, sequential control problem that maps naturally onto a Markov Decision Process (**MDP**). We train a Graph Convolutional Neural Network (**GCN**) via **imitation learning** to predict the same branching variable that SCIP (a state-of-the-art exact solver) would select, using cross-entropy loss against SCIP's decisions as supervision. At inference time the GCN replaces SCIP's expensive default branching rule, reducing the number of nodes explored without altering the branch-and-bound skeleton.
+
+## Result
+
+The trained policy consistently solves TSP instances faster than SCIP while producing identical optimal tours. Models trained on TSP10 and TSP15 achieve average wall-time reductions of roughly 4–12% against SCIP across same-size test sets (TSP10–TSP20), with the gap widening on harder instances. More notably, the model *generalizes*: a GCN trained exclusively on small instances (10–15 cities) speeds up SCIP on strictly larger, unseen problem sizes — demonstrating that the learned branching policy captures structure that transfers across scales. The same methodology extends naturally to other exact algorithms driven by sequential decisions, such as cutting-plane selection.

@@ -23,9 +23,23 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Brief Summary
+## Problem
 
-Data attribution aims to quantify the contribution of individual training data points to the outputs of an AI model, which has been used to measure the value of training data and compensate data providers. Given the impact on financial decisions and compensation mechanisms, a critical question arises concerning the adversarial robustness of data attribution methods. However, there has been little to no systematic research addressing this issue. In this work, we aim to bridge this gap by detailing a threat model with clear assumptions about the adversary's goal and capabilities, and by proposing principled adversarial attack methods on data attribution. We present two such methods, *Shadow Attack8 and *Outlier Attack*, both of which generate manipulated datasets to adversarially inflate the compensation. The Shadow Attack leverages knowledge about the data distribution in the AI applications, and derives adversarial perturbations through *shadow training*, a technique commonly used in membership inference attacks. In contrast, the Outlier Attack does not assume any knowledge about the data distribution and relies solely on black-box queries to the target model's predictions. It exploits an inductive bias present in many data attribution methods --- outlier data points are more likely to be influential --- and employs adversarial examples to generate manipulated datasets. Empirically, in image classification and text generation tasks, the Shadow Attack can inflate the data-attribution-based compensation by at least 200%, while the Outlier Attack achieves compensation inflation ranging from 185% to as much as 643%.
+Data attribution methods quantify how much each training sample contributes to a model's predictions, and are increasingly deployed in real-world systems to compensate data providers financially. Yet despite this direct economic role, the adversarial robustness of these methods has received almost no systematic study. A malicious data provider could potentially manipulate their submitted data to inflate their measured contribution — and therefore their payout — without anyone noticing. We formalize this threat as an *adversarial attack on data attribution*: given a periodic contribution setting where a model is retrained each round on the accumulated dataset, the adversary's goal is to maximize their *compensation share*, defined as the fraction of top-$k$ most-influential data points that belong to them.
+
+## Key Idea
+
+We propose two principled attacks that construct a manipulated dataset to inflate attributed compensation. The **Shadow Attack** is a gray-box method that exploits knowledge of the data distribution and training algorithm: it borrows *shadow training* from membership inference, using surrogate models trained on samples from the known distribution to estimate how a candidate manipulated point would be attributed — without ever accessing the real target model. The **Outlier Attack** is fully black-box, requiring only prediction queries: it exploits the inductive bias that *outlier points tend to receive disproportionately high attribution scores*, constructing adversarial examples that are statistically anomalous to the model while remaining semantically plausible.
+
+## Approach
+
+The **Shadow Attack** proceeds in two phases. First, the adversary trains multiple shadow models on datasets drawn from the known distribution combined with candidate manipulated points. Second, it applies gradient ascent on a surrogate attribution objective — computed over the shadow models — to perturb the candidate points so that their influence scores increase. This avoids the cost of repeatedly retraining from scratch by using the shadow models as proxies for the true target.
+
+The **Outlier Attack** generates adversarial examples using black-box perturbation techniques — ZOO and SimBA for images, TextFooler for text — that maximize prediction loss while preserving label correctness and semantic realism. The attack targets only input features, not labels, so the poisoned samples pass naive quality filters. The theoretical grounding (Theorem 5.1 in the paper) shows that adversarial perturbations substantially amplify gradient magnitudes, which directly elevates influence-function-based attribution scores on both the original and any retrained model.
+
+## Result
+
+Across image classification (MNIST, Digits, CIFAR-10) and text generation (Shakespeare corpus with NanoGPT), both attacks reliably inflate attribution-based compensation by large margins. The **Shadow Attack** achieves 206–456% inflation, with the highest effect on logistic regression (456%) and 217% on ResNet-18. The **Outlier Attack** is even more potent: 185–644% inflation, peaking at 644% on MNIST with ZOO and 596% on CIFAR-10 with SimBA; text generation sees 263% inflation. Random perturbation baselines produce negligible effects, confirming that the gains stem from the attacks' structure rather than noise.
 
 > This paper also appears in the ATTRIB 2024 workshop @NeurIPS.
 

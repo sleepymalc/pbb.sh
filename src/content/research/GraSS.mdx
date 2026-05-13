@@ -32,9 +32,23 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Brief Summary
+## Problem
 
-Gradient-based data attribution methods, such as influence functions, are critical for understanding the impact of individual training samples without requiring repeated model retraining. However, their scalability is often limited by the high computational and memory costs associated with per-sample gradient computation. In this work, we propose **GraSS**, a novel gradient compression algorithm and its variants **FactGraSS** for linear layers specifically, that explicitly leverage the inherent sparsity of per-sample gradients to achieve *sub-linear* space and time complexity. Extensive experiments demonstrate the effectiveness of our approach, achieving substantial speedups while preserving data influence fidelity. In particular, **FactGraSS** achieves up to 165% faster throughput on billion-scale models compared to the previous state-of-the-art baselines.
+Gradient-based data attribution methods — influence functions, TracIn, and their relatives — estimate the impact of individual training samples on model behavior without retraining the model from scratch. Their core operation is computing a per-sample gradient $\nabla_\theta \ell(z_i; \hat\theta)$ for every training point $z_i$, then comparing those gradients to a query. For a model with $p$ parameters and $n$ training samples this requires $O(np)$ memory and compute, which is already steep. Recent work reduced the *space* cost to $O(nk)$ via random projection ($k \ll p$), but dense projection still incurs $O(nkp)$ time — the wall-clock bottleneck that blocks attribution from scaling to billion-parameter models.
+
+## Key Idea
+
+Per-sample gradients are *inherently sparse*. Architectures that use ReLU activations set all negative pre-activations to zero; by the chain rule, that sparsity propagates directly into each sample's gradient, leaving many entries exactly zero. This structure is destroyed the moment gradients are summed across a mini-batch, so it is invisible to standard training pipelines — but it is always present at the per-sample level and is available for attribution methods to exploit.
+
+## Approach
+
+**GraSS** (Gradient Sparsification and Sparse projection) compresses per-sample gradients in two stages. First, a *sparsification mask* — either a random mask or a learned selective mask — prunes the gradient from $p$ to $k'$ nonzeros at $O(k')$ cost. Second, a Sparse Johnson–Lindenstrauss Transform (SJLT) projects the already-sparse vector down to the final $k$-dimensional summary in $O(s \cdot \text{nnz}(g))$ time, where $s = o(k)$ is the SJLT sparsity parameter. The result is an end-to-end pipeline whose per-sample cost is $O(k')$ with $k < k' \ll p$, i.e., *sub-linear* in model size for both time and space. A custom CUDA kernel for SJLT makes the sparse projection faster than a dense matrix multiply at the problem sizes that arise in practice.
+
+**FactGraSS** is a specialized variant tailored to linear (fully-connected) layers, which dominate the parameter count and gradient cost of transformers. Instead of materializing the full $d_\text{out} \times d_\text{in}$ gradient matrix, FactGraSS exploits the Kronecker-product structure of linear-layer gradients: it sparsifies the input and output activations *separately*, then reconstructs a sparsified gradient implicitly via the Kronecker product before applying SJLT. The total per-layer cost is $O(k_l')$, where $k_l'$ is set well below $\sqrt{k_l \cdot p_l}$ — a condition that is easily satisfied for realistic layer sizes and compression ratios.
+
+## Result
+
+Across a range of models and datasets, **GraSS** preserves data influence fidelity (measured by Linear Datamodeling Score) while substantially reducing compression time relative to dense-projection baselines. **FactGraSS** pushes the gains further on transformer architectures: on Llama-3.1-8B it reaches a compression throughput of 72,218 tokens/sec versus 27,292 tokens/sec for the previous state-of-the-art baseline LoGra — a *165% faster* throughput — while also improving end-to-end caching speed. Qualitative evaluation confirms that FactGraSS correctly identifies contextually relevant influential training examples on real language-model outputs.
 
 ## Citation
 

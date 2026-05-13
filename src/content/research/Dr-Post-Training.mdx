@@ -10,6 +10,8 @@ cover: "/research/Dr-Post-Training/preview.png"
 links:
 - name: "arXiv"
   url: "https://arxiv.org/abs/2605.07063"
+- name: "GitHub"
+  url: "https://github.com/TRAIS-Lab/Dr.Post-Training"
 authors:
 - name: "**Pingbang Hu**"
   url: "https://pbb.sh/"
@@ -21,9 +23,273 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Brief Summary
+<figure class="figure-block figure-hero">
+  <img src="/research/Dr-Post-Training/Figures/overview.png" alt="Two views of the same update: data selection picks a subset of training samples; data regularization projects the target update onto a feasible set induced by the training batch." />
+  <figcaption><strong>Two views of the same update.</strong> <em>Left:</em> the conventional <em>data-selection</em> lens — pick the training subset $S$ closest to the target. <em>Right:</em> the <em>data-regularization</em> lens we propose — let the training batch $B_t$ induce a feasible set $U_t$ and project the target estimate $\hat g_\star$ onto it.</figcaption>
+</figure>
 
-LLM post-training often suffers from overfitting to a scarce target objective, motivating the common practice of mixing in general data. Existing approaches treat this as a *data selection* problem—choosing which general samples to include—but the underlying mechanism remains unclear. In this work, we propose a new perspective: general data acts as a **data-induced regularizer** that constrains target model updates to a feasible set defined by the general data itself. Concretely, we project target updates onto this feasible set rather than selecting samples from it. Under this lens, existing data selection methods correspond to specific points on a bias-variance spectrum, and we introduce a family of methods that expose the full tradeoff. Across SFT, RLHF, and RLVR, our approach consistently improves over data selection baselines with minimal computational overhead.
+**TL;DR.** **Dr. Post-Training** recasts general training data as a *data-induced regularizer* and the model update as a Euclidean projection of the target gradient onto a training-batch-induced feasible set—turning data selection into one knob on a principled bias–variance spectrum.
+
+Large language model (LLM) post-training operates on *scarce, high-fidelity target data* alongside abundant but imperfectly aligned general data. Existing work asks *which* general samples to keep; we ask *what constraint* they should impose on the update. The answer is a single projection step that subsumes standard training and prior data-selection methods as special cases, and exposes a richer design space — **Group-Wise Subset Update** — that consistently beats state-of-the-art baselines across SFT, RLHF, and RLVR.
+
+## Why Dr. Post-Training
+
+- **One framework, three paradigms.** A single projection-based update for SFT, RLHF, and RLVR.
+- **Data selection as a special case.** Top-$k$, thresholding, and greedy curation sit on one bias–variance spectrum.
+- **Group-Wise Subset Update.** Strictly enlarges the feasible set over Global Subset — provably less bias.
+- **It moves the numbers.** SFT F1 on *less-mix/tydiqa* jumps from **10.1% → 27.4%**; wins every RLHF and RLVR setting tested.
+- **One pass, LLM scale.** Single forward–backward, **3–34%** wall-clock overhead (just 3% on LLaMA-3.2-3B).
+- **Plays well with the stack.** LoRA, MeSO, activation checkpointing — no two-pass backward, no retained graph.
+
+## Method
+
+### Problem setup
+
+At step $t$ the optimizer draws two batches: a training batch $B_t = \{z_i\}_{i=1}^n \sim \mathbb{P}_{\mathrm{tr}}$ and a (small) target batch $B_t^\star = \{z_j^\star\}_{j=1}^m \sim \mathbb{P}_\star$. Write the per-sample gradients $g_i, g_j^\star$ and their batch means $\hat g_{\mathrm{tr}}, \hat g_\star$. Standard post-training updates $\theta_{t+1} = \theta_t - \eta_t u_t$, and our central modeling choice is to pick
+
+$$
+u_t \;=\; \arg\min_{u \in U_t}\, \mathcal{L}_\star(\theta_t - \eta_t u),
+$$
+
+where the *feasible set* $U_t$ is built from the training batch $B_t$ only, and the target batch $B_t^\star$ enters solely through the target loss $\mathcal{L}_\star$.
+
+### From constrained optimization to a projection
+
+Assuming $\mathcal{L}_\star$ is $\beta$-smooth (Assumption 1), majorization–minimization on the quadratic upper bound and plugging in the target-batch estimate $\hat g_\star$ for the (unknown) population gradient $g_\star$ reduces Eq. (1) to a Euclidean projection:
+
+$$
+u_t \;=\; \arg\min_{u \in U_t}\, \lVert u - \hat g_\star \rVert^2 \;=\; \operatorname{Proj}_{U_t}(\hat g_\star).
+$$
+
+The geometry of $U_t$ is now the only design choice — and it is the *data regularizer*.
+
+### A spectrum of feasible sets
+
+The framework unifies four families that span a regularization spectrum:
+
+- ***Target-Only*** $U_t^\star = \mathbb{R}^d$. No constraint; $u_t = \hat g_\star$ recovers gradient descent on the target batch — unbiased but high-variance when $m$ is small.
+- ***Full-Training*** $U_t^{\mathrm{tr}} = \{\hat g_{\mathrm{tr}}\}$. Singleton; $u_t = \hat g_{\mathrm{tr}}$ recovers standard SFT/RLHF — zero variance but a distribution-mismatch bias floor $\lVert g_{\mathrm{tr}} - g_\star \rVert^2$.
+- ***Global Subset*** $U_t^{\mathrm{glob}}(k) = \{g_S : S \subseteq [n], \lvert S \rvert = k\}$. All $k$-sample averages of training gradients. Existing data-selection methods (Top-$k$, thresholding, GREATS-style greedy) are tractable approximations to the resulting subset optimization, since
+
+  $$
+  \min_{S} \lVert g_S - \hat g_\star \rVert^2 \;\equiv\; \min_S\, \lVert g_S \rVert^2 - \frac{2}{k}\sum_{i \in S} \langle g_i, \hat g_\star \rangle,
+  $$
+
+  which trades an *alignment* term $s_i := \langle g_i, \hat g_\star \rangle$ against a *redundancy* penalty.
+
+- ***Group-Wise Subset* (new).** Partition parameters into groups $\mathcal{G} = \{G_p\}_{p=1}^P$ and let each group pick its own subset:
+
+  $$
+  U_t^{\mathrm{grp}}(k; \mathcal{G}) = \prod_{p=1}^P \left\{ \frac{1}{k}\sum_{i \in S} g_i^{(p)} : \lvert S \rvert = k \right\}.
+  $$
+
+  Because the projection factorizes, each group solves an independent top-$k$ on its own score $s_i^{(p)} := \langle g_i^{(p)}, \hat g_\star^{(p)} \rangle$. The practically important case is **Layer-Wise Subset Update**, with one group per linear layer.
+
+The chain $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G}) \subseteq U_t^\star = \mathbb{R}^d$ orders these by expressiveness; the partition $\mathcal{G}$ and subset size $k$ are explicit design knobs.
+
+### Bias–variance characterization
+
+Every method in the spectrum admits a clean bias–variance decomposition $\mathrm{MSE}(u_t) = \mathcal{B}(U_t) + \mathcal{V}(u_t)$. The two extremes are exact (Proposition 3.3), the two subset variants admit tight bounds (Theorem 3.4) under bounded training gradients $\lVert g_i \rVert \leq C$ (Assumption 2) and sub-Gaussian target noise with parameter $\sigma/\sqrt m$ (Assumption 3). Let $\Sigma_{\mathrm{tr}} \coloneqq \mathrm{Cov}(g_i)$ and $\Sigma_\star \coloneqq \mathrm{Cov}(g_j^\star)$.
+
+| Method | Bias $\mathcal{B}(U_t)$ | Variance $\mathcal{V}(u_t)$ |
+| --- | --- | --- |
+| **Target-Only** $U_t^\star = \mathbb{R}^d$ | $0$ | $\dfrac{\operatorname{tr}(\Sigma_\star)}{m}$ |
+| **Full-Training** $U_t^{\mathrm{tr}} = \{\hat g_{\mathrm{tr}}\}$ | $\lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \dfrac{\operatorname{tr}(\Sigma_{\mathrm{tr}})}{n}$ | $0$ |
+| **Global Subset** $U_t^{\mathrm{glob}}(k)$ | (in between, no closed form) | $\leq \dfrac{4C\sigma}{\sqrt m}\sqrt{2\log\!\big(2\tbinom{n}{k}\big)}$ |
+| **Group-Wise Subset** $U_t^{\mathrm{grp}}(k;\mathcal{G})$ | $\leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$ | $\leq \dfrac{4CP\sigma}{\sqrt m}\sqrt{2\log\!\big(2\tbinom{n}{k}\big)}$ |
+
+Three patterns fall out:
+
+- **The two extremes are mirror images.** Target-Only is unbiased but its variance $\operatorname{tr}(\Sigma_\star)/m$ blows up when the target batch is small. Full-Training has zero variance but carries an irreducible *distribution-mismatch bias* $\lVert g_{\mathrm{tr}} - g_\star \rVert^2$ that no amount of training data can erase.
+- **Subset methods occupy the middle of the spectrum.** Both Global Subset and Group-Wise Subset improve the bias over Full-Training (their feasible set is strictly larger than $\{\hat g_{\mathrm{tr}}\}$) at the cost of $O(\sigma/\sqrt m \cdot \sqrt{\log\binom{n}{k}})$ extra variance — a logarithmic, not linear, dependence on the combinatorial complexity of the subset.
+- **Refining the partition strictly reduces bias.** Because $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G})$, the group-wise bias is no larger; the variance bound only grows linearly in the number of groups $P$, so a layer-wise partition trades $P\times$ variance multiplier for a strictly smaller approximation error — and in practice the bias reduction dominates.
+
+## System: a one-pass, memory-tight implementation
+
+Two naive implementations make data-regularized updates impractical at LLM scale: a *two-pass* approach (run backward once for scoring, again for the assembled update — doubles runtime), and the *retain-graph* approach (`retain_graph=True` in PyTorch — keeps the whole autograd graph alive, blowing memory). We instead carefully manage the lifetime of a small number of intermediate tensors so the full data-regularized update fits in a *single* forward–backward pass with peak memory close to standard training.
+
+### Standard training: what gets kept where
+
+<figure class="figure-block">
+  <img src="/research/Dr-Post-Training/Figures/standard.png" alt="Standard training forward and backward pass with per-layer memory footprint." />
+  <figcaption><strong>Standard training.</strong> <em>Top row:</em> the per-layer computation graph for one Forward → Backward → Gradient step at layer $l$, and the start of Backward $l{-}1$. Solid arrows are explicit dependencies; dashed arrows cross the forward/backward boundary. <em>Bottom rows:</em> the lifetime (purple/orange bars) of the four key tensors — input activation $a^{(l)}$, pre-activation $e^{(l)}$, and the two backward signals $\partial \ell / \partial e^{(l)}$ and $\partial \ell / \partial a^{(l)}$. Each tensor is allocated and released as soon as its last consumer finishes, so the per-layer memory footprint stays roughly constant across the entire backward pass.</figcaption>
+</figure>
+
+Crucially, standard backprop *never materializes* the per-sample weight gradient $g_i^{(l)}$; it just folds it into the batch average. Our method needs $g_i^{(l)}$ twice — once for scoring, once for assembling the selected subset — which is exactly the dependency that breaks the standard schedule.
+
+### Customized tensor lifetime scheduling
+
+The key idea is a *swap*: at each layer, replace the forward-cached pre-activation $e^{(l)}$ with the backward-generated gradient $\partial \ell / \partial e^{(l)}$, which has the same shape and is no longer needed for upstream computation. The result is that, after the backward pass, every layer has the pair $(a^{(l)},\; \partial \ell / \partial e^{(l)})$ retained — the *minimal local information* from which both per-sample scores and per-sample gradients can be reconstructed on demand. We never form the full autograd graph, and we never run backward twice.
+
+To compute both training and target gradients in one pass, we further merge the training batch and the target batch into a single forward, with $\ell \coloneqq \sum_{i=1}^n \ell(\theta_t; z_i) + \sum_{j=1}^m \ell(\theta_t; z_j^\star)$. Because samples don't share activations, the merged backward yields per-sample backward signals for *both* sets simultaneously.
+
+When a group can be *finalized and released* depends on partition granularity, which gives a direct connection between the statistical and the systems design:
+
+<figure class="figure-block">
+  <img src="/research/Dr-Post-Training/Figures/compare.png" alt="Memory footprint comparison across Standard Training, Global Subset Update, and Layer-Wise Subset Update." />
+  <figcaption><strong>Memory footprint comparison.</strong> Each row plots the temporal lifetime of the four key tensors across one optimization step; the bottom legend marks the four operation types — <span style="color:#9bbcd6"><strong>Forward</strong></span>, <span style="color:#c9a0a0"><strong>Backward</strong></span>, <span style="color:#e5d680"><strong>Gradient</strong></span>, <span style="color:#dc2626"><strong>Scoring</strong></span>. All three schemes hit a similar peak per layer. Global Subset Update must keep $(a^{(l)}, \partial \ell / \partial e^{(l)})$ alive across <em>every</em> layer until the global subset $S_t$ is determined (long pink/orange bars); Layer-Wise Subset resolves each layer in place and releases its tensors on-the-fly, almost matching the standard-training schedule.</figcaption>
+</figure>
+
+### Efficient per-sample scoring
+
+The score $s_i^{(l)} = \langle \hat g_\star^{(l)},\, g_i^{(l)} \rangle$ can be evaluated in several ways with strikingly different cost profiles. Let $T$ be sequence length, $n$ training samples, $m$ target samples, $N = n+m$, and $\kappa \ll d/L$ the compressed gradient dimension.
+
+| Scoring method | FLOPs per layer | Memory per layer |
+| --- | --- | --- |
+| **Direct** | $2NT(d/L) + n(d/L)$ | $(n+1)(d/L)$ |
+| **GIP** (Ghost Inner Product) | $4nmT^2 \sqrt{d/L}$ | $2nmT^2$ |
+| **PIP** (Per-Token Inner Product, new) | $2NT(d/L) + nT\sqrt{d/L}$ | $d/L + nT\sqrt{d/L}$ |
+| **Compressed** (new) | $O(NT\kappa) + (2n+m)\kappa$ | $(n+1)\kappa$ |
+
+**Direct** materializes per-sample gradients and pays an $O(n \cdot d/L)$ memory tax.
+**GIP** ([Wang et al. 2024](https://openreview.net/forum?id=232VcN8tSx)) reorders the contraction to avoid forming $g_i^{(l)}$, but pays *quadratic* in sequence length $T$ — fatal for long-context training.
+**PIP** factors the score as $s_i^{(l)} = \sum_\tau (\partial \ell / \partial e_{i,\tau}^{(l)})^\top \hat G_\star^{(l)}\, a_{i,\tau}^{(l)}$ — a matrix-vector product per token — so the cost stays *linear* in $T$ without materializing the full per-sample gradient. PIP dominates Direct whenever $T \lesssim \sqrt{d/L}$, and dominates GIP whenever $T$ is large.
+**Compressed scoring** drops the $d/L$ dependence entirely by computing $\tilde g_i = \Pi^{(l)}(g_i^{(l)}) \in \mathbb{R}^\kappa$ via factorized projection ([GraSS](https://arxiv.org/abs/2505.18976)), then approximates $s_i^{(l)} \approx \langle \tilde g_\star^{(l)},\, \tilde g_i^{(l)} \rangle$. Strictly more efficient than the three exact methods in every regime; we use it as the default.
+
+### The full algorithm
+
+<div class="algorithm">
+
+**Algorithm.** Layer-Wise Subset Update — one optimization step.
+
+1. $(\ell,\; \{a^{(l)},\, e^{(l)}\}) \leftarrow \operatorname{Forward}(\theta_t,\, B_t \cup B_t^\star)$<span class="algorithm-comment">▹ merged batch, cache forward tensors</span>
+2. $u_t \leftarrow 0$
+3. **for** $\ell = L, \dots, 1$ **do**
+4. <span class="algorithm-indent"></span>$\operatorname{Backward}(\ell,\, \theta_t^{(\ell)})$<span class="algorithm-comment">▹ per-sample $\{\partial \ell / \partial e_i^{(\ell)}\} \cup \{\partial \ell / \partial e_j^{\star(\ell)}\}$</span>
+5. <span class="algorithm-indent"></span>$g_i^{(\ell)} \leftarrow \sum_{\tau} (\partial \ell / \partial e_{i,\tau}^{(\ell)}) \otimes a_{i,\tau}^{(\ell)}$<span class="algorithm-comment">▹ or PIP / compressed</span>
+6. <span class="algorithm-indent"></span>$\hat g_\star^{(\ell)} \leftarrow \dfrac{1}{m}\sum_{j,\tau} (\partial \ell / \partial e_{j,\tau}^{\star(\ell)}) \otimes a_{j,\tau}^{\star(\ell)}$
+7. <span class="algorithm-indent"></span>$s_i^{(\ell)} \leftarrow \langle \hat g_\star^{(\ell)},\; g_i^{(\ell)} \rangle$
+8. <span class="algorithm-indent"></span>$S_{t,\ell} \leftarrow \operatorname{Top\text{-}k}(\{s_i^{(\ell)}\}_{i=1}^n,\, k)$
+9. <span class="algorithm-indent"></span>$u_t^{(\ell)} \leftarrow \dfrac{1}{k}\sum_{i \in S_{t,\ell}} g_i^{(\ell)}$
+10. <span class="algorithm-indent"></span>$\operatorname{Release}\!\left(a_i^{(\ell)},\; \partial \ell / \partial e_i^{(\ell)},\; a_j^{\star(\ell)},\; \partial \ell / \partial e_j^{\star(\ell)}\right)$
+11. **end for**
+12. $\theta_{t+1} \leftarrow \theta_t - \eta_t u_t$
+
+</div>
+
+The schedule composes cleanly with **LoRA** (the outer-product factorization carries over to adapters), **MeSO** (the same compressed gradients drive both scoring and optimizer state), and **activation checkpointing** whenever the partition aligns with the checkpoint segments — Layer-Wise Subset satisfies this trivially.
+
+## Results
+
+We evaluate on Llama-3.2-1B (SFT), GPT-Neo-2.7B with LoRA (RLHF), and Qwen3-1.7B (RLVR), comparing against standard training (**Full-Training**), prior state-of-the-art curation ([**GREATS**](https://openreview.net/forum?id=232VcN8tSx) for SFT, [**IIF**](https://openreview.net/forum?id=sYK4yPDuT1) for RL; both correspond to our **Global Subset** in this framework), and our **Layer-Wise Subset Update**. All numbers are averaged over 5 seeds.
+
+### SFT: Layer-Wise Subset wins on every QA setting
+
+With a held-out target set of just 16 samples (per the GREATS protocol; $n = 8$, $m = 1$, $k = n/2$), Layer-Wise Subset Update consistently and substantially beats Full-Training and Global Subset.
+
+| Method | less-mix / tydiqa | triviaqa / nq_open | less-mix / squad |
+| --- | --- | --- | --- |
+| Full-Training | 10.1 $\pm$ 0.2 | 12.6 $\pm$ 0.1 | 7.6 $\pm$ 0.1 |
+| Global Subset | 13.4 $\pm$ 1.0 | 13.7 $\pm$ 0.2 | 8.3 $\pm$ 0.1 |
+| **Layer-Wise Subset** | **27.4 $\pm$ 1.3** | **14.6 $\pm$ 0.4** | **9.1 $\pm$ 0.3** |
+
+*Downstream F1 (%) on three QA settings with Llama-3.2-1B + LoRA. Gaps are largest where the training pool is broadest (less-mix/tydiqa: +17.3 F1 over Full-Training), confirming that data regularization matters most when $\mathbb{P}_{\mathrm{tr}}$ is misaligned with $\mathbb{P}_\star$.* On alpaca/samsum, Layer-Wise Subset also dominates Full-Training and Global Subset under full-parameter, LoRA, and MeSO fine-tuning.
+
+The pattern is consistent across **three fine-tuning regimes** on alpaca/samsum — full-parameter, LoRA, and MeSO — and across **three QA settings** under LoRA. Across all six plots the y-axis is **evaluation perplexity** (lower is better) and the x-axis is training step.
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/alpaca_samsum_Full.png" alt="Evaluation perplexity over training steps on alpaca/samsum under full-parameter fine-tuning." />
+    <figcaption><strong>alpaca/samsum — full parameter.</strong></figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/alpaca_samsum_LoRA.png" alt="Evaluation perplexity over training steps on alpaca/samsum under LoRA fine-tuning." />
+    <figcaption><strong>alpaca/samsum — LoRA.</strong></figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/alpaca_samsum_MeSO.png" alt="Evaluation perplexity over training steps on alpaca/samsum under MeSO fine-tuning." />
+    <figcaption><strong>alpaca/samsum — MeSO.</strong></figcaption>
+  </figure>
+</div>
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/less_tydiqa.png" alt="Evaluation perplexity over training steps on less-mix/tydiqa." />
+    <figcaption><strong>less-mix / tydiqa (LoRA).</strong></figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/triviaqa_nq.png" alt="Evaluation perplexity over training steps on triviaqa/nq_open." />
+    <figcaption><strong>triviaqa / nq_open (LoRA).</strong></figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/less_squad.png" alt="Evaluation perplexity over training steps on less-mix/squad." />
+    <figcaption><strong>less-mix / squad (LoRA).</strong></figcaption>
+  </figure>
+</div>
+
+<p class="figure-legend"><span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset Update ([GREATS](https://openreview.net/forum?id=232VcN8tSx)) &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> Full-Training Update. Shaded bands are ±1 SE across 5 seeds. The y-axis label "Eval Perplexity" is rendered only on the leftmost panel of each row by the paper's matplotlib layout but applies to every plot in the row.</p>
+
+A case study explains why: per-layer score magnitudes vary by **32×** within a single transformer block (down-proj dominates Q/K/V/O and gate/up). Global Subset collapses to whatever down-proj wants — its ranking has Spearman $\rho \approx 0.88$ with down-proj but $\rho \lesssim 0.2$ with Q/K — so 32 of 112 linear layers effectively receive uncurated data. Layer-Wise Subset Update fixes this by design.
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/case_study_magnitude.png" alt="Mean absolute per-sample score magnitude across transformer blocks for different layer types (alpaca/samsum), shown on a log scale." />
+    <figcaption><strong>Magnitudes vary by 32×.</strong> Mean absolute score (log scale) per transformer block across linear-layer types. The down-projection dwarfs Q/K/V/O and gate/up.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/case_study_correlation.png" alt="Spearman correlation between each layer's per-sample ranking and the global subset's ranking on alpaca/samsum." />
+    <figcaption><strong>Global ranking is dominated by one layer.</strong> Spearman $\rho$ between each layer's local ranking and the Global Subset's global ranking. Down-proj matches with $\rho \approx 0.88$; Q/K stay near zero.</figcaption>
+  </figure>
+</div>
+
+<p class="figure-legend">Attention layers (solid): <span style="color:#dc2626"><strong>━●</strong></span> Q &nbsp;·&nbsp; <span style="color:#ea580c"><strong>━■</strong></span> K &nbsp;·&nbsp; <span style="color:#eab308"><strong>━▲</strong></span> V &nbsp;·&nbsp; <span style="color:#9333ea"><strong>━▼</strong></span> O. &nbsp;&nbsp; MLP layers (dashed): <span style="color:#2563eb"><strong>╌◆</strong></span> Gate &nbsp;·&nbsp; <span style="color:#16a34a"><strong>╌+</strong></span> Up &nbsp;·&nbsp; <span style="color:#92400e"><strong>╌★</strong></span> Down. Bands are 25th–75th interquartile range across training steps.</p>
+
+### RLHF: best reward, lowest toxicity, across every ablation
+
+The RLHF setting is more delicate than SFT because the *target objective* itself has two design degrees of freedom that interact non-trivially with data regularization. We detoxify GPT-Neo-2.7B with TRL+PPO and ablate both:
+
+- **Target-signal source.** *Self-reference* — use the same batch as both training and target signal, with a soft preference inducted by the reward. *Held-out target* — reserve a separate target set drawn from the desired distribution.
+- **Target loss form.** *Avg-reward* — reward-weighted log-probability of the target batch. *Pre-clip-PPO* — the PPO surrogate before clipping (a more aggressive policy-gradient signal).
+
+This gives a 2×2 configuration grid. Against standard PPO, IIF, and Global Subset, **Layer-Wise Subset Update achieves the highest training reward and the lowest evaluation toxicity in every one of the four configurations**, with Global Subset second across the board.
+
+<div class="figure-grid-2x2">
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/RLHF/self-ref_avg-reward.png" alt="RLHF training reward and evaluation toxicity for the self-reference target with the avg-reward objective." />
+    <figcaption><strong>Self-reference, avg-reward.</strong> Fast early reward gains; Layer-Wise reaches the highest plateau.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/RLHF/self-ref_pre-clip-ppo.png" alt="RLHF training reward and evaluation toxicity for the self-reference target with the pre-clip PPO objective." />
+    <figcaption><strong>Self-reference, pre-clip PPO.</strong> Same early-convergence advantage, but the PPO surrogate caps the achievable reward.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/RLHF/held-out_avg-reward.png" alt="RLHF training reward and evaluation toxicity for the held-out target with the avg-reward objective." />
+    <figcaption><strong>Held-out, avg-reward.</strong> Slower early ramp, highest final reward and lowest final toxicity overall.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/RLHF/held-out_pre-clip-ppo.png" alt="RLHF training reward and evaluation toxicity for the held-out target with the pre-clip PPO objective." />
+    <figcaption><strong>Held-out, pre-clip PPO.</strong> Layer-Wise still dominates, but the PPO objective again limits the final reward.</figcaption>
+  </figure>
+</div>
+
+<p class="figure-legend">Each plot shows <em>training reward</em> (top) and <em>evaluation toxicity</em> (bottom) over PPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#ea580c"><strong>━</strong></span> Global Subset Update ([IIF](https://openreview.net/forum?id=sYK4yPDuT1)) &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> standard PPO &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> reference. Shaded bands are ±1 SE across 5 seeds.</p>
+
+Three patterns are worth calling out:
+
+- **Self-reference accelerates early convergence; held-out reaches a higher final reward.** Self-reference uses the same on-policy batch as both training and target, so the target signal is dense and cheap from step one. The held-out target imposes a stricter alignment constraint per step but better matches the deployment distribution, so the long-run reward is higher and toxicity is lower.
+- **The avg-reward objective dominates the pre-clip PPO surrogate** as the target loss. PPO's clipped surrogate was designed to stabilize *policy updates*, not to serve as a *target signal* for selecting training samples — using it in that role caps the reward achievable across all methods.
+- **Layer-Wise is the clear winner in every configuration.** The same per-layer story as in SFT applies: PPO gradients are concentrated in a small fraction of linear layers, so a global subset picked by aggregate scores misallocates compute. Per-layer selection lets every module see samples that actually align with its own gradient direction.
+
+### RLVR: sustained advantage on MATH
+
+<figure class="figure-block figure-right">
+  <img src="/research/Dr-Post-Training/Figures/RLVR/eval_accuracy.png" alt="RLVR evaluation accuracy on MATH over training steps, comparing standard GRPO, Global Subset Update, and Layer-Wise Subset Update." />
+  <figcaption><strong>RLVR on MATH</strong> — eval accuracy over GRPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset &nbsp;·&nbsp; <span style="color:#ea580c"><strong>━</strong></span> Global Subset &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard GRPO. Global Subset only helps early; Layer-Wise sustains its lead and reaches the highest final accuracy. Bands are ±1 SE across 5 seeds.</figcaption>
+</figure>
+
+Using Verl + GRPO on MATH with Qwen3-1.7B, and instantiating Dr. Post-Training as *in-run cross-validation* (one mini-batch as training, another as target, gradient-alignment scores for filtering), **Layer-Wise Subset Update achieves the best final accuracy**. Global Subset Update only accelerates *early* training before converging back to standard GRPO; Layer-Wise sustains its advantage throughout, ending at the highest evaluation accuracy on the held-out test set.
+
+### System efficiency: overhead vanishes with scale
+
+Per-step wall-clock overhead of Layer-Wise / Global Subset Update relative to Full-Training, at $n=8$, $T=512$, $m=1$, $k=4$ with compressed scoring on one A40:
+
+| Model | Full-Training (ms) | Layer-Wise Subset | Global Subset |
+| --- | --- | --- | --- |
+| SmolLM2-360M | 261 | 349 (**+34%**) | 309 (**+18%**) |
+| TinyLlama-1.1B | 549 | 602 (**+10%**) | 593 (**+8%**) |
+| Llama-3.2-3B | 1407 | 1449 (**+3%**) | 1446 (**+3%**) |
+
+*Overhead shrinks sharply with model size — once `w.grad` becomes compute-bound rather than IO/launch-bound, materializing only $k = n/2$ samples gives back $\sim 1.46\times$ on Llama-3.2-3B, almost cancelling the scoring cost.* The pipeline also remains compatible with activation checkpointing without changing the asymptotic memory footprint.
 
 ## Citation
 
