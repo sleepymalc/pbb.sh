@@ -34,12 +34,11 @@ Large language model (LLM) post-training operates on *scarce, high-fidelity targ
 
 ## Why Dr. Post-Training
 
-- **One framework, three paradigms.** A single projection-based update for SFT, RLHF, and RLVR.
-- **Data selection as a special case.** Top-$k$, thresholding, and greedy curation sit on one bias–variance spectrum.
+- **One unified framework.** A single projection-based update that subsumes standard training, target-only fine-tuning, and existing data-selection methods (top-$k$, thresholding, greedy curation) as special cases on one bias–variance spectrum — across SFT, RLHF, and RLVR.
 - **Group-Wise Subset Update.** Strictly enlarges the feasible set over Global Subset — provably less bias.
-- **It moves the numbers.** SFT F1 on *less-mix/tydiqa* jumps from **10.1% → 27.4%**; wins every RLHF and RLVR setting tested.
-- **One pass, LLM scale.** Single forward–backward, **3–34%** wall-clock overhead (just 3% on LLaMA-3.2-3B).
-- **Plays well with the stack.** LoRA, MeSO, activation checkpointing — no two-pass backward, no retained graph.
+- **It moves the numbers.** SFT F1 on *less-mix/tydiqa* jumps from **10.1% → 27.4%**, with consistent gains across the RLHF detoxification and RLVR-on-MATH settings we tested.
+- **Overhead shrinks with scale.** Single forward–backward; the **34% → 3%** wall-clock overhead from SmolLM2-360M to LLaMA-3.2-3B keeps closing — pointing to break-even, or even a speedup, at production scale.
+- **Plays well with the modern stack.** LoRA, MeSO, activation checkpointing, and gradient accumulation — no two-pass backward, no retained graph.
 
 ## Method
 
