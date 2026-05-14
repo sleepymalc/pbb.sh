@@ -25,17 +25,17 @@ authors:
   <figcaption><strong>From data to statistical manifold.</strong> A real-valued tensor is reinterpreted as a function on a designed poset $\Omega$; the embedding $\varphi$ normalizes it to a distribution $p_\theta \in \mathcal{S}$; the log-linear model gives dually-flat $(\theta, \eta)$ coordinates whose $\theta$-component is the data's *energy*. Everything downstream — base sub-manifold $\mathcal{B}$, $\ell$-body approximation, backward projection — is built on this substrate.</figcaption>
 </figure>
 
-**TL;DR.** **Pseudo-Nonlinear (PNL) augmentation** embeds data into a *dually-flat statistical manifold* $\mathcal{S}$, encodes it by KL-projection onto a designed $e$-flat sub-manifold $\mathcal{B}$, and decodes by a *backward projection* onto a local data sub-manifold $\mathcal{D}$ built from $k$ nearest neighbors — turning data augmentation into two closed-form information-geometric projections, with the order $\ell$ of mode interactions retained as the only knob.
+**TL;DR.** **Pseudo-Nonlinear (PNL) augmentation** embeds data into a *dually-flat statistical manifold* $\mathcal{S}$, encodes it by KL-projection onto a designed $e$-flat sub-manifold $\mathcal{B}$, and decodes by a *backward projection* onto a local data sub-manifold $\mathcal{D}$ built from $k$ nearest neighbors — turning data augmentation into two closed-form information-geometric projections, controlled by a single semantically meaningful design lever: the order $\ell$ of mode interactions retained.
 
 Learning-based augmentation is most valuable when data is scarce, yet that is exactly when a high-quality generative model is hardest to train; learning-free baselines (PCA, SVD) are interpretable but reconstruct poorly. PNL sidesteps both by *designing* the latent space rather than learning it: the geometry of $\mathcal{S}$ is fixed by the energy parameters of a log-linear model on posets, and the practitioner specifies which statistical interactions are preserved by choosing a sub-manifold $\mathcal{M}_\ell$. Both projections are convex and admit efficient solvers.
 
 ## Why PNL
 
 - **Learning-free.** The latent manifold $\mathcal{B}$ is constructed analytically from the poset structure and the choice of $\ell$ — no generative model is trained, no decoder is fit. Both projections reduce to convex programs in $O(\lvert B\rvert)$ gradient cost.
-- **Interpretable & controllable.** Choosing $\mathcal{B} = \mathcal{M}_\ell$ explicitly fixes the order of mode interactions retained: small $\ell$ preserves coarse shape, larger $\ell$ preserves fine color-texture coupling.
+- **Interpretable & controllable.** Choosing $\mathcal{B} = \mathcal{M}_\ell$ explicitly fixes the order of mode interactions retained: small $\ell$ keeps only coarse, low-order structure; larger $\ell$ preserves finer, higher-order coupling between modes.
 - **Pseudo-nonlinear by design.** Perturbations that are *linear* in the manifold's intrinsic $\theta$-coordinates become *curved* in the ambient data space — recovering nonlinear augmentations from a linear interpolation in $\mathcal{B}$.
 - **Stability where it matters.** On Connectionist Bench (208 samples), PNL cuts the test-accuracy standard deviation from **8.58% → 4.54%** and lifts mean accuracy **88.10% → 93.81%** — the regime where learning-based augmentation breaks down.
-- **Modality-agnostic.** A single framework covers images (MNIST, CIFAR-10), audio (Speech Commands), and tabular data (Connectionist Bench, Taiwanese Bankruptcy, Wine Quality).
+- **Modality-agnostic.** The framework is compatible with a wide range of modalities, including images, audio, tabular data, and beyond — anywhere a partial-order structure over features can be specified.
 
 ## Method
 
@@ -76,7 +76,7 @@ Uniqueness is guaranteed by Amari's projection theorem: flatness + KL convexity 
 
 ### $\ell$-body approximation as a design knob
 
-The choice of $\mathcal{B}$ is where modeling enters. For positive tensors, the *many-body approximation* gives a principled hierarchy. An *$\ell$-body parameter* is a $\theta(x)$ whose index $x \in \Omega$ has exactly $\ell$ non-one coordinates — it encodes the interaction among $\ell$ different modes. The $\ell$-body sub-manifold zeroes out higher-order interactions:
+The choice of $\mathcal{B}$ is where modeling enters. For positive tensors, the [*many-body approximation*](https://arxiv.org/abs/2209.15338) gives a principled hierarchy. An *$\ell$-body parameter* is a $\theta(x)$ whose index $x \in \Omega$ has exactly $\ell$ non-one coordinates — it encodes the interaction among $\ell$ different modes. The $\ell$-body sub-manifold zeroes out higher-order interactions:
 
 $$
 \mathcal{M}_\ell \;\coloneqq\; \bigl\{ \theta \in \mathbb{R}^{\dim(\mathcal{S})} \,\bigm|\, \theta_x = 0 \text{ for all non-}\ell\text{-body parameters } x \in \Omega \bigr\}.

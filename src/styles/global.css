@@ -356,6 +356,20 @@
   letter-spacing: 0.04em;
 }
 
+.markdown-body.research-detail .algorithm > p:not(:first-child) {
+  margin: 0;
+  padding: 0.45em 1.1em;
+  font-size: 0.9em;
+  background: color-mix(in srgb, var(--color-gray-100) 45%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.markdown-body.research-detail .algorithm > p:not(:first-child) strong:first-child {
+  color: var(--color-heading);
+  margin-right: 0.3em;
+}
+
 .markdown-body.research-detail .algorithm > ol {
   margin: 0;
   padding: 0.9em 1.25em 1em 3em;
@@ -395,6 +409,76 @@
   background: color-mix(in srgb, var(--color-link) 4%, var(--color-bg-card));
   border-radius: 0 var(--radius-base) var(--radius-base) 0;
   color: var(--color-text);
+}
+
+/* --- Math environments: Theorem, Proposition, Lemma, Corollary, Definition, Takeaway, Remark --- */
+.markdown-body.research-detail .theorem,
+.markdown-body.research-detail .proposition,
+.markdown-body.research-detail .lemma,
+.markdown-body.research-detail .corollary,
+.markdown-body.research-detail .definition,
+.markdown-body.research-detail .takeaway,
+.markdown-body.research-detail .remark {
+  --env-accent: var(--color-tag-blue);
+  --env-accent-bg: var(--color-tag-blue-bg);
+  margin: 1.75em 0;
+  padding: 0.9em 1.2em 0.6em;
+  background: var(--env-accent-bg);
+  border-left: 3px solid var(--env-accent);
+  border-radius: 0 var(--radius-base) var(--radius-base) 0;
+}
+
+.markdown-body.research-detail .proposition,
+.markdown-body.research-detail .lemma,
+.markdown-body.research-detail .corollary {
+  --env-accent: var(--color-tag-geekblue);
+  --env-accent-bg: var(--color-tag-geekblue-bg);
+}
+
+.markdown-body.research-detail .definition {
+  --env-accent: var(--color-tag-purple);
+  --env-accent-bg: var(--color-tag-purple-bg);
+}
+
+.markdown-body.research-detail .takeaway {
+  --env-accent: var(--color-tag-green);
+  --env-accent-bg: var(--color-tag-green-bg);
+}
+
+.markdown-body.research-detail .remark {
+  --env-accent: var(--color-tag-orange);
+  --env-accent-bg: var(--color-tag-orange-bg);
+}
+
+.markdown-body.research-detail .theorem > p:first-child,
+.markdown-body.research-detail .proposition > p:first-child,
+.markdown-body.research-detail .lemma > p:first-child,
+.markdown-body.research-detail .corollary > p:first-child,
+.markdown-body.research-detail .definition > p:first-child,
+.markdown-body.research-detail .takeaway > p:first-child,
+.markdown-body.research-detail .remark > p:first-child {
+  margin-top: 0;
+}
+
+.markdown-body.research-detail .theorem > p:first-child strong:first-child,
+.markdown-body.research-detail .proposition > p:first-child strong:first-child,
+.markdown-body.research-detail .lemma > p:first-child strong:first-child,
+.markdown-body.research-detail .corollary > p:first-child strong:first-child,
+.markdown-body.research-detail .definition > p:first-child strong:first-child,
+.markdown-body.research-detail .takeaway > p:first-child strong:first-child,
+.markdown-body.research-detail .remark > p:first-child strong:first-child {
+  color: var(--env-accent);
+  letter-spacing: 0.02em;
+}
+
+.markdown-body.research-detail .theorem > *:last-child,
+.markdown-body.research-detail .proposition > *:last-child,
+.markdown-body.research-detail .lemma > *:last-child,
+.markdown-body.research-detail .corollary > *:last-child,
+.markdown-body.research-detail .definition > *:last-child,
+.markdown-body.research-detail .takeaway > *:last-child,
+.markdown-body.research-detail .remark > *:last-child {
+  margin-bottom: 0;
 }
 
 /* --- Citation block: monospaced, contained --- */

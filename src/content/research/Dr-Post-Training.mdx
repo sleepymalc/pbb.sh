@@ -34,11 +34,11 @@ Large language model (LLM) post-training operates on *scarce, high-fidelity targ
 
 ## Why Dr. Post-Training
 
-- **One unified framework.** A single projection-based update that subsumes standard training, target-only fine-tuning, and existing data-selection methods (top-$k$, thresholding, greedy curation) as special cases on one bias–variance spectrum — across SFT, RLHF, and RLVR.
-- **Group-Wise Subset Update.** Strictly enlarges the feasible set over Global Subset — provably less bias.
-- **It moves the numbers.** SFT F1 on *less-mix/tydiqa* jumps from **10.1% → 27.4%**, with consistent gains across the RLHF detoxification and RLVR-on-MATH settings we tested.
-- **Overhead shrinks with scale.** Single forward–backward; the **34% → 3%** wall-clock overhead from SmolLM2-360M to LLaMA-3.2-3B keeps closing — pointing to break-even, or even a speedup, at production scale.
-- **Plays well with the modern stack.** LoRA, MeSO, activation checkpointing, and gradient accumulation — no two-pass backward, no retained graph.
+- **[One unified framework](#method).** A single projection-based update that subsumes standard training, target-only fine-tuning, and existing data-selection methods (top-$k$, thresholding, greedy curation) as special cases on one bias–variance spectrum — across SFT, RLHF, and RLVR.
+- **[Group-Wise Subset Update](#our-proposal-group-wise-subset-update).** Strictly enlarges the feasible set over Global Subset — provably less bias.
+- **[Plays well with the modern stack](#system-a-one-pass-memory-tight-implementation).** LoRA, [MeSO](https://arxiv.org/abs/2403.03507), activation checkpointing, and gradient accumulation — no two-pass backward, no retained graph.
+- **[It moves the numbers](#results).** SFT F1 on *less-mix/tydiqa* jumps from **10.1% → 27.4%**, with consistent gains across the RLHF detoxification and RLVR-on-MATH settings we tested.
+- **[Overhead shrinks with scale](#system-efficiency-overhead-vanishes-with-scale).** Single forward–backward; the **34% → 3%** wall-clock overhead from SmolLM2-360M to LLaMA-3.2-3B keeps closing — pointing to break-even, or even a speedup, at production scale.
 
 ## Method
 
@@ -54,7 +54,7 @@ where the *feasible set* $U_t$ is built from the training batch $B_t$ only, and 
 
 ### From constrained optimization to a projection
 
-Assuming $\mathcal{L}_\star$ is $\beta$-smooth (Assumption 1), majorization–minimization on the quadratic upper bound and plugging in the target-batch estimate $\hat g_\star$ for the (unknown) population gradient $g_\star$ reduces Eq. (1) to a Euclidean projection:
+Under a standard $\beta$-smoothness assumption on $\mathcal{L}_\star$, majorization–minimization on the quadratic upper bound and plugging in the target-batch estimate $\hat g_\star$ for the (unknown) population gradient $g_\star$ reduces this constrained optimization to a Euclidean projection:
 
 $$
 u_t \;=\; \arg\min_{u \in U_t}\, \lVert u - \hat g_\star \rVert^2 \;=\; \operatorname{Proj}_{U_t}(\hat g_\star).
@@ -62,9 +62,9 @@ $$
 
 The geometry of $U_t$ is now the only design choice — and it is the *data regularizer*.
 
-### A spectrum of feasible sets
+### Existing methods as special cases
 
-The framework unifies four families that span a regularization spectrum:
+Three familiar training paradigms drop out of the framework by choosing different feasible sets:
 
 - ***Target-Only*** $U_t^\star = \mathbb{R}^d$. No constraint; $u_t = \hat g_\star$ recovers gradient descent on the target batch — unbiased but high-variance when $m$ is small.
 - ***Full-Training*** $U_t^{\mathrm{tr}} = \{\hat g_{\mathrm{tr}}\}$. Singleton; $u_t = \hat g_{\mathrm{tr}}$ recovers standard SFT/RLHF — zero variance but a distribution-mismatch bias floor $\lVert g_{\mathrm{tr}} - g_\star \rVert^2$.
@@ -76,36 +76,67 @@ The framework unifies four families that span a regularization spectrum:
 
   which trades an *alignment* term $s_i := \langle g_i, \hat g_\star \rangle$ against a *redundancy* penalty.
 
-- ***Group-Wise Subset* (new).** Partition parameters into groups $\mathcal{G} = \{G_p\}_{p=1}^P$ and let each group pick its own subset:
+### Our proposal: Group-Wise Subset Update
 
-  $$
-  U_t^{\mathrm{grp}}(k; \mathcal{G}) = \prod_{p=1}^P \left\{ \frac{1}{k}\sum_{i \in S} g_i^{(p)} : \lvert S \rvert = k \right\}.
-  $$
+A single global subset $S$ shared across *all* parameters is overly restrictive: a sample useful for one layer may be useless for another. **Group-Wise Subset Update** relaxes this by partitioning parameters into groups $\mathcal{G} = \{G_p\}_{p=1}^P$ and letting each group pick its own subset:
 
-  Because the projection factorizes, each group solves an independent top-$k$ on its own score $s_i^{(p)} := \langle g_i^{(p)}, \hat g_\star^{(p)} \rangle$. The practically important case is **Layer-Wise Subset Update**, with one group per linear layer.
+$$
+U_t^{\mathrm{grp}}(k; \mathcal{G}) = \prod_{p=1}^P \left\{ \frac{1}{k}\sum_{i \in S} g_i^{(p)} : \lvert S \rvert = k \right\}.
+$$
 
-The chain $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G}) \subseteq U_t^\star = \mathbb{R}^d$ orders these by expressiveness; the partition $\mathcal{G}$ and subset size $k$ are explicit design knobs.
+Because the projection factorizes, each group solves an independent top-$k$ on its own score $s_i^{(p)} := \langle g_i^{(p)}, \hat g_\star^{(p)} \rangle$. The practically important case is **Layer-Wise Subset Update**, with one group per linear layer.
+
+The chain $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G}) \subseteq U_t^\star = \mathbb{R}^d$ orders all four families by expressiveness; the partition $\mathcal{G}$ and subset size $k$ are the explicit design knobs that move along the regularization spectrum.
 
 ### Bias–variance characterization
 
-Every method in the spectrum admits a clean bias–variance decomposition $\mathrm{MSE}(u_t) = \mathcal{B}(U_t) + \mathcal{V}(u_t)$. The two extremes are exact (Proposition 3.3), the two subset variants admit tight bounds (Theorem 3.4) under bounded training gradients $\lVert g_i \rVert \leq C$ (Assumption 2) and sub-Gaussian target noise with parameter $\sigma/\sqrt m$ (Assumption 3). Let $\Sigma_{\mathrm{tr}} \coloneqq \mathrm{Cov}(g_i)$ and $\Sigma_\star \coloneqq \mathrm{Cov}(g_j^\star)$.
+<figure class="figure-block">
+  <img src="/research/Dr-Post-Training/Figures/spectrum.png" alt="Data-regularization spectrum: Target-Only, Group-Wise Subset, Global Subset, and Full-Training arranged from weakest to strongest regularization, trading variance for bias." />
+  <figcaption><strong>Data-regularization spectrum.</strong> Four feasible sets, ordered by how much they constrain the update. Moving right (stronger data regularization) reduces variance at the cost of bias; moving left does the reverse. The two subset families occupy the middle, and the partition $\mathcal{G}$ and subset size $k$ slide along the axis.</figcaption>
+</figure>
 
-<div class="table-scroll">
+We measure the quality of an update $u$ at step $t$ by its **conditional mean-squared error** against the unknown population target gradient $g_\star = g_\star(\theta_t)$,
 
-| Method | Bias $\mathcal{B}(U_t)$ | Variance $\mathcal{V}(u_t)$ |
-| --- | --- | --- |
-| **Target-Only** $U_t^\star = \mathbb{R}^d$ | $0$ | $\dfrac{\operatorname{tr}(\Sigma_\star)}{m}$ |
-| **Full-Training** $U_t^{\mathrm{tr}} = \{\hat g_{\mathrm{tr}}\}$ | $\lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \dfrac{\operatorname{tr}(\Sigma_{\mathrm{tr}})}{n}$ | $0$ |
-| **Global Subset** $U_t^{\mathrm{glob}}(k)$ | (in between, no closed form) | $\leq \dfrac{4C\sigma}{\sqrt m}\sqrt{2\log\!\big(2\tbinom{n}{k}\big)}$ |
-| **Group-Wise Subset** $U_t^{\mathrm{grp}}(k;\mathcal{G})$ | $\leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$ | $\leq \dfrac{4CP\sigma}{\sqrt m}\sqrt{2\log\!\big(2\tbinom{n}{k}\big)}$ |
+$$
+\mathrm{MSE}(u) \;\coloneqq\; \mathbb{E}\bigl[\lVert u - g_\star \rVert^2 \,\bigm|\, \theta_t\bigr],
+$$
+
+where $g_\star$ is fixed given $\theta_t$ and the expectation is over the joint randomness in the training batch $B_t$ and the target batch $B_t^\star$. **Why bound MSE?** Because majorization–minimization turns it directly into per-step progress on the target loss:
+
+<div class="lemma">
+
+**Lemma** (Majorization). *Under a $\beta$-smooth target loss with $\eta_t \leq 1/\beta$,*
+
+$$
+\mathbb{E}\bigl[\mathcal{L}_\star(\theta_{t+1}) \,\bigm|\, \theta_t\bigr] \;\leq\; \mathcal{L}_\star(\theta_t) - \frac{\eta_t}{2}\lVert g_\star \rVert^2 + \frac{\eta_t}{2}\,\mathrm{MSE}(u_t).
+$$
 
 </div>
 
-Three patterns fall out:
+The *expected* per-step decrease on the target loss is therefore lower-bounded by $\tfrac{\eta_t}{2}\!\left(\lVert g_\star\rVert^2 - \mathrm{MSE}(u_t)\right)$ — a single scalar that turns each data regularizer into a guaranteed-progress rate, so the whole spectrum can be compared on one axis.
+
+The MSE splits cleanly into a *bias* $\mathcal{B}(U_t) \coloneqq \mathbb{E}[\inf_{u \in U_t}\lVert u - g_\star \rVert^2 \mid \theta_t]$ — a property of the data regularizer alone, averaged over the training-batch randomness — and a residual *variance* $\mathcal{V}(u_t) \coloneqq \mathrm{MSE}(u_t) - \mathcal{B}(U_t)$, the extra error from picking the update inside $U_t$ using the noisy target-batch estimate $\hat g_\star$ in place of the unknown $g_\star$. By construction $\mathrm{MSE}(u_t) = \mathcal{B}(U_t) + \mathcal{V}(u_t)$, and we can pin down both halves for every method on the spectrum. Write $\Sigma_{\mathrm{tr}} \coloneqq \mathrm{Cov}(g_i)$ and $\Sigma_\star \coloneqq \mathrm{Cov}(g_j^\star)$.
+
+<div class="theorem">
+
+**Theorem** (Bias–variance characterization, informal). *Under a $\beta$-smooth target loss, bounded training gradients $\lVert g_i \rVert \leq C$, and sub-Gaussian target noise with parameter $\sigma/\sqrt m$:*
+
+- ***Target-Only*** *is unbiased, $\mathcal{B}(U_t^{\star}) = 0$, but $\mathcal{V}(u_t^{\star}) = \operatorname{tr}(\Sigma_\star)/m$.*
+- ***Full-Training*** *has zero variance, $\mathcal{V}(u_t^{\mathrm{tr}}) = 0$, but carries the bias floor $\mathcal{B}(U_t^{\mathrm{tr}}) = \lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \operatorname{tr}(\Sigma_{\mathrm{tr}})/n$.*
+- ***Global Subset*** *trades both: bias has no closed form, while the variance satisfies $\mathcal{V}(u_t^{\mathrm{glob}}(k)) \leq \tfrac{4C\sigma}{\sqrt m}\sqrt{2\log(2\binom{n}{k})}$.*
+- ***Group-Wise Subset*** *strictly improves the Global Subset bias, $\mathcal{B}(U_t^{\mathrm{grp}}(k;\mathcal{G})) \leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$, at the price of $P\times$ in the variance bound, $\mathcal{V}(u_t^{\mathrm{grp}}(k;\mathcal{G})) \leq \tfrac{4CP\sigma}{\sqrt m}\sqrt{2\log(2\binom{n}{k})}$.*
+
+</div>
+
+<div class="takeaway">
+
+**Takeaway.** Three patterns govern the spectrum:
 
 - **The two extremes are mirror images.** Target-Only is unbiased but its variance $\operatorname{tr}(\Sigma_\star)/m$ blows up when the target batch is small. Full-Training has zero variance but carries an irreducible *distribution-mismatch bias* $\lVert g_{\mathrm{tr}} - g_\star \rVert^2$ that no amount of training data can erase.
 - **Subset methods occupy the middle of the spectrum.** Both Global Subset and Group-Wise Subset improve the bias over Full-Training (their feasible set is strictly larger than $\{\hat g_{\mathrm{tr}}\}$) at the cost of $O(\sigma/\sqrt m \cdot \sqrt{\log\binom{n}{k}})$ extra variance — a logarithmic, not linear, dependence on the combinatorial complexity of the subset.
 - **Refining the partition strictly reduces bias.** Because $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G})$, the group-wise bias is no larger; the variance bound only grows linearly in the number of groups $P$, so a layer-wise partition trades $P\times$ variance multiplier for a strictly smaller approximation error — and in practice the bias reduction dominates.
+
+</div>
 
 ## System: a one-pass, memory-tight implementation
 
@@ -155,9 +186,15 @@ The score $s_i^{(l)} = \langle \hat g_\star^{(l)},\, g_i^{(l)} \rangle$ can be e
 
 ### The full algorithm
 
+Putting it all together, we now spell out **Layer-Wise Subset Update** — the representative case of Group-Wise Subset Update with one group per linear layer. Each layer scores its training samples, picks its top-$k$, and assembles its slice of $u_t$ in place during the backward sweep, releasing the retained pair $(a^{(\ell)}, \partial \ell / \partial e^{(\ell)})$ as soon as the layer is resolved.
+
 <div class="algorithm">
 
 **Algorithm.** Layer-Wise Subset Update — one optimization step.
+
+**Input:** model $\theta_t$, training batch $B_t = \{z_i\}_{i=1}^n$, target batch $B_t^\star = \{z_j^\star\}_{j=1}^m$, subset size $k$, learning rate $\eta_t$.
+
+**Output:** updated parameters $\theta_{t+1}$.
 
 1. $(\ell,\; \{a^{(l)},\, e^{(l)}\}) \leftarrow \operatorname{Forward}(\theta_t,\, B_t \cup B_t^\star)$<span class="algorithm-comment">▹ merged batch, cache forward tensors</span>
 2. $u_t \leftarrow 0$
@@ -168,7 +205,7 @@ The score $s_i^{(l)} = \langle \hat g_\star^{(l)},\, g_i^{(l)} \rangle$ can be e
 7. <span class="algorithm-indent"></span>$s_i^{(\ell)} \leftarrow \langle \hat g_\star^{(\ell)},\; g_i^{(\ell)} \rangle$
 8. <span class="algorithm-indent"></span>$S_{t,\ell} \leftarrow \operatorname{Top\text{-}k}(\{s_i^{(\ell)}\}_{i=1}^n,\, k)$
 9. <span class="algorithm-indent"></span>$u_t^{(\ell)} \leftarrow \dfrac{1}{k}\sum_{i \in S_{t,\ell}} g_i^{(\ell)}$
-10. <span class="algorithm-indent"></span>$\operatorname{Release}\!\left(a_i^{(\ell)},\; \partial \ell / \partial e_i^{(\ell)},\; a_j^{\star(\ell)},\; \partial \ell / \partial e_j^{\star(\ell)}\right)$
+10. <span class="algorithm-indent"></span>$\operatorname{Release}(a_i^{(\ell)},\; \partial \ell / \partial e_i^{(\ell)},\; a_j^{\star(\ell)},\; \partial \ell / \partial e_j^{\star(\ell)})$
 11. **end for**
 12. $\theta_{t+1} \leftarrow \theta_t - \eta_t u_t$
 
@@ -273,7 +310,7 @@ This gives a 2×2 configuration grid. Against standard PPO, IIF, and Global Subs
   </figure>
 </div>
 
-<p class="figure-legend">Each plot shows <em>training reward</em> (top) and <em>evaluation toxicity</em> (bottom) over PPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#ea580c"><strong>━</strong></span> Global Subset Update ([IIF](https://openreview.net/forum?id=sYK4yPDuT1)) &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> standard PPO &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> reference. Shaded bands are ±1 SE across 5 seeds.</p>
+<p class="figure-legend">Each plot shows <em>training reward</em> (top) and <em>evaluation toxicity</em> (bottom) over PPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset Update &nbsp;·&nbsp; <span style="color:#2563eb"><strong>━</strong></span> [IIF](https://openreview.net/forum?id=sYK4yPDuT1) (offline Global Subset) &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard PPO (Full-Training). Shaded bands are ±1 SE across 5 seeds.</p>
 
 Three patterns are worth calling out:
 
@@ -285,7 +322,7 @@ Three patterns are worth calling out:
 
 <figure class="figure-block figure-right">
   <img src="/research/Dr-Post-Training/Figures/RLVR/eval_accuracy.png" alt="RLVR evaluation accuracy on MATH over training steps, comparing standard GRPO, Global Subset Update, and Layer-Wise Subset Update." />
-  <figcaption><strong>RLVR on MATH</strong> — eval accuracy over GRPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset &nbsp;·&nbsp; <span style="color:#ea580c"><strong>━</strong></span> Global Subset &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard GRPO. Global Subset only helps early; Layer-Wise sustains its lead and reaches the highest final accuracy. Bands are ±1 SE across 5 seeds.</figcaption>
+  <figcaption><strong>RLVR on MATH</strong> — eval accuracy over GRPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard GRPO. Global Subset only helps early; Layer-Wise sustains its lead and reaches the highest final accuracy. Bands are ±1 SE across 5 seeds.</figcaption>
 </figure>
 
 Using Verl + GRPO on MATH with Qwen3-1.7B, and instantiating Dr. Post-Training as *in-run cross-validation* (one mini-batch as training, another as target, gradient-alignment scores for filtering), **Layer-Wise Subset Update achieves the best final accuracy**. Global Subset Update only accelerates *early* training before converging back to standard GRPO; Layer-Wise sustains its advantage throughout, ending at the highest evaluation accuracy on the held-out test set.
