@@ -18,18 +18,60 @@ authors:
   url: "https://pbb.sh/"
 ---
 
-## Problem
+**TL;DR.** **Travel the Same Path** keeps an exact TSP solver exact and learns only the part that hurts: the branching rule. We cast branch-and-bound as an MDP, train a graph convolutional network to imitate SCIP's strong-branching decisions via cross-entropy, and swap it in at inference. The learned policy delivers $4$–$12\%$ wall-time reductions on TSP10–TSP20 and — crucially — *transfers to strictly larger instances never seen during training*.
 
-The Traveling Salesman Problem (**TSP**) asks for the shortest tour visiting every city exactly once and returning to the start. It is NP-hard, so the number of candidate solutions grows super-polynomially with the number of cities. Exact solvers — those that guarantee a provably optimal tour — pay for this guarantee with heavy computation: state-of-the-art exact solvers like SCIP are practical only on small instances, and solve time can explode even for modest problem sizes.
+Solving the Traveling Salesman Problem (**TSP**) exactly means committing to branch-and-bound on its integer linear program, and the expensive step inside that loop is choosing which variable to branch on. Following [Gasse et al.](https://arxiv.org/abs/1906.01629), we leave the exact algorithmic skeleton untouched and learn only this single decision — preserving optimality by construction while cutting the wall-clock cost of getting there.
 
-## Key Idea
+## Why Travel the Same Path
 
-Rather than abandoning exactness for a learned heuristic, we leave the exact algorithm's *structure* intact and accelerate only its *decision-making steps* — specifically, which variable to branch on at each node of the search tree. Because the final solution is still derived by the exact algorithm, optimality is never sacrificed. This idea follows directly from [*Exact Combinatorial Optimization with Graph Convolutional Neural Networks*](https://arxiv.org/abs/1906.01629), which showed the same principle for general mixed-integer programs.
+- **Exactness, not approximation.** The branch-and-bound skeleton is unchanged; the final tour is provably optimal. The GCN only chooses *which variable to branch on* — never the answer.
+- **Imitate the expensive oracle.** SCIP's strong-branching rule is accurate but slow; a forward pass of the GCN is cheap, so amortizing the oracle's decisions across many nodes is a net win.
+- **One learned component, many algorithms.** Any exact solver whose runtime is dominated by a sequential discrete decision — branching, cutting-plane selection, node selection — fits the same template.
+- **Transfers across problem scales.** A policy trained on TSP10 / TSP15 still speeds up SCIP on TSP20+ that it never saw during training — the structure it learns is *combinatorial*, not size-specific.
 
-## Approach
+## Method
 
-TSP is formulated as an Integer Linear Program (**ILP**) and solved via *branch and bound*, a search procedure that recursively partitions the solution space and prunes subproblems that cannot improve the current best tour. At each branching step the solver must choose which ILP variable to fix next — a discrete, sequential control problem that maps naturally onto a Markov Decision Process (**MDP**). We train a Graph Convolutional Neural Network (**GCN**) via **imitation learning** to predict the same branching variable that SCIP (a state-of-the-art exact solver) would select, using cross-entropy loss against SCIP's decisions as supervision. At inference time the GCN replaces SCIP's expensive default branching rule, reducing the number of nodes explored without altering the branch-and-bound skeleton.
+### TSP as an integer linear program
 
-## Result
+For a complete graph on $n$ cities with edge costs $c_{ij}$, introduce binary $x_{ij} \in \{0,1\}$ indicating whether edge $(i,j)$ is on the tour, and minimize
 
-The trained policy consistently solves TSP instances faster than SCIP while producing identical optimal tours. Models trained on TSP10 and TSP15 achieve average wall-time reductions of roughly 4–12% against SCIP across same-size test sets (TSP10–TSP20), with the gap widening on harder instances. More notably, the model *generalizes*: a GCN trained exclusively on small instances (10–15 cities) speeds up SCIP on strictly larger, unseen problem sizes — demonstrating that the learned branching policy captures structure that transfers across scales. The same methodology extends naturally to other exact algorithms driven by sequential decisions, such as cutting-plane selection.
+$$
+\sum_{i \neq j} c_{ij}\, x_{ij}
+\quad \text{s.t.} \quad
+\sum_{j \neq i} x_{ij} = 1 \;\; \forall i,\;\;
+\sum_{i \neq j} x_{ij} = 1 \;\; \forall j,
+$$
+
+together with subtour-elimination constraints (DFJ cuts, or the MTZ lifting) that forbid disconnected cycles. The LP relaxation drops integrality; branch-and-bound recovers it.
+
+### Branch-and-bound as a Markov Decision Process
+
+At every node of the search tree the solver has a partial assignment, an LP relaxation, and a set of fractional variables. A *state* $s_t$ is this triple; an *action* $a_t$ is the choice of branching variable; the *transition* is deterministic — fixing the variable yields two child nodes; and the *reward* is the negative cost of additional exploration that decision triggers. Minimizing total exploration cost is then a sequential decision problem, and any policy $\pi(a_t \mid s_t)$ that picks branching variables well shrinks the tree.
+
+SCIP's *strong branching* implements an extremely accurate $\pi$ by tentatively solving both child LPs for every candidate variable and choosing the one with the largest bound improvement. It is the gold standard for tree size — and it is also far too expensive to use as the default rule.
+
+### GCN policy via imitation learning
+
+Following [Gasse et al.](https://arxiv.org/abs/1906.01629), we represent each node as a bipartite graph between *constraints* and *variables*, with edge features carrying the current LP coefficient matrix and node features carrying LP statistics (reduced costs, basis status, fractionality, objective coefficients). A graph convolutional network $\pi_\theta$ alternates constraint-side and variable-side message passing and outputs a distribution over candidate branching variables.
+
+Training is pure imitation: we run SCIP with strong branching as the expert on a corpus of TSP10 and TSP15 instances, log the $(s_t, a_t^\star)$ pairs at every decision node, and minimize cross-entropy
+
+$$
+\mathcal{L}(\theta) \;=\; -\,\mathbb{E}_{(s, a^\star)\sim \mathcal{D}}\!\left[\log \pi_\theta(a^\star \mid s)\right].
+$$
+
+At inference time we replace SCIP's branching callback with $\arg\max_a \pi_\theta(a \mid s)$. The rest of the solver — cuts, presolve, primal heuristics, bound propagation — is untouched, so every returned tour is still provably optimal.
+
+## Results
+
+### Wall-time reduction on in-distribution sizes
+
+A GCN trained on TSP10 / TSP15 consistently beats SCIP's default branching while returning identical optimal tours. Across TSP10–TSP20 test instances, average wall-time reductions sit in the **4–12%** range, with the gap widening on harder instances where branching decisions dominate end-to-end cost.
+
+### Generalization to unseen larger instances
+
+The more interesting result is *transfer*. The same policy — trained exclusively on small instances — also accelerates SCIP on strictly larger TSP sizes that never appeared during training. Because the GCN consumes bipartite *(constraint, variable)* graphs whose structure is preserved as $n$ grows, the learned message-passing weights remain valid; what transfers is the *qualitative* feature of which fractional variables are worth branching on, not absolute coordinates in $\mathbb{R}^n$.
+
+### Beyond branching
+
+The same recipe — formulate the discrete control choice inside an exact solver as an MDP, supervise a GCN with an expensive oracle, deploy the cheap network — applies wherever a state-of-the-art exact algorithm is bottlenecked by a sequential decision. Cutting-plane selection is the immediate next target; node selection and primal-heuristic scheduling are natural extensions.

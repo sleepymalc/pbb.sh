@@ -90,12 +90,16 @@ The chain $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G}) \s
 
 Every method in the spectrum admits a clean bias–variance decomposition $\mathrm{MSE}(u_t) = \mathcal{B}(U_t) + \mathcal{V}(u_t)$. The two extremes are exact (Proposition 3.3), the two subset variants admit tight bounds (Theorem 3.4) under bounded training gradients $\lVert g_i \rVert \leq C$ (Assumption 2) and sub-Gaussian target noise with parameter $\sigma/\sqrt m$ (Assumption 3). Let $\Sigma_{\mathrm{tr}} \coloneqq \mathrm{Cov}(g_i)$ and $\Sigma_\star \coloneqq \mathrm{Cov}(g_j^\star)$.
 
+<div class="table-scroll">
+
 | Method | Bias $\mathcal{B}(U_t)$ | Variance $\mathcal{V}(u_t)$ |
 | --- | --- | --- |
 | **Target-Only** $U_t^\star = \mathbb{R}^d$ | $0$ | $\dfrac{\operatorname{tr}(\Sigma_\star)}{m}$ |
 | **Full-Training** $U_t^{\mathrm{tr}} = \{\hat g_{\mathrm{tr}}\}$ | $\lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \dfrac{\operatorname{tr}(\Sigma_{\mathrm{tr}})}{n}$ | $0$ |
 | **Global Subset** $U_t^{\mathrm{glob}}(k)$ | (in between, no closed form) | $\leq \dfrac{4C\sigma}{\sqrt m}\sqrt{2\log\!\big(2\tbinom{n}{k}\big)}$ |
 | **Group-Wise Subset** $U_t^{\mathrm{grp}}(k;\mathcal{G})$ | $\leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$ | $\leq \dfrac{4CP\sigma}{\sqrt m}\sqrt{2\log\!\big(2\tbinom{n}{k}\big)}$ |
+
+</div>
 
 Three patterns fall out:
 
@@ -133,12 +137,16 @@ When a group can be *finalized and released* depends on partition granularity, w
 
 The score $s_i^{(l)} = \langle \hat g_\star^{(l)},\, g_i^{(l)} \rangle$ can be evaluated in several ways with strikingly different cost profiles. Let $T$ be sequence length, $n$ training samples, $m$ target samples, $N = n+m$, and $\kappa \ll d/L$ the compressed gradient dimension.
 
+<div class="table-scroll">
+
 | Scoring method | FLOPs per layer | Memory per layer |
 | --- | --- | --- |
 | **Direct** | $2NT(d/L) + n(d/L)$ | $(n+1)(d/L)$ |
 | **GIP** (Ghost Inner Product) | $4nmT^2 \sqrt{d/L}$ | $2nmT^2$ |
 | **PIP** (Per-Token Inner Product, new) | $2NT(d/L) + nT\sqrt{d/L}$ | $d/L + nT\sqrt{d/L}$ |
 | **Compressed** (new) | $O(NT\kappa) + (2n+m)\kappa$ | $(n+1)\kappa$ |
+
+</div>
 
 **Direct** materializes per-sample gradients and pays an $O(n \cdot d/L)$ memory tax.
 **GIP** ([Wang et al. 2024](https://openreview.net/forum?id=232VcN8tSx)) reorders the contraction to avoid forming $g_i^{(l)}$, but pays *quadratic* in sequence length $T$ — fatal for long-context training.
@@ -176,11 +184,15 @@ We evaluate on Llama-3.2-1B (SFT), GPT-Neo-2.7B with LoRA (RLHF), and Qwen3-1.7B
 
 With a held-out target set of just 16 samples (per the GREATS protocol; $n = 8$, $m = 1$, $k = n/2$), Layer-Wise Subset Update consistently and substantially beats Full-Training and Global Subset.
 
+<div class="table-scroll">
+
 | Method | less-mix / tydiqa | triviaqa / nq_open | less-mix / squad |
 | --- | --- | --- | --- |
 | Full-Training | 10.1 $\pm$ 0.2 | 12.6 $\pm$ 0.1 | 7.6 $\pm$ 0.1 |
 | Global Subset | 13.4 $\pm$ 1.0 | 13.7 $\pm$ 0.2 | 8.3 $\pm$ 0.1 |
 | **Layer-Wise Subset** | **27.4 $\pm$ 1.3** | **14.6 $\pm$ 0.4** | **9.1 $\pm$ 0.3** |
+
+</div>
 
 *Downstream F1 (%) on three QA settings with Llama-3.2-1B + LoRA. Gaps are largest where the training pool is broadest (less-mix/tydiqa: +17.3 F1 over Full-Training), confirming that data regularization matters most when $\mathbb{P}_{\mathrm{tr}}$ is misaligned with $\mathbb{P}_\star$.* On alpaca/samsum, Layer-Wise Subset also dominates Full-Training and Global Subset under full-parameter, LoRA, and MeSO fine-tuning.
 
@@ -282,11 +294,15 @@ Using Verl + GRPO on MATH with Qwen3-1.7B, and instantiating Dr. Post-Training a
 
 Per-step wall-clock overhead of Layer-Wise / Global Subset Update relative to Full-Training, at $n=8$, $T=512$, $m=1$, $k=4$ with compressed scoring on one A40:
 
+<div class="table-scroll">
+
 | Model | Full-Training (ms) | Layer-Wise Subset | Global Subset |
 | --- | --- | --- | --- |
 | SmolLM2-360M | 261 | 349 (**+34%**) | 309 (**+18%**) |
 | TinyLlama-1.1B | 549 | 602 (**+10%**) | 593 (**+8%**) |
 | Llama-3.2-3B | 1407 | 1449 (**+3%**) | 1446 (**+3%**) |
+
+</div>
 
 *Overhead shrinks sharply with model size — once `w.grad` becomes compute-bound rather than IO/launch-bound, materializing only $k = n/2$ samples gives back $\sim 1.46\times$ on Llama-3.2-3B, almost cancelling the scoring cost.* The pipeline also remains compatible with activation checkpointing without changing the asymptotic memory footprint.
 

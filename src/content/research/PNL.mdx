@@ -20,25 +20,224 @@ authors:
   url: "https://mahito.info/index_e.html"
 ---
 
-## Problem
+<figure class="figure-block figure-hero">
+  <img src="/research/PNL/Figures/log-linear-model.png" alt="Pipeline from raw real-valued tensor data to a designed poset Omega, then to a probability distribution p_theta in the statistical manifold S via the embedding phi, finally re-parameterized in dually-flat (theta, eta) coordinates by the log-linear model on posets." />
+  <figcaption><strong>From data to statistical manifold.</strong> A real-valued tensor is reinterpreted as a function on a designed poset $\Omega$; the embedding $\varphi$ normalizes it to a distribution $p_\theta \in \mathcal{S}$; the log-linear model gives dually-flat $(\theta, \eta)$ coordinates whose $\theta$-component is the data's *energy*. Everything downstream — base sub-manifold $\mathcal{B}$, $\ell$-body approximation, backward projection — is built on this substrate.</figcaption>
+</figure>
 
-Data augmentation is most valuable precisely when training data is scarce — yet that is also when learning a high-quality generative model is hardest. Learning-based augmentation methods inherit this paradox: they are computationally intensive to train, and at small data scales the latent spaces they produce tend to be entangled and domain-specific. More fundamentally, the transformation a generative model applies during augmentation is *opaque*. There is no interpretable handle on which directions in latent space correspond to which semantic properties of the data, and no principled way to specify, for instance, that augmentation should vary color but preserve shape. Learning-free alternatives such as principal component analysis (PCA) or singular value decomposition (SVD) are interpretable but suffer from a different problem: reconstructing high-dimensional data from a low-dimensional code without a learned decoder is ill-posed, and the resulting reconstructions are often poor.
+**TL;DR.** **Pseudo-Nonlinear (PNL) augmentation** embeds data into a *dually-flat statistical manifold* $\mathcal{S}$, encodes it by KL-projection onto a designed $e$-flat sub-manifold $\mathcal{B}$, and decodes by a *backward projection* onto a local data sub-manifold $\mathcal{D}$ built from $k$ nearest neighbors — turning data augmentation into two closed-form information-geometric projections, with the order $\ell$ of mode interactions retained as the only knob.
 
-## Key Idea
+Learning-based augmentation is most valuable when data is scarce, yet that is exactly when a high-quality generative model is hardest to train; learning-free baselines (PCA, SVD) are interpretable but reconstruct poorly. PNL sidesteps both by *designing* the latent space rather than learning it: the geometry of $\mathcal{S}$ is fixed by the energy parameters of a log-linear model on posets, and the practitioner specifies which statistical interactions are preserved by choosing a sub-manifold $\mathcal{M}_\ell$. Both projections are convex and admit efficient solvers.
 
-The paper grounds data augmentation in *energy-based modeling* and *information geometry*, yielding the **Pseudo-Nonlinear (PNL) augmentation** framework. The central insight is that a dataset of structured objects (images, audio, tabular vectors) can be embedded into a *dually-flat statistical manifold* — a space whose geometry is controlled by energy parameters and whose sub-manifolds have an exact, closed-form projection theory. Because the latent space is defined by energy minimization rather than learned from data, it inherits the intrinsic structure of the data *by construction*, not by approximation. Crucially, the practitioner can *design* the sub-manifold used for augmentation, directly specifying which statistical interactions are preserved and which are allowed to vary.
+## Why PNL
 
-## Approach
+- **Learning-free.** The latent manifold $\mathcal{B}$ is constructed analytically from the poset structure and the choice of $\ell$ — no generative model is trained, no decoder is fit. Both projections reduce to convex programs in $O(\lvert B\rvert)$ gradient cost.
+- **Interpretable & controllable.** Choosing $\mathcal{B} = \mathcal{M}_\ell$ explicitly fixes the order of mode interactions retained: small $\ell$ preserves coarse shape, larger $\ell$ preserves fine color-texture coupling.
+- **Pseudo-nonlinear by design.** Perturbations that are *linear* in the manifold's intrinsic $\theta$-coordinates become *curved* in the ambient data space — recovering nonlinear augmentations from a linear interpolation in $\mathcal{B}$.
+- **Stability where it matters.** On Connectionist Bench (208 samples), PNL cuts the test-accuracy standard deviation from **8.58% → 4.54%** and lifts mean accuracy **88.10% → 93.81%** — the regime where learning-based augmentation breaks down.
+- **Modality-agnostic.** A single framework covers images (MNIST, CIFAR-10), audio (Speech Commands), and tabular data (Connectionist Bench, Taiwanese Bankruptcy, Wine Quality).
 
-Each data point is first mapped to a probability distribution via a normalizing embedding $\varphi$, then projected onto a low-dimensional *e-flat base sub-manifold* $\mathcal{B} \subseteq \mathcal{S}$ by minimizing KL divergence — an operation the information-geometric structure makes exact and efficient. This projection is the encoder: $\text{Enc} = \text{Proj}_{\mathcal{B}} \circ \varphi$. For positive tensors, a natural family of sub-manifolds is the *$\ell$-body approximation* $\mathcal{M}_\ell$, which retains only interaction parameters of order at most $\ell$. Choosing $\ell$ directly controls the granularity of structure the latent representation captures — a small $\ell$ preserves coarse shape; a larger $\ell$ preserves fine color-texture relationships.
+## Method
 
-Decoding an augmented latent point $w^* \in \mathcal{B}$ is the harder direction. Rather than training a separate decoder, the framework uses a *backward projection*: find the $k$ nearest encoded neighbors of $w^*$ in the training set, form their *local data sub-manifold* $\mathcal{D}$, and project $w^*$ onto $\mathcal{D}$. The decoded sample is then $z^* = \varphi^{-1}(\text{Proj}_{\mathcal{D}}(w^*))$. Because the projection is onto actual data geometry rather than a learned approximation, the reconstruction is grounded and interpretable.
+### From data to manifold: the normalizing embedding
 
-The full augmentation loop is: (1) encode all training samples into $\mathcal{B}$; (2) generate new latent points $w^*$ by interpolating or perturbing within $\mathcal{B}$; (3) decode each $w^*$ via backward projection. Transformations that are linear in the manifold's intrinsic coordinates become *curved* in the ambient data space — hence "pseudo-nonlinear."
+We treat each data point as a *real-valued poset*. Given a finite poset $(\Omega, \leq)$ with bottom element $\bot$, a $D$-dimensional vector, matrix, or tensor naturally maps to a function $z\colon \Omega \to \mathbb{R}$ — for a positive tensor $P \in \mathbb{R}_{\geq 0}^{I_1 \times \cdots \times I_d}$ with index set $\Omega = [I_1] \times \cdots \times [I_d]$, the natural partial order is coordinate-wise: $v \leq w \iff i_k \leq j_k$ for all $k$.
 
-## Result
+The *normalizing embedding* $\varphi \colon \Omega_{\mathbb{R}} \to \mathcal{S}$ turns each $z$ into a discrete probability distribution on $\Omega$. For positive tensors,
 
-Across six datasets spanning images (MNIST, CIFAR-10), audio (Speech Commands), and tabular data (Connectionist Bench, Taiwanese Bankruptcy, Wine Quality), PNL augmentation matches or outperforms autoencoders, mixup, and manifold mixup in downstream classification accuracy. The gains are largest on small datasets: on Connectionist Bench (208 samples), PNL cuts the standard deviation of test accuracy from 8.58% to 4.54%, reflecting meaningfully more stable generalization. Beyond accuracy, PNL offers *fine-grained controllability* that prior learning-based methods lack — by varying the sub-manifold order $\ell$, practitioners can explicitly target specific structural properties of the data, an operating point unavailable in any existing augmentation framework.
+$$
+\bigl(\varphi(P)\bigr)_v \;\coloneqq\; \frac{P_v}{\sum_{w \in \Omega} P_w} \qquad \forall\, v \in \Omega,
+$$
+
+so $\varphi(z) \in \mathcal{S}$ where $\mathcal{S} = \{p \colon \Omega \to \mathbb{R}_{\geq 0} \mid \sum_x p(x) = 1\}$ is the $(\lvert\Omega\rvert-1)$-dimensional manifold of discrete distributions on $\Omega$. The *log-linear model on posets* equips $\mathcal{S}$ with dually-flat coordinates $(\theta, \eta)$ via $\log p(x) = \sum_{y \leq x} \theta(y)$: $\theta$ is the natural parameter (energy), $\eta$ is the expectation parameter, and the Legendre duality $\psi \leftrightarrow \psi^*$ gives Bregman divergences whose dual is the KL divergence $D_{\mathrm{KL}}(p, q) = \sum_x p(x)\log\bigl(p(x)/q(x)\bigr)$.
+
+<figure class="figure-block figure-right-sm">
+  <img src="/research/PNL/Figures/tensor.png" alt="Hasse diagram of a 3-dimensional positive tensor's coordinate-wise poset, with arrows pointing from each (i1,i2,i3) to its successors." />
+  <figcaption><strong>The poset on a positive tensor</strong> — coordinate-wise order on $\mathbb{R}^{I_1 \times I_2 \times I_3}_{\geq 0}$.</figcaption>
+</figure>
+
+For positive tensors, the natural poset is the product of coordinate-wise orders, illustrated alongside for a $3$-mode tensor — each interior node is a tuple $(i_1, i_2, i_3)$ whose ancestors are the entries with all coordinates $\leq$ this one. This is the substrate on which $\ell$-body sub-manifolds are defined.
+
+### Encoder: KL projection onto $\mathcal{B}$
+
+To compress, we pick an $e$-flat sub-manifold $\mathcal{B} \subseteq \mathcal{S}$ with $\dim(\mathcal{B}) \ll \dim(\mathcal{S})$ and *project* $\varphi(z)$ onto it via the $m$-projection — the unique minimizer of KL divergence:
+
+$$
+\operatorname{Proj}_{\mathcal{B}}(p) \;=\; \arg\min_{q \in \mathcal{B}}\, D_{\mathrm{KL}}(p, q) \;=\; \arg\min_{q \in \mathcal{B}} \sum_{x \in \Omega} p(x) \log \frac{p(x)}{q(x)}.
+$$
+
+Because $\mathcal{B}$ is $e$-flat, this is a *convex* program in the $\theta$-coordinates; the gradient $\partial D_{\mathrm{KL}}/\partial \theta = \eta - \eta^{p}$ has a closed form, so natural-gradient or vanilla gradient descent converges in polynomial time. The encoder is then
+
+$$
+\mathsf{Enc} \;\coloneqq\; \operatorname{Proj}_{\mathcal{B}} \circ \varphi \colon \Omega_{\mathbb{R}} \to \mathcal{B}.
+$$
+
+Uniqueness is guaranteed by Amari's projection theorem: flatness + KL convexity ⇒ a unique projection destination.
+
+### $\ell$-body approximation as a design knob
+
+The choice of $\mathcal{B}$ is where modeling enters. For positive tensors, the *many-body approximation* gives a principled hierarchy. An *$\ell$-body parameter* is a $\theta(x)$ whose index $x \in \Omega$ has exactly $\ell$ non-one coordinates — it encodes the interaction among $\ell$ different modes. The $\ell$-body sub-manifold zeroes out higher-order interactions:
+
+$$
+\mathcal{M}_\ell \;\coloneqq\; \bigl\{ \theta \in \mathbb{R}^{\dim(\mathcal{S})} \,\bigm|\, \theta_x = 0 \text{ for all non-}\ell\text{-body parameters } x \in \Omega \bigr\}.
+$$
+
+Setting $\mathcal{B} = \mathcal{M}_\ell$ retains interactions of order $\leq \ell$ and *discards* every higher-order coupling — small $\ell$ keeps coarse structure (shape), larger $\ell$ keeps fine joint statistics (shape × color). Because the constraint is linear in $\theta$, $\mathcal{M}_\ell$ is $e$-flat, so the encoder remains a convex KL minimization. There is an intrinsic trade-off: $\dim(\mathcal{B}) \to \dim(\mathcal{S})$ preserves more information but invites the curse of dimensionality at the augmenting step; $\ell$ is the lever.
+
+### Decoder: backward projection
+
+Decoding an augmented latent $w^* \in \mathcal{B}$ back to data space is harder — $\mathsf{Enc}$ is not invertible. Rather than fit a separate decoder, PNL exploits the *data itself*: assume similar points project to similar latents, so the inverse of $w^*$ should live near the pre-images of its latent neighbors.
+
+Formally, given the embedded dataset $\{z_i' = \varphi(z_i)\}_{i=1}^n$ with encodings $\{w_i = \operatorname{Proj}_{\mathcal{B}}(z_i')\}_{i=1}^n$, find $w^*$'s $k$-nearest neighbors $N \subseteq [n]$ in $\mathcal{B}$ and build the *local data sub-manifold* — the dual of $\mathcal{M}_\ell$, fixing the $\ell$-body coordinates to the neighborhood mean while leaving everything else free:
+
+$$
+\mathcal{M}_\ell^{\ast}(N) \;\coloneqq\; \left\{ \theta \in \mathbb{R}^{\dim(\mathcal{S})} \,\Bigm|\, \theta_x = \frac{1}{k} \sum_{i^{\ast} \in N} \bigl(\theta(z_{i^{\ast}}')\bigr)_x \text{ for all } \ell\text{-body parameters } x \in \Omega \right\}.
+$$
+
+The *backward projection* is then the inverse of forward projection, defined by projecting $w^*$ onto this local manifold:
+
+$$
+\operatorname{Proj}_{\mathcal{B}}^{-1}(w^*) \;\coloneqq\; \operatorname{Proj}_{\mathcal{D}}(w^*) \;=\; \arg\min_{q \in \mathcal{D}}\, D_{\mathrm{KL}}(w^*,\, q), \qquad \mathcal{D} = \mathcal{M}_\ell^{\ast}(N).
+$$
+
+The decoded sample is $z^* = \varphi^{-1}\bigl(\operatorname{Proj}_{\mathcal{D}}(w^*)\bigr)$. Since $\mathcal{D}$ is $e$-flat (linear constraints on $\theta$), this is again an $m$-projection: a convex KL minimization with a unique solution. The duality between $\mathcal{M}_\ell$ and $\mathcal{M}_\ell^*$ is what makes the round trip clean: $\mathcal{B}$ *zeros out* the high-order interactions and lets the low-order $\theta$-coordinates absorb the data; $\mathcal{D}$ then *clamps* the low-order $\theta$-coordinates to the local-neighborhood mean and lets the high-order ones come from the augmented latent $w^*$. The two sub-manifolds carry complementary information, and the round trip is well-defined because the projection onto either flat sub-manifold is unique.
+
+### The full augmentation loop
+
+The complete algorithm has three steps:
+
+1. **Encode.** Compute $w_i \coloneqq \mathsf{Enc}(z_i) = \operatorname{Proj}_{\mathcal{B}}(\varphi(z_i))$ for every training point.
+2. **Augment.** Generate a new latent $w^* \in \mathcal{B}$ — by perturbation, linear interpolation, or sampling from a kernel density model fit to $\{w_i\}_{i=1}^n$.
+3. **Decode.** Compute $z^* \coloneqq \mathsf{Dec}(w^*) = \varphi^{-1}\bigl(\operatorname{Proj}_{\mathcal{M}_\ell^{\ast}(N)}(w^*)\bigr)$ via backward projection on the $k$ nearest neighbors of $w^*$.
+
+<figure class="figure-block">
+  <img src="/research/PNL/Figures/data-augmentation.png" alt="Forward encoding via KL-projection from real-valued posets onto base sub-manifold B, followed by backward projection onto a local data sub-manifold D constructed from k nearest neighbors of the augmented latent." />
+  <figcaption><strong>Pseudo-Nonlinear augmentation in one picture.</strong> Each data point $z_i$ embeds via $\varphi$ into the statistical manifold $\mathcal{S}$, then projects forward (dashed) onto the designed base sub-manifold $\mathcal{B}$ as a latent $w_i$. An augmented latent $w^\star$ is decoded backward (dotted) onto a local data sub-manifold $\mathcal{D}$ built from $w^\star$'s nearest neighbors, and pulled back to data space via $\varphi^{-1}$ to give the generated sample $z^\star$.</figcaption>
+</figure>
+
+Operations 1 and 3 are *linear* in the intrinsic $\theta$-coordinates of $\mathcal{S}$ but, because $\varphi$ is a normalization and $\theta \mapsto p$ is exponential, they become *curved* transformations in ambient data space — hence **pseudo-nonlinear**. There is no learned decoder; every component is grounded in the actual data geometry.
+
+## Results
+
+### Energy-aware geometry: capturing higher-order interactions
+
+The energy view of the framework predicts that $\mathcal{B} = \mathcal{M}_\ell$ captures interactions of order up to $\ell$ — and gracefully degrades on data with stronger interactions, in the energy-minimizing sense. We probe this on synthetic 2D intensity data, both *separable* ($I(i, j) \approx f(i)\,g(j)$, weak interaction) and *non-separable* (entangled $i,j$ interaction):
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/interaction_separable.png" alt="Separable intensity data with weak mode interaction: the 1-body approximation already captures the field with near-zero error; the 2-body approximation is essentially identical." />
+    <figcaption><strong>Separable data, weak interaction.</strong> The $1$-body approximation suffices; both $1$- and $2$-body errors are near zero.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/interaction_nonseparable.png" alt="Non-separable intensity data with strong mode interaction: the 1-body approximation incurs visible cross-shaped error; the 2-body approximation absorbs almost all of it." />
+    <figcaption><strong>Non-separable data, strong interaction.</strong> The $1$-body approximation leaves a structured residual; raising $\ell$ to $2$ absorbs the higher-order coupling.</figcaption>
+  </figure>
+</div>
+
+A complementary case study interpolates between separable and non-separable data inside the *base sub-manifold* $\mathcal{B}$ vs. directly in *ambient space* and tracks the resulting *interaction energy* (the gap between $1$- and $2$-body approximations of the interpolant). Energy-aware interpolation in $\mathcal{B}$ is uniformly lower-energy than ambient interpolation — i.e., the framework's geometry costs less to traverse than the raw data space:
+
+<div class="figure-row">
+  <div class="figure-stack" style="flex: 1.5">
+    <figure class="figure-block">
+      <img src="/research/PNL/Figures/interpolation_pnl.png" alt="Five interpolation steps t=0.00..1.00 inside the base sub-manifold B; the structure smoothly transforms from separable to non-separable." />
+      <figcaption><strong>Energy-aware interpolation in $\mathcal{B}$.</strong></figcaption>
+    </figure>
+    <figure class="figure-block">
+      <img src="/research/PNL/Figures/interpolation_ambient.png" alt="Five interpolation steps t=0.00..1.00 in ambient data space; the intermediate fields are blurrier and exhibit more incidental high-frequency content." />
+      <figcaption><strong>Ambient-space interpolation.</strong></figcaption>
+    </figure>
+  </div>
+  <figure class="figure-block" style="flex: 1">
+    <img src="/research/PNL/Figures/interpolation_gap.png" alt="Interaction energy gap (2-body minus 1-body) along the interpolation; energy-aware curve is uniformly lower than ambient." />
+    <figcaption><strong>Energy increase along the path.</strong></figcaption>
+  </figure>
+</div>
+
+The story extends to temporal data: time-series with high-frequency chirp patterns expose where a low-$\ell$ approximation must give up — the residual concentrates exactly where higher-order temporal coupling lives — while an appropriately chosen $\ell$ matches the original signal:
+
+<figure class="figure-block">
+  <img src="/research/PNL/Figures/time_series.png" alt="Top: original time-series with chirp pattern. Bottom: 1-body and 2-body approximations overlaid; the 1-body error is concentrated in the high-frequency chirp region while the 2-body approximation tracks the signal." />
+  <figcaption><strong>Time-series approximation.</strong> The $1$-body approximation's error (red shaded) is concentrated where the chirp's higher-order temporal interactions live; the $2$-body approximation (green) closes that gap.</figcaption>
+</figure>
+
+### Controllability via $\ell$: visual augmentation on MNIST and CIFAR-10
+
+The full augmentation loop on real images directly visualizes the controllability story. For **MNIST** we choose $\mathcal{B} = \mathcal{M}_1$ on a reshaped tensor $\mathbb{R}_{\geq 0}^{7 \times 2 \times 2 \times 7 \times 2 \times 2}$ ($\dim(\mathcal{B}) = 17$, $\dim(\mathcal{D}) = 767$), preserving *shape* and discarding pixel-level texture. For **CIFAR-10** we let $\mathcal{B} = \mathcal{M}_5$, $\mathcal{D} = \mathcal{M}_4^*$ on a higher-order reshape ($\dim(\mathcal{B}) = 1410$, $\dim(\mathcal{D}) = 2334$), preserving *fine-grained shape × color* coupling. The first row of each column shows representative *forward projections* onto $\mathcal{B}$; the second row shows *backward projections* of latents sampled from a kernel density model fitted on $\mathcal{B}$; the third row shows the nearest training image to each generated sample — confirming that the generated sample is not a direct copy.
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/MNIST/LD.png" alt="Forward projection of 10 MNIST digits onto the base sub-manifold B with dim(B)=17 — the resulting latents resemble blurred digit shapes." />
+    <figcaption><strong>MNIST — forward projection.</strong> $\dim(\mathcal{B}) = 17$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/MNIST/BP.png" alt="Backward projection of 10 sampled latents back to MNIST pixel space — recognizable digit shapes." />
+    <figcaption><strong>MNIST — backward projection.</strong> $\dim(\mathcal{D}) = 767$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/MNIST/BP_compare.png" alt="Closest training images to each MNIST backward projection sample — different digit instances, not memorization." />
+    <figcaption><strong>MNIST — nearest training images.</strong></figcaption>
+  </figure>
+</div>
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/CIFAR/LD.png" alt="Forward projection of 10 CIFAR-10 images onto B with dim(B)=1410 — coarse-but-coloured silhouettes with fine-grained shape-color coupling preserved." />
+    <figcaption><strong>CIFAR-10 — forward projection.</strong> $\dim(\mathcal{B}) = 1410$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/CIFAR/BP.png" alt="Backward projection of 10 sampled latents back to CIFAR-10 pixel space — recognizable object shapes with preserved color details." />
+    <figcaption><strong>CIFAR-10 — backward projection.</strong> $\dim(\mathcal{D}) = 2334$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/PNL/Figures/CIFAR/BP_compare.png" alt="Closest training images to each CIFAR-10 backward projection sample — different category instances, not memorization." />
+    <figcaption><strong>CIFAR-10 — nearest training images.</strong></figcaption>
+  </figure>
+</div>
+
+The ostrich case is illustrative: the eye-and-beak coloration and the small pink flowers in the background survive backward projection, while the unstructured background hue shifts noticeably — exactly the *shape × color* selectivity the choice of $\mathcal{B} = \mathcal{M}_5,\ \mathcal{D} = \mathcal{M}_4^*$ encodes.
+
+### Classification accuracy across six datasets
+
+Each classifier is trained on the original set (**OG**) plus a 20% augmentation generated by one method, then evaluated on 20 bootstrapped 50% test subsets. Backbones: ResNet-18 (CIFAR-10), M5 (Speech Commands), MLP (others). Baselines: **STD** (modality-specific transforms), **AE** (autoencoder), **MU** (mixup), **MMU** (manifold mixup).
+
+<div class="table-scroll">
+
+| Training Set | MNIST | CIFAR-10 | Speech Commands | Connectionist Bench | Taiwanese Bankruptcy | Wine Quality |
+| --- | --- | --- | --- | --- | --- | --- |
+| **OG** | **97.98 $\pm$ 0.19** | 88.57 $\pm$ 0.57 | **84.48 $\pm$ 0.50** | 88.10 $\pm$ 8.58 | 96.54 $\pm$ 0.56 | 55.00 $\pm$ 1.69 |
+| OG + **STD** | **97.98 $\pm$ 0.24** | **89.89 $\pm$ 0.44** | 82.98 $\pm$ 0.50 | 85.24 $\pm$ 7.66 | 96.17 $\pm$ 0.57 | 57.85 $\pm$ 1.81 |
+| OG + **AE** | 97.97 $\pm$ 0.25 | 88.36 $\pm$ 0.46 | 83.13 $\pm$ 0.32 | 82.86 $\pm$ 7.59 | 95.92 $\pm$ 0.62 | 57.23 $\pm$ 1.67 |
+| OG + **MU** | 96.45 $\pm$ 0.23 | 86.60 $\pm$ 0.49 | 81.85 $\pm$ 0.61 | 89.29 $\pm$ 4.97 | **96.55 $\pm$ 0.68** | 57.76 $\pm$ 1.67 |
+| OG + **MMU** | 97.52 $\pm$ 0.30 | 88.02 $\pm$ 0.39 | 83.06 $\pm$ 0.54 | 91.19 $\pm$ 5.06 | 96.44 $\pm$ 0.53 | 58.70 $\pm$ 1.74 |
+| OG + **PNL** | 97.91 $\pm$ 0.21 | 88.07 $\pm$ 0.46 | 84.35 $\pm$ 0.37 | **93.81 $\pm$ 4.54** | 96.53 $\pm$ 0.47 | **59.03 $\pm$ 1.74** |
+
+</div>
+
+*Test accuracy (%) over 20 bootstrap runs; lower std dev = more stable generalization; bold marks the column-wise best mean.* PNL achieves the best mean accuracy on **Connectionist Bench** and **Wine Quality**, the largest std-dev reduction on Connectionist Bench (8.58% → 4.54%), and the lowest std-dev among augmentation methods on three of the six datasets (MNIST, Connectionist Bench, Taiwanese Bankruptcy). On the image modalities, all baselines (PNL included) fall short of **STD**, because **STD**'s crop/flip/rotation explicitly encodes geometric invariances that none of the learned-latent methods see — an interpretable failure mode, not a hidden one.
+
+### Stability on small datasets
+
+The cleanest signal is Connectionist Bench: $n = 208$ samples, $60$ features. Every method's mean improves over **OG** *except* the autoencoder (which collapses under the small-data regime) and **STD** (which has no useful invariance to encode here). PNL is the clear winner on both axes:
+
+<div class="table-scroll">
+
+| Method | Mean accuracy | Std dev | Δ std vs. OG |
+| --- | --- | --- | --- |
+| **OG** | 88.10% | 8.58% | — |
+| OG + AE | 82.86% | 7.59% | $-0.99$ |
+| OG + MU | 89.29% | 4.97% | $-3.61$ |
+| OG + MMU | 91.19% | 5.06% | $-3.52$ |
+| **OG + PNL** | **93.81%** | **4.54%** | $\mathbf{-4.04}$ |
+
+</div>
+
+The reduction $8.58 \to 4.54$ is the largest among all baselines, and PNL is the only method that simultaneously raises the mean by more than $5$ points. Beyond Connectionist Bench, PNL also achieves the lowest std dev among augmentation methods on MNIST ($0.21$) and Taiwanese Bankruptcy ($0.47$) — three of the six datasets total — and stays competitive on the rest, lending some general support to stability as a property of energy-based encode–decode rather than a Connectionist Bench artifact.
+
+### Controllability via $\ell$
+
+The $\ell$-body parameter is a true design knob, not a hyperparameter to be tuned. For MNIST, choosing $\mathcal{B} = \mathcal{M}_1$ on the reshaped tensor $\mathbb{R}_{\geq 0}^{7 \times 2 \times 2 \times 7 \times 2 \times 2}$ retains $\dim(\mathcal{B}) = 17$ — enough to preserve *digit shape* while throwing away pixel-level texture. For CIFAR-10, setting $\mathcal{B} = \mathcal{M}_5$, $\mathcal{D} = \mathcal{M}_4^*$ on a higher-order reshape gives $\dim(\mathcal{B}) = 1410$ — large enough to preserve fine *shape × color* coupling (an ostrich keeps its beak and eye colors; the background loses its uncoupled hue). Sweeping $\ell$ traces a clean trade-off: higher $\ell$ → finer reconstruction → but reduced augmentation diversity. No comparable knob exists in mixup, manifold mixup, or autoencoder-based augmentation.
+
+The neighbor count $k$ behaves predictably as well: $k=1$ overfits to a single neighbor (the local manifold $\mathcal{D}$ degenerates), while $k \in \{4, 8, 16\}$ all produce robust, non-trivial augmentations — exactly the qualitative behavior the geometry predicts.
 
 ## Citation
 

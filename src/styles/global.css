@@ -128,13 +128,30 @@
   letter-spacing: 0.015em;
   border: none;
   border-bottom: 1px solid var(--color-border);
-  padding: 0.65em 1em;
+  padding: 0.65em 0.75em;
+  white-space: nowrap;
 }
 
 .markdown-body.research-detail td {
   border: none;
   border-bottom: 1px solid var(--color-border);
-  padding: 0.6em 1em;
+  padding: 0.6em 0.75em;
+  white-space: nowrap;
+}
+
+/* Horizontal scroll wrapper for wide tables. Use as:
+   <div class="table-scroll"> [markdown table] </div> */
+.markdown-body.research-detail .table-scroll {
+  overflow-x: auto;
+  margin: 1.25em 0 1.85em;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-base);
+}
+
+.markdown-body.research-detail .table-scroll > table {
+  margin: 0;
+  width: max-content;
+  min-width: 100%;
 }
 
 .markdown-body.research-detail tbody tr:last-child td {
@@ -147,7 +164,7 @@
 
 .markdown-body.research-detail td:not(:first-child),
 .markdown-body.research-detail th:not(:first-child) {
-  text-align: right;
+  text-align: center;
 }
 
 /* --- Equations: subtle background, more vertical breathing --- */
@@ -203,6 +220,21 @@
 
 .markdown-body.research-detail .figure-row > .figure-block {
   flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+/* Vertical stack of figures inside a figure-row (e.g., two figures stacked
+   side-by-side with a third) */
+.markdown-body.research-detail .figure-row > .figure-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2em;
+  flex: 1;
+  min-width: 0;
+}
+
+.markdown-body.research-detail .figure-row > .figure-stack > .figure-block {
   margin: 0;
   min-width: 0;
 }
@@ -278,8 +310,16 @@
   shape-outside: margin-box;
 }
 
+.markdown-body.research-detail .figure-block.figure-right-sm {
+  float: right;
+  width: 26%;
+  margin: 0.3em 0 0.9em 1.4em;
+  shape-outside: margin-box;
+}
+
 @media (max-width: 720px) {
-  .markdown-body.research-detail .figure-block.figure-right {
+  .markdown-body.research-detail .figure-block.figure-right,
+  .markdown-body.research-detail .figure-block.figure-right-sm {
     float: none;
     width: 100%;
     margin: 1.5em 0;
@@ -287,7 +327,8 @@
 }
 
 /* Section headings should clear floats from earlier sections */
-.markdown-body.research-detail h2 {
+.markdown-body.research-detail h2,
+.markdown-body.research-detail h3 {
   clear: both;
 }
 

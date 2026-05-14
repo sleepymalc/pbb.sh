@@ -33,29 +33,197 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Problem
+<figure class="figure-block figure-hero">
+  <img src="/research/dattri/Figures/overview.png" alt="Architecture diagram of dattri: a top layer of attribution algorithms (IF, TracIn, RPS, TRAK) sits on a low-level utility layer (HVP/IHVP, random projection, dropout ensemble) and a benchmark layer (retraining, ground-truth, multi-metric evaluation)." />
+  <figcaption><strong>Architecture of <code>dattri</code>.</strong> Three modules wired together: <em>attribution algorithms</em> (IF / TracIn / RPS / TRAK) sit on top of a shared layer of <em>low-level utilities</em> (HVP/IHVP, random projection, dropout ensemble), and the <em>benchmark</em> suite (retraining, ground-truth calculation, multi-metric evaluation) closes the loop.</figcaption>
+</figure>
 
-Data attribution—understanding which training samples drive a model's predictions—has become central to improving AI performance and safety. The field has produced a growing family of methods, from influence functions to TracIn to TRAK, yet each is typically released as a standalone implementation with its own interfaces, assumptions, and evaluation protocol. There is no shared library that makes these methods easy to use, compare, or build on. Practitioners who want to apply attribution in an existing pipeline must navigate incompatible codebases; researchers developing new methods must reimplement the same low-level primitives from scratch; and the community has no standardized benchmark against which competing approaches can be fairly evaluated at realistic model scales.
+**TL;DR.** **dattri** is a PyTorch library that unifies data attribution: a single `AttributionTask` / `Attributor` API across the four main efficient method families (IF, TracIn, RPS, TRAK), reusable low-level primitives (HVP, IHVP, random projection, dropout ensembles) on top of `torch.func`, and a benchmark suite with pre-trained checkpoints and ground-truth annotations spanning image classification, music generation, and text generation. Used as a controlled head-to-head, the benchmark shows IF wins on linear/convex settings, TRAK with ensembling wins almost everywhere else, and the standard LOO metric collapses under non-convexity — LDS is the more faithful signal.
 
-## Key Idea
+## Why dattri
 
-**dattri** is an open-source PyTorch library that unifies how data attribution methods are written, extended, and benchmarked. Rather than privileging any single method, it provides shared infrastructure that serves three distinct constituencies at once: practitioners who need seamless integration into existing training pipelines, researchers who need reusable building blocks for developing new methods, and the broader community that needs reproducible, apples-to-apples comparisons across the state of the art.
+- **One API, four method families.** A user swaps between Influence Function (Explicit, CG, LiSSA, Arnoldi), TracIn (TracInCP, Grad-Dot, Grad-Cos), RPS-L2, and TRAK (1/10/50-model ensembles) by changing the `Attributor` class — the surrounding PyTorch pipeline is untouched.
+- **Low-level utilities, not just a wrapper.** HVP/IHVP, random projection (via `fast_jl`), and dropout-ensembling are exposed as composable primitives on `torch.func`. Researchers building new methods reuse them — the appendix shows a 5-line swap from random projection to Arnoldi projection inside TRAK.
+- **First benchmark to cover generative settings.** Six settings — LR/MLP on MNIST-10, ResNet-9 on CIFAR-2/10, Music Transformer on MAESTRO (13.3M params), NanoGPT on Shakespeare (10.7M params) — graded on LOO, LDS, and noisy-label AUC. Generative AI tasks were absent from prior libraries.
+- **Pre-trained checkpoints shipped.** 5000 exact-LOO models per MNIST setting and 100 half-dataset models per setting for LDS — costing roughly 500 A40-hours to produce — bypassing the retraining tax that has gated every previous fair comparison.
+- **Concrete empirical findings.** TRAK-50 attains $0.37$ LDS on ResNet-9/CIFAR-2 where every IF variant OOMs, $0.32$ on MAESTRO and $0.23$ on Shakespeare where they remain infeasible; meanwhile the LOO ground truth on MLP collapses to $\leq 0.03$ for *every* method, while LDS still separates them — a sharp argument for retiring LOO as the headline metric.
 
-## Approach
+## Method: library architecture
 
-**dattri** is organized around three complementary pillars.
+### Unified API
 
-The first is a *unified API*. Users define an `AttributionTask` object that captures the loss function and trained checkpoints, then instantiate any supported `Attributor` with a few lines of code. Switching between methods requires no structural changes to the surrounding pipeline — the library is designed for minimal code invasion.
+A user defines a callable loss $f(\theta, z)$ that operates on `functional_call(model, params, x)` and wraps it in an `AttributionTask`. Each attribution method is a class. Switching methods is a one-line change:
 
-The second is a library of *modular low-level utilities*. Hessian-vector products (HVPs), inverse-HVPs (IHVPs), random projection, and dropout ensemble support are all exposed as standalone, composable components built on `torch.func`. Researchers building new attribution methods can reach for these primitives directly rather than reimplementing them, keeping new work focused on the algorithmic contribution.
+```python
+attr_task = AttributionTask(
+    loss_func=f, model=model, checkpoints=model.state_dict(),
+    target_func=f,  # may differ from loss, e.g. the prediction logit
+)
+attributor = IFAttributorCG(task=attr_task, device=torch.device("cuda"),
+                            **attributor_hyperparams)
+attributor.cache(train_loader)
+score = attributor.attribute(train_loader, test_loader)
+```
 
-The third is a *benchmark suite*. **dattri** ships with pre-trained models and ground-truth attribution annotations across diverse settings — image classification (MNIST, CIFAR), music generation (MAESTRO), and text generation — including generative AI tasks that earlier benchmarks ignored. Evaluation metrics cover leave-one-out (LOO) correlation, linear datamodeling score (LDS), and noisy label detection AUC, providing a multidimensional view of method quality without requiring expensive model retraining.
+The `cache` step pre-computes anything depending only on $(x, \Theta)$ — e.g. an IHVP factor — so that repeated $(x, \Theta, v)$ queries with varying $v$ amortize cleanly.
 
-## Result
+### Modular utilities
 
-**dattri** makes it possible to benchmark all major efficient attribution method families — Influence Function, TracIn, Representer Point Selection, and TRAK — under a single, controlled evaluation framework at large neural-network scales. The resulting comparisons surface concrete, reproducible findings: TRAK's ensembling strategy gives it an edge across most non-linear settings, while traditional LOO metrics prove unreliable in non-convex regimes, motivating the use of LDS as a more faithful signal. Beyond the benchmark itself, the library lowers the barrier to entry for both practitioners deploying attribution in real systems and researchers building the next generation of methods.
+The `dattri.func` submodule, built on `torch.func`, exposes the mathematical primitives shared across attribution methods:
 
-> This paper also appears in the ATTRIB 2024 workshop @NeurIPS.
+- **HVP / IHVP.** Given $H(x;\Theta) = \nabla_\Theta^2 f_\Theta(x)$, $\operatorname{HVP}(x,v;\Theta) = H(x;\Theta)\,v$ is a thin wrapper on composed JVPs. The IHVP $H^{-1}v$ admits four approximations — Explicit, CG, LiSSA, and Arnoldi — each provided in two flavors: `ihvp_{alg}(f)` returns a function of $(x,v)$, while `ihvp_at_x_{alg}(f, x, \Theta)` caches the $(x,\Theta)$-dependent work and returns a function of $v$ only.
+- **Random projection.** A wrapper on `fast_jl` ([Park et al., 2023](https://arxiv.org/abs/2303.14186)) for the per-sample gradient sketch used by TRAK and (optionally) TracIn — the only way to make $g^\top g'$ over millions of parameters tractable at scale.
+- **Dropout ensemble.** `dattri.model_utils.activate_dropout` realizes the [Deng & Ma (2024)](https://arxiv.org/abs/2405.17293) trick: instead of training $k$ independent models for ensembling, take $k$ stochastic forward passes through a single model with dropout active, recovering most of the ensemble gain at $1/k$ the training cost.
+
+### Benchmark suite
+
+Six controlled settings spanning $7.8\mathrm{k}$ to $13.3\mathrm{M}$ parameters:
+
+<div class="table-scroll">
+
+| Dataset | Model | Task | Train / Test | Params | Metrics |
+| --- | --- | --- | --- | --- | --- |
+| MNIST-10 | Logistic Regression | classification | 5000 / 500 | 7840 | LOO, LDS, AUC |
+| MNIST-10 | 3-layer MLP | classification | 5000 / 500 | 0.11M | LOO, LDS, AUC |
+| CIFAR-2 | ResNet-9 | classification | 5000 / 500 | 4.83M | LDS |
+| CIFAR-10 | ResNet-9 | classification | 5000 / 500 | 4.83M | AUC |
+| MAESTRO | Music Transformer | music generation | 5000 / 178 | 13.3M | LDS |
+| Shakespeare | NanoGPT | text generation | 3921 / 435 | 10.7M | LDS |
+
+</div>
+
+Three evaluation metrics are bundled. **LOO correlation** measures Pearson $\rho$ between predicted and exact leave-one-out output deltas, requiring $n$ retrained models. **LDS** ([Ilyas et al., 2022](https://arxiv.org/abs/2202.00622)) treats attribution as a counterfactual predictor: given $m{=}50$ models trained on random half-subsets $\mathcal{S}_j$ at $\alpha{=}0.5$, it computes Spearman correlation between $\{f_{\Theta_{\mathcal{S}_j}}(x)\}_j$ and the additive proxy $g_\tau(x,\mathcal{S}_j;\mathcal{S}) := \sum_{i: x_i \in \mathcal{S}_j} \tau(x,\mathcal{S};f_\Theta)_i$. **AUC** scores ranking by self-influence $\tau_i := \tau(x_i, \{x_i\}; f_\Theta)$ for noisy-label detection.
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/CIFAR2-RESNET9-LDS.png" alt="LDS bar chart for ResNet-9 on CIFAR-2: every IF variant other than Arnoldi is a red cross (out of budget); TRAK-50 leads at 0.37 with TRAK-10 second, while TracIn-family and RPS-L2 stay near 0.07." />
+    <figcaption><strong>ResNet-9 / CIFAR-2 LDS.</strong> Every Hessian-based IF method (Explicit, CG, LiSSA) OOMs; TRAK-50 reaches $0.37$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/MT-LDS.png" alt="LDS bar chart for Music Transformer on MAESTRO (generative): all IF variants and RPS-L2 are red crosses; TracIn at 0.13, TRAK-50 at 0.32." />
+    <figcaption><strong>Music Transformer / MAESTRO LDS.</strong> A generative setting where IF and RPS-L2 are infeasible; TRAK-50 reaches $0.32$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/gpt-LDS-1.png" alt="LDS bar chart for NanoGPT on Shakespeare (text generation): IF variants and RPS-L2 are red crosses; TracIn at 0.09, TRAK-50 at 0.23." />
+    <figcaption><strong>NanoGPT / Shakespeare LDS.</strong> Same story on text generation: only TRAK ensembles deliver non-trivial LDS.</figcaption>
+  </figure>
+</div>
+
+<p class="figure-legend">Blue bars: <strong>IF family</strong> (Explicit, CG, LiSSA, Arnoldi) &nbsp;·&nbsp; orange bars: <strong>TracIn family</strong> (TracInCP, Grad-Dot, Grad-Cos) &nbsp;·&nbsp; green bar: <strong>RPS-L2</strong> &nbsp;·&nbsp; red bars: <strong>TRAK</strong> (TRAK-1 / TRAK-10 / TRAK-50). A <span style="color:#dc2626"><strong>×</strong></span> marks an out-of-time or out-of-memory run on a single A40 (48GB).</p>
+
+## Results
+
+### Method comparison
+
+Numbers below are the best score over the hyperparameter sweep documented in the paper. "X" marks settings where the method exceeded the time/memory budget on a single A40 (48GB).
+
+<div class="table-scroll">
+
+| Method | LR/MNIST LOO | LR/MNIST LDS | MLP/MNIST LDS | CIFAR-2 LDS | MAESTRO LDS | Shakespeare LDS |
+| --- | --- | --- | --- | --- | --- | --- |
+| IF-Explicit | 0.88 | 0.80 | X | X | X | X |
+| IF-CG | 0.88 | 0.80 | 0.26 | X | X | X |
+| IF-LiSSA | 0.86 | 0.79 | 0.14 | X | X | X |
+| IF-Arnoldi | 0.27 | 0.31 | 0.09 | 0.01 | X | X |
+| TracInCP | 0.28 | 0.33 | 0.15 | 0.07 | 0.13 | 0.09 |
+| Grad-Dot | 0.28 | 0.33 | 0.10 | 0.07 | 0.06 | 0.04 |
+| Grad-Cos | 0.16 | 0.19 | 0.12 | 0.08 | 0.07 | 0.04 |
+| RPS-L2 | 0.15 | 0.19 | 0.10 | 0.01 | X | X |
+| TRAK-1 | 0.48 | 0.42 | 0.11 | 0.10 | 0.07 | 0.04 |
+| TRAK-10 | 0.74 | 0.64 | 0.33 | 0.26 | 0.22 | 0.11 |
+| **TRAK-50** | **0.78** | **0.68** | **0.45** | **0.37** | **0.32** | **0.23** |
+
+</div>
+
+<div class="table-scroll">
+
+| Method | LR/MNIST AUC | MLP/MNIST AUC | CIFAR-10 AUC |
+| --- | --- | --- | --- |
+| IF-Explicit | 0.98 | X | X |
+| IF-CG | 0.98 | 0.86 | X |
+| IF-LiSSA | 0.98 | 0.86 | X |
+| IF-Arnoldi | 0.98 | 0.85 | X |
+| TracInCP | 0.98 | 0.86 | 0.51 |
+| Grad-Dot | 0.98 | 0.86 | 0.51 |
+| Grad-Cos | 0.49 | 0.51 | 0.51 |
+| RPS-L2 | 0.92 | 0.97 | 0.49 |
+| TRAK-1 | 0.98 | 0.98 | 0.66 |
+| TRAK-10 | 0.99 | 1.00 | 0.66 |
+| **TRAK-50** | **0.99** | **1.00** | **0.67** |
+
+</div>
+
+Grad-Cos's near-$0.5$ AUC is *theoretically* expected: its self-influence score is identically $1$ (the gradient is parallel to itself), so it carries no signal for noisy-label ranking.
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/MNIST-LR-AUC-2.png" alt="Noisy-label detection AUC bar chart for LR on MNIST-10: every method except Grad-Cos (at chance) clusters near 1.0." />
+    <figcaption><strong>LR / MNIST AUC.</strong> Linear regime — most methods saturate near perfect; Grad-Cos pins to chance.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/MNIST-MLP-AUC.png" alt="Noisy-label detection AUC bar chart for MLP on MNIST-10: IF/TracIn variants near 0.86, TRAK ensembles near 1.0, RPS-L2 at 0.97." />
+    <figcaption><strong>MLP / MNIST AUC.</strong> AUC is more robust to non-convexity than LOO — even single-model TRAK-1 hits $0.98$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/CIFAR10-RESNET9-AUC-2.png" alt="Noisy-label detection AUC bar chart for ResNet-9 on CIFAR-10: every IF variant is a red cross; TracIn family and RPS-L2 hover at 0.5 (chance); only TRAK breaks 0.65." />
+    <figcaption><strong>ResNet-9 / CIFAR-10 AUC.</strong> At scale, only TRAK extracts signal above chance; the IF family OOMs.</figcaption>
+  </figure>
+</div>
+
+### LDS vs LOO: the headline finding
+
+The MLP/MNIST LOO column is uniformly $\leq 0.03$ for *every* method — including IF-CG and IF-LiSSA that score $0.26$ and $0.14$ on the same setting's LDS. The contrast is even sharper at scale: on ResNet-9/CIFAR-2, every IF variant OOMs and only TRAK ensembles deliver meaningful LDS ($0.10 \to 0.26 \to 0.37$ for TRAK-1/10/50). The same pattern holds on the generative settings, where TracIn, Grad-Dot, and TRAK are the only methods that even run, and TRAK-50 wins by $2\text{–}3\times$ in LDS.
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/MNIST-LR-LOO.png" alt="LOO correlation bar chart for LR on MNIST-10: every method scores positively, IF variants near 0.88, TRAK-50 at 0.78." />
+    <figcaption><strong>LR / MNIST — LOO.</strong> The convex setting where LOO is informative: IF variants and TRAK-50 are tightly grouped near $0.8$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/MNIST-LR-LDS.png" alt="LDS bar chart for LR on MNIST-10: IF variants and TRAK ensembles both perform well, with IF-Explicit/CG/LiSSA at 0.80 and TRAK-50 at 0.68." />
+    <figcaption><strong>LR / MNIST — LDS.</strong> LOO and LDS agree in the convex regime; the ranking is essentially identical.</figcaption>
+  </figure>
+</div>
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/MNIST-MLP-LOO.png" alt="LOO correlation bar chart for MLP on MNIST-10: every method's LOO score is collapsed below 0.03, including IF-CG, IF-LiSSA, and TRAK-50; the Explicit IF method is out of memory." />
+    <figcaption><strong>MLP / MNIST — LOO collapses.</strong> Once the loss landscape becomes non-convex, every method's LOO score is $\leq 0.03$ — the metric loses its discriminative power.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/dattri/Figures/MNIST-MLP-LDS.png" alt="LDS bar chart for MLP on MNIST-10: IF-CG at 0.26, TRAK-50 leads at 0.45, with most other methods around 0.10-0.15." />
+    <figcaption><strong>MLP / MNIST — LDS still separates.</strong> On the same model, LDS recovers a clean ranking: TRAK-50 leads at $0.45$ with IF-CG at $0.26$.</figcaption>
+  </figure>
+</div>
+
+<p class="figure-legend">Same color legend as above. The top row (LR, convex) shows the regime where <em>both</em> metrics agree; the bottom row (MLP, non-convex) is the headline failure mode of LOO — every bar collapses to the floor while LDS still discriminates by a factor of $4{-}5\times$.</p>
+
+Two takeaways the benchmark forces:
+
+- **LOO is not a faithful ground truth in non-convex regimes.** This empirically corroborates [Bae et al. (2022)](https://arxiv.org/abs/2209.05364): once the loss landscape has multiple minima, removing one training point may move the optimizer between basins, and the LOO output difference no longer reflects local influence. The LR setting ($0.80$ LDS) is the only one where LOO and LDS agree.
+- **Ensembling is the deciding axis at scale.** A single-model TRAK-1 underperforms TracIn on MAESTRO ($0.07$ vs $0.13$ LDS), but TRAK-50 leads by $0.19$. The same story plays out on Shakespeare ($0.04 \to 0.23$). The library's $50$ shipped checkpoints per setting were specifically sized to make this comparison reproducible.
+
+### Cost profile
+
+Wall-clock and peak memory on a single A40 GPU for the two largest feasible settings:
+
+<div class="table-scroll">
+
+| Method | MNIST/MLP runtime | MNIST/MLP peak | CIFAR-2/ResNet-9 runtime | CIFAR-2/ResNet-9 peak |
+| --- | --- | --- | --- | --- |
+| IF-Explicit | OOM | OOM | OOM | OOM |
+| IF-CG | 611 s | 967 MB | OOM | OOM |
+| IF-LiSSA | 499 s | 324 MB | OOM | OOM |
+| IF-Arnoldi | 456 s | 251 MB | 733 s | 16.4 GB |
+| TracInCP-10 | 86 s | 214 MB | 2250 s | 9.5 GB |
+| Grad-Dot | 9 s | 214 MB | 227 s | 9.5 GB |
+| RPS-L2 | 1.1 s | 72 MB | 1.2 s | 297 MB |
+| TRAK-1 | 1.8 s | 207 MB | 37 s | 7.0 GB |
+| TRAK-50 | 68 s | 2.2 GB | 1549 s | 9.1 GB |
+
+</div>
+
+TRAK's memory grows mostly with the projection dimension (constant in the ensemble size), and runtime scales linearly with the number of ensemble checkpoints. RPS-L2 is the cheapest by an order of magnitude because it only touches the last linear layer — useful as a fast sanity baseline, but the AUC and LDS columns show why it isn't a substitute for the gradient-based methods.
 
 ## Citation
 

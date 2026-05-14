@@ -24,35 +24,158 @@ authors:
   url: "https://hanzhaoml.github.io/"
 ---
 
-## Problem
+**TL;DR.** Random projection of influence scores $g^\top F^{-1} g'$ is governed not by Euclidean geometry but by an *inverse-sensitive* spectral object — the $\lambda$-whitened influence subspace $B = F^{1/2}(F + \lambda I)^{-1/2}$ — and the right complexity parameter is the **effective dimension** $d_\lambda(F) = \operatorname{tr}(F(F + \lambda I)^{-1})$, not $\mathrm{rank}(F)$. We give tight upper and lower bounds in three nested regimes (unregularized, ridge-regularized, Kronecker-factored) and quantify the leakage from out-of-range test gradients.
 
-Influence function-based data attribution scores are bilinear functionals of the form $g^\top F^{-1} g'$, where $F$ is a curvature operator (e.g., the Hessian or Fisher information matrix) and $g, g'$ are training and test gradients. In modern overparameterized models, $F \in \mathbb{R}^{d \times d}$ is far too large to form or invert directly, so practitioners compress gradients via **random projection** — multiplying by a sketch matrix $P \in \mathbb{R}^{m \times d}$ and replacing the original score with $g^\top P^\top (P F P^\top)^{-1} P g'$.
+Influence functions and most modern data-attribution scores share the form $\tau_\lambda(g, g') = g^\top (F + \lambda I)^{-1} g'$, where $F \succeq 0$ is a curvature operator (Hessian, GGN, empirical Fisher). At neural-network scale, $F \in \mathbb{R}^{d \times d}$ is unformable and uninvertible, so practitioners sketch with $P \in \mathbb{R}^{m \times d}$ and replace the score by $\tilde\tau_\lambda(g, g') = (Pg)^\top (PFP^\top + \lambda I_m)^{-1}(Pg')$. The standard justification — "by Johnson–Lindenstrauss" — is a category error: JL preserves Euclidean distances, but $\tau_\lambda$ is sensitive to *inversion*, not to $\lVert Pg \rVert_2$. We replace that folk argument with a precise, instance-adaptive theory of when projection provably preserves influence.
 
-The standard justification for this substitution invokes the **Johnson–Lindenstrauss (JL) lemma**, which guarantees that a random projection approximately preserves pairwise Euclidean distances. But inversion is *not* a Euclidean operation. The JL lemma says nothing about what happens to $F^{-1}$ under projection, and it is silent on two settings that dominate practice: ridge regularization (replacing $F$ with $F + \lambda I$) and structured, Kronecker-factored curvature approximations such as **KFAC** (Kronecker-Factored Approximate Curvature). The result is a gap between the guarantees practitioners cite and the computations they actually run.
+## Why this theory
 
-## Key Idea
+- **JL is the wrong lemma.** Sketching changes the operator that gets inverted; preserving $\lVert Pg - Pg' \rVert_2$ says nothing about $(PFP^\top + \lambda I)^{-1}$. Empirically, projected-influence quality is *not* monotone in $m$ — exactly the symptom of an inverse-sensitive object analyzed with a Euclidean tool.
+- **Effective dimension is the right quantity.** Without regularization, exact preservation forces $m \geq \mathrm{rank}(F)$ — typically $\Theta(n)$. With ridge $\lambda > 0$, the required sketch size collapses to $d_\lambda(F) = \sum_j \lambda_j(F)/(\lambda_j(F) + \lambda)$, which for fast-decaying spectra is $\ll \mathrm{rank}(F) \ll d$. Upper and lower bounds match.
+- **KFAC has a quantifiable statistical cost.** A factorized sketch $P = P_A \otimes P_E$ saves compute, but pays $\varepsilon^{-4}$ instead of $\varepsilon^{-2}$: $m_A m_E = \tilde{\Omega}(\varepsilon^{-4} \cdot d_{\lambda_E}(A)\, d_{\lambda_A}(E))$. The first explicit computational–statistical tradeoff for Kronecker sketches.
+- **Out-of-range test gradients leak — but predictably.** When $g'$ has a component $g'_\perp \in \ker(F)$, the *true* score is unaffected, but the *sketched* score acquires a leakage term we bound explicitly in $\lambda$ and $\lVert F \rVert_2$.
+- **Operational guidance.** A two-stage recipe falls out: pick $\lambda^\star$ for utility on a small validation set, then scale $m$ to roughly $C \cdot d_{\lambda^\star}(F)$ with a modest $C \in (10, 100)$.
 
-This paper develops a **unified theory** that precisely characterizes when random projection provably preserves influence-function scores. Rather than appealing to Euclidean geometry, the analysis works directly with the *inverse-sensitive* structure of the bilinear form. The central object is the $\lambda$-whitened influence subspace $B := F^{1/2}(F + \lambda I)^{-1/2}$, whose spectral properties govern how faithfully a sketch can reproduce $g^\top (F + \lambda I)^{-1} g'$.
+## Method
 
-The theory pins down, with matching upper and lower bounds, the minimum sketch dimension $m$ required in each practically relevant regime, turning what was an informal folk argument into instance-adaptive, quantitative guidance.
+### Setup: a bilinear inverse-sensitive functional
 
-## Approach
+With ridge parameter $\lambda \geq 0$, the (true) regularized influence and its sketched counterpart are
 
-The paper analyzes three nested regimes for $g, g' \in \mathrm{range}(F)$, plus an extension to out-of-range test gradients:
+$$
+\tau_\lambda(g, g') \coloneqq g^\top (F + \lambda I_d)^{-1} g',
+\qquad
+\tilde\tau_\lambda(g, g') \coloneqq (Pg)^\top (PFP^\top + \lambda I_m)^{-1} (Pg').
+$$
 
-- **Unregularized** ($\lambda = 0$): Exact preservation of $\tau_0(g, g') = g^\top F^{-1} g'$ requires $P$ to be *injective* on $\mathrm{range}(F)$. This is a hard necessity: if any direction in $\mathrm{range}(F)$ collapses under $P$, no multiplicative approximation guarantee is possible. The minimum sketch size is therefore $m \geq \mathrm{rank}(F)$.
+Let $r \coloneqq \mathrm{rank}(F)$ with compact eigendecomposition $F = U \Lambda U^\top$ ($U \in \mathbb{R}^{d \times r}$ orthonormal, $\Lambda \succ 0$). We take $P$ to be an *oblivious sketching matrix*: rows $P_i^\top = \frac{1}{\sqrt{m}} W_i^\top$ with $W_i$ i.i.d.\ isotropic sub-Gaussian — covering Gaussian, Rademacher, and sparse JL transforms.
 
-- **Regularized** (ridge $F + \lambda I$): Ridge regularization fundamentally relaxes the requirement. Directions where the eigenvalue $\lambda_j(F) \ll \lambda$ are already dampened by $\lambda$ in the denominator and need not be preserved accurately by $P$. The binding quantity is the *effective dimension* $d_\lambda(F) := \mathrm{tr}\!\left(F(F + \lambda I)^{-1}\right)$, which counts only the eigenvalues that are *large relative to* $\lambda$. A sketch of size $m = \Omega\!\left((d_\lambda(F) + \log(1/\delta))/\varepsilon^2\right)$ suffices for an $\varepsilon$-relative approximation with probability $1 - \delta$, and matching lower bounds show this is tight. When regularization is strong or the spectrum decays quickly, $d_\lambda(F) \ll \mathrm{rank}(F)$, enabling substantially cheaper sketches.
+The central object of the analysis is the $\lambda$-**whitened influence subspace**
 
-- **Factorized curvature** ($F = A \otimes E$): Practical second-order methods such as KFAC represent the curvature as a Kronecker product and use decoupled sketches $P = P_A \otimes P_E$. Rows of a Kronecker sketch have structured correlations that violate the i.i.d. assumptions underlying standard concentration bounds. The analysis introduces a dedicated factorized covariance deviation bound that controls $\|B^\top(P^\top P - I)B\|_2$ through factor-level primitives, allowing the resolvent perturbation argument to go through. This exposes an explicit *computational–statistical tradeoff*: factorized sketches require sketch sizes scaling as $\tilde{\Omega}(\varepsilon^{-4} \cdot d_{\lambda_E}(A) \cdot d_{\lambda_A}(E))$ versus $\varepsilon^{-2}$ for an unfactorized approach — a direct quantification of the cost of imposing Kronecker structure.
+$$
+B \coloneqq F^{1/2} (F + \lambda I)^{-1/2},
+\qquad
+B B^\top = B^\top B = F (F + \lambda I)^{-1}.
+$$
 
-When test gradients have components in $\ker(F)$ — i.e., they are *out of range* — the sketch introduces an additional *leakage* error. The paper quantifies this term explicitly, showing it depends on the magnitude of the out-of-range component $g'_\perp$, the regularization scale $\lambda$, and the spectral norm of $F$.
+Because $F$ and $F + \lambda I$ share eigenbasis, $B$ commutes with the resolvent and reveals the directions that actually need to survive the sketch.
 
-## Result
+### Unregularized regime: a sharp phase transition
 
-For $g, g' \in \mathrm{range}(F)$, the sketched score satisfies $|\tilde{\tau}_\lambda(g, g') - \tau_\lambda(g, g')| \leq \varepsilon \sqrt{\tau_0(g, g)} \sqrt{\tau_0(g', g')}$ with high probability under the sketch-size conditions above. For out-of-range test gradients, leakage is bounded by $\varepsilon \|g\|_2 \|g'_\perp\|_2 (1/\lambda + 2\|F\|_2/\lambda^2)$.
+With $\lambda = 0$, the resolvent $F^{-1}$ has no damping and any collapse on $\mathrm{range}(F)$ is fatal.
 
-Together, the three regimes give **principled, instance-adaptive guidance** for choosing sketch sizes in practice: use $\mathrm{rank}(F)$ when there is no regularization, switch to the (often much smaller) *effective dimension* once ridge regularization is present, and account for the additional $\varepsilon^{-2}$ factor when Kronecker-factored sketches are used. The results show that the JL lemma, while suggestive, systematically *underestimates* the required sketch size in the unregularized case and *overestimates* it in the regularized one.
+> **Theorem (Unregularized barrier).** For $g, g' \in \mathrm{range}(F)$, $\tilde\tau_0 = \tau_0$ for all such $g, g'$ if and only if $P$ is injective on $\mathrm{range}(F)$, i.e., $\mathrm{rank}(PU) = r$. If $\mathrm{rank}(PU) < r$ — in particular if $m < r$ — *no uniform multiplicative approximation* is possible over $\mathrm{range}(F) \setminus \{0\}$, at any constant factor.
+
+Either the sketch is injective on $\mathrm{range}(F)$ (and influence is preserved *exactly* with probability one for continuous sketches), or no $\varepsilon$ guarantee exists at all. In overparametrized regimes $r \approx n$, so $m$ must scale with the dataset.
+
+### Regularized regime: effective dimension is tight
+
+Ridge regularization changes the geometry: directions with $\lambda_j(F) \ll \lambda$ are already dominated by $\lambda$ in $F + \lambda I$, so they need not be preserved multiplicatively. The binding quantity is the **effective dimension**
+
+$$
+d_\lambda(F) \;\coloneqq\; \operatorname{tr}\!\bigl(F (F + \lambda I)^{-1}\bigr) \;=\; \sum_{j=1}^{r} \frac{\lambda_j(F)}{\lambda_j(F) + \lambda} \;\leq\; r,
+$$
+
+a classical Bayesian model-selection quantity that counts only eigenvalues large relative to $\lambda$.
+
+> **Theorem (Regularized upper bound).** For oblivious $P$, $\lambda > 0$, and any $\varepsilon, \delta \in (0, 1)$, if
+> $$
+> m \;=\; \Omega\!\left( \frac{d_\lambda(F) + \log(1/\delta)}{\varepsilon^2} \right),
+> $$
+> then with probability at least $1 - \delta$, for all $g, g' \in \mathrm{range}(F)$,
+> $$
+> \bigl\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \bigr\rvert \;\leq\; \varepsilon \sqrt{\tau_0(g, g)}\,\sqrt{\tau_0(g', g')}.
+> $$
+
+The proof reduces the problem to controlling $\lVert B^\top (P^\top P - I) B \rVert_2 \leq \varepsilon/2$, which yields the **ridge-regularized sandwich** $(1 - \tfrac{\varepsilon}{2})(F + \lambda I) \preceq G + \lambda I \preceq (1 + \tfrac{\varepsilon}{2})(F + \lambda I)$ for $G \coloneqq F^{1/2} P^\top P F^{1/2}$, and then resolvent perturbation through the identity $A(A + \lambda I)^{-1} = I - \lambda(A + \lambda I)^{-1}$. The key relaxation over an oblivious subspace embedding (which would force $m = \Omega(r/\varepsilon^2)$ via uniform multiplicative accuracy on $\mathrm{range}(F^{1/2})$) is that we only need approximate isometry on the *whitened* subspace $B$, not on $F^{1/2}$ itself.
+
+> **Theorem (Lower bound).** For Gaussian oblivious $P$, there exists a family of $F \succeq 0$ such that if $m = o(d_\lambda(F)/\varepsilon^2)$, then some $g \in \mathrm{range}(F)$ admits $\lvert \tilde\tau_\lambda(g, g) - \tau_\lambda(g, g) \rvert = \Omega(\varepsilon)\,\tau_0(g, g)$ with constant probability.
+
+The construction takes a diagonal $F$ with a top block of $k$ eigenvalues at scale $\lambda$ — so $d_\lambda(F) = \Theta(k)$ — and reduces sketched influence to an anti-concentration bound on the Wishart matrix $\tfrac{1}{m} W_L^\top W_L$. Upper and lower bounds match: $d_\lambda(F)$ is the *fundamental* complexity parameter.
+
+### Factorized curvature: KFAC pays $\varepsilon^{-4}$
+
+K-FAC approximates each layer's curvature as $F \approx A \otimes E$, with $A \in \mathbb{R}^{d_A \times d_A}$ the activation covariance and $E \in \mathbb{R}^{d_E \times d_E}$ the backprop-gradient covariance. The natural sketch is also factorized, $P = P_A \otimes P_E$, so that $Pg = \operatorname{vec}(P_E G P_A^\top)$ and $PFP^\top = (P_A A P_A^\top) \otimes (P_E E P_E^\top)$ can be formed without materializing $P$. But Kronecker rows are correlated, so the i.i.d.-row concentration that drives the unfactorized proof breaks; we replace it with a dedicated *factorized covariance deviation bound* on $\lVert B^\top (P^\top P - I) B \rVert_2$.
+
+The unregularized barrier becomes stricter: $\tilde\tau_0 = \tau_0$ on $\mathrm{range}(F)$ iff $P_A$ is injective on $\mathrm{range}(A)$ *and* $P_E$ is injective on $\mathrm{range}(E)$, forcing $m_A \geq \mathrm{rank}(A)$, $m_E \geq \mathrm{rank}(E)$, and hence $m = m_A m_E \geq \mathrm{rank}(F)$.
+
+> **Theorem (Factorized regularized upper bound).** Let $F = A \otimes E$, $P = P_A \otimes P_E$, $\lambda \leq \lVert A \rVert_2 \lVert E \rVert_2$, and define $\lambda_E \coloneqq \lambda/\lVert E \rVert_2$, $\lambda_A \coloneqq \lambda/\lVert A \rVert_2$. If
+> $$
+> m_A \,=\, \Omega\!\left(\frac{d_{\lambda_E}(A) + \log(1/\delta)}{\varepsilon^2}\right),
+> \qquad
+> m_E \,=\, \Omega\!\left(\frac{d_{\lambda_A}(E) + \log(1/\delta)}{\varepsilon^2}\right),
+> $$
+> then with probability $\geq 1 - \delta$, $\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \rvert \leq \varepsilon \sqrt{\tau_0(g, g)} \sqrt{\tau_0(g', g')}$ for all $g, g' \in \mathrm{range}(F)$.
+
+Two consequences. First, each mode is regularized by the *opposing* factor's signal strength: $A$ sees ridge $\lambda_E = \lambda/\lVert E \rVert_2$, and vice versa. Second, the *total* sketch size is
+
+$$
+m \,=\, m_A m_E \,=\, \tilde\Omega\!\left( \varepsilon^{-4} \cdot d_{\lambda_E}(A)\, d_{\lambda_A}(E) \right),
+$$
+
+a strict $\varepsilon^{-2} \to \varepsilon^{-4}$ degradation over the unfactorized bound — a price paid for separability, not an artifact of loose analysis.
+
+### Out-of-range leakage
+
+For an unseen test gradient $g'$, decompose $g' = g'_\parallel + g'_\perp$ with $g'_\parallel \in \mathrm{range}(F)$ and $g'_\perp \in \ker(F)$. The *true* influence ignores $g'_\perp$: $\tau_\lambda(g, g'_\perp) = 0$. The *sketched* influence can pick up a sketch-induced leakage $\tilde\tau_\lambda(g, g'_\perp)$ because $P^\top P$ couples $\mathrm{range}(F)$ and $\ker(F)$. The leakage decomposes cleanly:
+
+$$
+\bigl\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \bigr\rvert \;\leq\; \underbrace{\bigl\lvert \tilde\tau_\lambda(g, g'_\parallel) - \tau_\lambda(g, g'_\parallel) \bigr\rvert}_{\text{Theorem above}} \;+\; \underbrace{\bigl\lvert \tilde\tau_\lambda(g, g'_\perp) \bigr\rvert}_{\text{leakage}}.
+$$
+
+> **Theorem (Leakage).** For $k$ test gradients with $k' \coloneqq \dim \mathrm{Span}\{g'_{j,\perp}\}_{j=1}^k$, if $m = \Omega((r + \min\{\log(k/\delta),\, k' + \log(1/\delta)\})/\varepsilon^2)$, then with probability $\geq 1 - \delta$, uniformly in $j$,
+> $$
+> \begin{aligned}
+> \text{Unreg.:} \quad &\bigl\lvert \tilde\tau_0(g, g'_{j,\perp}) \bigr\rvert \;\leq\; \varepsilon \,\lVert g \rVert_2 \,\lVert g'_{j,\perp} \rVert_2 \,/\, \lambda_{\min}^+(F), \\
+> \text{Reg.:} \quad &\bigl\lvert \tilde\tau_\lambda(g, g'_{j,\perp}) \bigr\rvert \;\leq\; \varepsilon \,\lVert g \rVert_2 \,\lVert g'_{j,\perp} \rVert_2 \!\left( \frac{1}{\lambda} + \frac{2 \lVert F \rVert_2}{\lambda^2} \right).
+> \end{aligned}
+> $$
+
+Both bounds decay at the standard $O(m^{-1/2})$ rate; the regularized bound is explicit in $\lambda$ and $\lVert F \rVert_2$, formalizing the cost of operating off the curvature's support. An analogous factorized statement (Kronecker $P = P_A \otimes P_E$) follows via a factor-level cross-term lemma, with the same primitives controlled by union-bound or subspace arguments.
+
+## Results
+
+### Sketch-size guidance, by regime
+
+The three regimes give a clean decision tree for choosing $m$:
+
+<div class="table-scroll">
+
+| Regime | Curvature | Sketch | Sketch size $m$ | Comment |
+| --- | --- | --- | --- | --- |
+| **Unregularized** | $F$, $\lambda = 0$ | oblivious | $m \geq \mathrm{rank}(F) \approx n$ | Phase transition: exact or no guarantee. |
+| **Regularized** | $F + \lambda I$, $\lambda > 0$ | oblivious | $\Omega((d_\lambda(F) + \log(1/\delta))/\varepsilon^2)$ | Tight: matching $\Omega$ lower bound for Gaussian $P$. |
+| **Factorized** | $F = A \otimes E$, $\lambda > 0$ | $P_A \otimes P_E$ | $\tilde\Omega(\varepsilon^{-4} \cdot d_{\lambda_E}(A)\, d_{\lambda_A}(E))$ | Computational–statistical tradeoff: $\varepsilon^{-2} \to \varepsilon^{-4}$. |
+| **Out-of-range** | any of the above | oblivious or factorized | extra $\log(k)$ or $k'$ term | Leakage scales as $\varepsilon(1/\lambda + 2\lVert F \rVert_2/\lambda^2)$. |
+
+</div>
+
+Because $d_\lambda(F)$ is *instance-adaptive*, the guidance is automatically tighter than worst-case rank bounds whenever the Fisher spectrum decays. On the experiments in the paper (MNIST + LR/MLP, CIFAR-2 + ResNet9 with empirical Fisher), the eigenvalues of $F$ decay sharply enough that $d_\lambda(F) \ll r \ll d$ for moderate $\lambda$, and the predicted scaling $m \sim d_\lambda(F)$ matches the observed normalized error curves with a modest hidden constant.
+
+### What JL gets wrong
+
+Plotted on the same axes, the JL bound and our bound diverge in both directions:
+
+<div class="table-scroll">
+
+| Setting | JL prediction ($m = O(\log n/\varepsilon^2)$) | Our theory |
+| --- | --- | --- |
+| Unregularized, $r \approx n$ | $m \sim \log n$ | $m \geq r$ — **JL underestimates by a factor of $n/\log n$**. |
+| Regularized, fast-decaying spectrum | $m \sim \log n$ | $m \sim d_\lambda(F)$, often $\ll \log n$ for tight $\lambda$ — **JL can overestimate**. |
+| Factorized | $m \sim \log n$ (no $\varepsilon$ dependence stated) | $\tilde\Omega(\varepsilon^{-4} d_{\lambda_E}(A) d_{\lambda_A}(E))$ — **JL silent on KFAC structure**. |
+
+</div>
+
+The point isn't that JL is wrong about distances; it's that influence is *not a distance*. The right concentration object is $\lVert B^\top(P^\top P - I) B \rVert_2$ on the $\lambda$-whitened subspace, and once that is in hand the three regimes fall out as instances of one resolvent perturbation argument.
+
+### A two-stage hyperparameter recipe
+
+Because minimizing approximation error $\varepsilon_\lambda$ is not the same as maximizing downstream utility (LDS, LOO correlation), the theory motivates a *faithfulness–utility* split:
+
+1. **Choose $\lambda^\star$ for utility.** On a small validation set with $m$ large, sweep $\lambda$ and pick the $\lambda^\star$ that maximizes the downstream metric — typically an intermediate value, since both $\lambda \to 0$ (unstable inverse) and $\lambda \to \infty$ (signal washed out) hurt.
+2. **Choose $m$ for faithfulness.** Fix $\lambda = \lambda^\star$ and grow $m$ until $m \gtrsim C \cdot d_{\lambda^\star}(F)$ with $C \in (10, 100)$.
+
+The first stage is sample-efficient (small validation set, no need for tight sketches); the second is principled (governed by an instance-adaptive quantity, not a worst-case rank).
 
 ## Citation
 

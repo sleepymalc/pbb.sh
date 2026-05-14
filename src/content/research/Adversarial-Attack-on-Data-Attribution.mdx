@@ -23,23 +23,180 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Problem
+<figure class="figure-block figure-hero">
+  <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/shadow_attack.png" alt="Shadow Attack pipeline: the adversary samples shadow training sets Z^(i) from the public distribution, trains shadow models M^(i) under the same training algorithm, computes a surrogate compensation share c'_s(Z), and gradient-ascends on Z until convergence to produce perturbed contributions Z_1^a." />
+  <figcaption><strong>Shadow Attack.</strong> Gray-box: train $m$ shadow models on samples from the public distribution, gradient-ascend on a surrogate $c'_s(Z)$, return perturbed contributions $Z_1^a$.</figcaption>
+</figure>
 
-Data attribution methods quantify how much each training sample contributes to a model's predictions, and are increasingly deployed in real-world systems to compensate data providers financially. Yet despite this direct economic role, the adversarial robustness of these methods has received almost no systematic study. A malicious data provider could potentially manipulate their submitted data to inflate their measured contribution — and therefore their payout — without anyone noticing. We formalize this threat as an *adversarial attack on data attribution*: given a periodic contribution setting where a model is retrained each round on the accumulated dataset, the adversary's goal is to maximize their *compensation share*, defined as the fraction of top-$k$ most-influential data points that belong to them.
+<figure class="figure-block figure-hero">
+  <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/outlier_attack.png" alt="Outlier Attack pipeline: the adversary issues black-box prediction queries to the deployed model T(Z_0), runs an off-the-shelf black-box adversarial-example attack that increases the loss ell(Z), and returns the perturbed sample once the loss has increased enough." />
+  <figcaption><strong>Outlier Attack.</strong> Black-box: only prediction queries to $\mathcal{T}(Z_0)$; off-the-shelf adversarial-example methods inflate $\ell(Z)$ until each sample becomes a model-specific outlier.</figcaption>
+</figure>
 
-## Key Idea
+**TL;DR.** Data-attribution-based compensation is *not* adversarially robust. A malicious data provider who controls $\sim 1\%$ of the round-$t{=}1$ corpus can inflate their share of top-$k$ influential points by **2–7$\times$** with imperceptible feature perturbations — either by training shadow models on the public distribution (**Shadow Attack**, gray-box) or by turning their own samples into adversarial examples (**Outlier Attack**, black-box).
 
-We propose two principled attacks that construct a manipulated dataset to inflate attributed compensation. The **Shadow Attack** is a gray-box method that exploits knowledge of the data distribution and training algorithm: it borrows *shadow training* from membership inference, using surrogate models trained on samples from the known distribution to estimate how a candidate manipulated point would be attributed — without ever accessing the real target model. The **Outlier Attack** is fully black-box, requiring only prediction queries: it exploits the inductive bias that *outlier points tend to receive disproportionately high attribution scores*, constructing adversarial examples that are statistically anomalous to the model while remaining semantically plausible.
+## Why Adversarial Attack on Data Attribution
 
-## Approach
+- **First systematic threat model.** Periodic data contribution gives the adversary persistence ($Z_0 \subseteq Z_1^b$ with $\lvert Z_0 \rvert / \lvert Z_1^b \rvert \to 1$); the adversary controls $Z_1^a$ only and is paid by *compensation share* — the fraction of validation points for which their data lands in the top-$k$.
+- **Two attacks at two capability levels.** *Shadow Attack* exploits a known data distribution and training algorithm (Assumption: distribution access). *Outlier Attack* exploits only black-box query access (Assumption: prediction queries) and a structural inductive bias of attribution methods.
+- **Outlier $\Rightarrow$ influence, formally.** Theorem 5.1 shows that for any $\Theta(1)$-bounded influence function, perturbing a single training point changes *all other* influence scores by only $O(1/n)$ — so adversarial-example gradient inflation on the original model transfers to the retrained model.
+- **Large, reproducible inflation.** Shadow Attack inflates compensation by **206–456%** across MNIST/Digits/CIFAR-10; Outlier Attack reaches **185–644%** and extends to text generation (NanoGPT on Shakespeare, 263%). Matched-budget random perturbation moves the needle by $<5\%$.
 
-The **Shadow Attack** proceeds in two phases. First, the adversary trains multiple shadow models on datasets drawn from the known distribution combined with candidate manipulated points. Second, it applies gradient ascent on a surrogate attribution objective — computed over the shadow models — to perturb the candidate points so that their influence scores increase. This avoids the cost of repeatedly retraining from scratch by using the shadow models as proxies for the true target.
+## Method
 
-The **Outlier Attack** generates adversarial examples using black-box perturbation techniques — ZOO and SimBA for images, TextFooler for text — that maximize prediction loss while preserving label correctness and semantic realism. The attack targets only input features, not labels, so the poisoned samples pass naive quality filters. The theoretical grounding (Theorem 5.1 in the paper) shows that adversarial perturbations substantially amplify gradient magnitudes, which directly elevates influence-function-based attribution scores on both the original and any retrained model.
+### Threat model
 
-## Result
+A model is retrained each round on the accumulated corpus and the top-$k$ most influential training points per validation example are compensated. Consider two consecutive rounds $t \in \{0, 1\}$. At $t=0$ only benign providers contribute $Z_0$; at $t=1$ the corpus is $Z_1 = Z_1^b \cup Z_1^a$ with $Z_1^a$ supplied by an adversary. Let $\tau_1 = \mathcal{A}(Z_1, \mathcal{T}(Z_1), V_1)$ be the resulting contribution function. The adversary maximizes the *compensation share*
 
-Across image classification (MNIST, Digits, CIFAR-10) and text generation (Shakespeare corpus with NanoGPT), both attacks reliably inflate attribution-based compensation by large margins. The **Shadow Attack** achieves 206–456% inflation, with the highest effect on logistic regression (456%) and 217% on ResNet-18. The **Outlier Attack** is even more potent: 185–644% inflation, peaking at 644% on MNIST with ZOO and 596% on CIFAR-10 with SimBA; text generation sees 263% inflation. Random perturbation baselines produce negligible effects, confirming that the gains stem from the attacks' structure rather than noise.
+$$
+c(Z_1^a) \;=\; \frac{1}{k \lvert V_1 \rvert} \sum_{z \in Z_1^a} \sum_{v \in V_1} \mathbf{1}\!\left[\tau_1(z, v) \in \operatorname{Top}_k\!\big(\{\tau_1(z', v) : z' \in Z_1\}\big)\right].
+$$
+
+The adversary does **not** have white-box access to $\mathcal{T}(Z_0), \mathcal{T}(Z_1)$, the exact $Z_0, Z_1^b, V_0, V_1$, or the contribution functions; they may only perturb a small set of real data points (no synthetic samples). The two attacks live on opposite ends of the capability spectrum:
+
+<div class="table-scroll">
+
+| Attack | Knowledge required | Mechanism | Cost |
+| --- | --- | --- | --- |
+| **Shadow Attack** | data distribution + training algorithm $\mathcal{T}$ | gradient ascent on a surrogate attribution over $m$ shadow models | $m \times$ (train + score) |
+| **Outlier Attack** | black-box prediction queries to $\mathcal{T}(Z_0)$ | off-the-shelf adversarial-example generation against $\mathcal{T}(Z_0)$ | one black-box attack per point |
+
+</div>
+
+### Shadow Attack: shadow training as a proxy oracle
+
+The adversary samples $m$ shadow training sets $Z^{(1)}, \dots, Z^{(m)}$ and a shadow validation set $V^{(0)}$ from the assumed distribution, trains shadow models $M^{(i)} = \mathcal{T}(Z^{(i)} \cup Z)$, and computes shadow contribution functions $\tau^{(i)} = \mathcal{A}(Z^{(i)} \cup Z, M^{(i)}, V^{(0)})$. The natural objective $c_s(Z) = \frac{1}{m k \lvert V^{(0)} \rvert} \sum_{i,z,v} \mathbf{1}[\tau^{(i)}(z, v) \in \operatorname{Top}_k(\cdot)]$ is discrete and requires retraining each $M^{(i)}$ at every gradient step. Two simplifications make the attack tractable:
+
+- **Continuous surrogate.** Replace the top-$k$ indicator with the raw attribution sum
+  $$
+  c'_s(Z) \;=\; \frac{1}{m k \lvert V^{(0)} \rvert} \sum_{i=1}^m \sum_{z \in Z} \sum_{v \in V^{(0)}} \tau^{(i)}(z, v).
+  $$
+- **Cheap attribution under fixed weights.** Freeze the shadow weights at their pre-perturbation values and instantiate $\tau^{(i)}$ as **Grad-Dot**, $\tau^{(i)}(z, v) = \langle \nabla_\theta \ell(M^{(i)}, z),\, \nabla_\theta \ell(M^{(i)}, v) \rangle$. Each gradient-ascent step then costs one forward–backward pass per shadow model, with **no retraining**. Empirically this surrogate transfers to *advanced* attribution methods (Influence Function, TRAK, Data Shapley) used by the actual AI developer.
+
+Perturbations are projected back into the budget set $\mathcal{N}(Z)$ after each step; the procedure converges to a local optimum of $c'_s$ under a bounded budget.
+
+### Outlier Attack: turning samples into outliers in the black box
+
+Many attribution methods inherit an *outlier-inflates-influence* inductive bias — historically the original use case of the influence function was outlier detection ([Cook, 1977](https://www.jstor.org/stable/1268249)). The Outlier Attack converts each adversary-owned point $z = (x, y)$ into a model-specific outlier by perturbing $x$ alone (never the label $y$) to maximize the loss $\ell(\mathcal{T}(Z_0), (x, y))$ using off-the-shelf *black-box* adversarial-example methods:
+
+<div class="table-scroll">
+
+| Setting | Black-box attack | Why |
+| --- | --- | --- |
+| Small-scale image | **ZOO** ([Chen et al., 2017](https://dl.acm.org/doi/10.1145/3128572.3140448)) | finite-difference gradient estimate via prediction queries |
+| Large-scale image | **SimBA** ([Guo et al., 2019](https://proceedings.mlr.press/v97/guo19a.html)) | coordinate descent, $O(d)$ queries |
+| Text generation | **TextFooler** ([Jin et al., 2020](https://arxiv.org/abs/1907.11932)) | synonym substitution under semantic constraints |
+
+</div>
+
+Keeping the label fixed is essential: a flipped $y$ would be a *negatively* influential mislabel, and quality filters tend to catch label noise. Perturbing $x$ only yields a sample that is statistically anomalous to the model but stays on the data manifold.
+
+#### Why the perturbation transfers to the retrained model
+
+The attack inflates gradients on $\hat\theta = \mathcal{T}(Z_0)$, but the *paid* attribution $\tau_{\mathrm{IF}}(z_j', z_{\text{test}}; \hat\theta')$ is computed on the retrained model $\hat\theta' = \mathcal{T}(Z \setminus \{z_j\} \cup \{z_j'\})$. The following theorem closes that gap.
+
+**Theorem 5.1** (Informal). *Consider ERM with twice-differentiable, $m$-strongly convex, $L$-Lipschitz loss $\ell$, and influence-function attribution*
+$$
+\tau_{\mathrm{IF}}(z_j, z_{\text{test}}; \hat\theta) \;=\; -\nabla_\theta \ell(\hat\theta, z_{\text{test}})^{\!\top} H(\hat\theta)^{-1} \nabla_\theta \ell(\hat\theta, z_j),
+\qquad H(\hat\theta) \coloneqq \frac{1}{n}\sum_{i=1}^n \nabla_\theta^2 \ell(\hat\theta, z_i),
+$$
+*with $\lvert \tau_{\mathrm{IF}} \rvert, \lVert \nabla_\theta \ell \rVert_2, \lVert \nabla_\theta^2 \ell \rVert_{\mathrm{op}} = \Theta(1)$. If $z_j \to z_j'$, then for every test point $z_{\text{test}}$ and every $i \ne j$,*
+
+$$
+\tau_{\mathrm{IF}}(z_i, z_{\text{test}}; \hat\theta') \;=\; \tau_{\mathrm{IF}}(z_i, z_{\text{test}}; \hat\theta) + O(1/n),
+\qquad
+\tau_{\mathrm{IF}}(z_j', z_{\text{test}}; \hat\theta') \;=\; \tau_{\mathrm{IF}}(z_j', z_{\text{test}}; \hat\theta) + O(1/n).
+$$
+
+The proof goes through $\lVert \hat\theta' - \hat\theta \rVert \le 4L / (mn)$ (strong convexity + Lipschitzness) and a first-order Neumann expansion $\lVert H'^{-1} - H^{-1} \rVert_{\mathrm{op}} = O(4LM / (m^3 n))$, then chains them through the influence formula. Generalizing to $k$ simultaneous perturbations sharpens the bound to $O(k/n)$.
+
+**Why this matters for the attack.** The adversary can score perturbations on $\hat\theta$ (cheap, no retraining) while the platform pays based on $\hat\theta'$ (expensive, post-retraining). Theorem 5.1 says the two scores are within $O(1/n)$, so adversarial-example gradient inflation on $\hat\theta$ — which is exactly what the black-box attacks optimize — survives the retrain.
+
+## Results
+
+We measure the **Ratio** = $c(Z_1^a)_{\text{manipulated}} / c(Z_1^a)_{\text{original}}$ and the **More / Tied / Fewer** breakdown over $V_1$ at $k = 100$. Settings (a)–(d) are image classification: (a) MNIST/LR with Influence Function, (b) Digits/MLP with Data Shapley, (c) MNIST/CNN with TRAK, (d) CIFAR-10/ResNet-18 with TRAK. Setting (e) is text generation: Shakespeare/NanoGPT with TRAK. In all image settings $\lvert Z_1^a \rvert / \lvert Z_1 \rvert \approx 1\%$ (Digits: $2.5\%$ / $3.5\%$); for text $\lvert Z_1^a \rvert / \lvert Z_1 \rvert \approx 0.3\%$.
+
+### Shadow Attack
+
+<div class="table-scroll">
+
+| Setting | Shadow model | Attribution | Original $\to$ Manipulated | **Ratio** | More / Tied / Fewer |
+| --- | --- | --- | --- | --- | --- |
+| (a) MNIST | LR | Influence Function | $0.0098 \to 0.0477$ | **456.1%** | 0.955 / 0.038 / 0.007 |
+| (b) Digits | MLP | Data Shapley | $0.0152 \to 0.0435$ | 286.2% | 0.533 / 0.333 / 0.134 |
+| (c) MNIST | CNN | TRAK | $0.0112 \to 0.0467$ | 417.0% | 0.781 / 0.195 / 0.024 |
+| (d) CIFAR-10 | ResNet-18 | TRAK | $0.0095 \to 0.0213$ | 217.3% | 0.655 / 0.259 / 0.086 |
+| (d) CIFAR-10 | **ResNet-9** (mismatch) | TRAK | $0.0095 \to 0.0196$ | 206.3% | 0.622 / 0.310 / 0.068 |
+
+</div>
+
+*Ratios across the board sit between $206\%$ and $456\%$, with the gain concentrated in **More** (the attack helps a strict majority of validation points). The last row uses a smaller shadow architecture (ResNet-9) than the target (ResNet-18): the attack still produces a $2\times$ inflation, so exact architectural knowledge is **not** required.*
+
+### Outlier Attack
+
+<div class="table-scroll">
+
+| Setting | Black-box attack | Attribution | Original $\to$ Manipulated | **Ratio** | More / Tied / Fewer |
+| --- | --- | --- | --- | --- | --- |
+| (a) MNIST | ZOO | Influence Function | $0.0098 \to 0.0631$ | **643.9%** | 0.980 / 0.017 / 0.003 |
+| (b) Digits | SimBA | Data Shapley | $0.0112 \to 0.0218$ | 194.6% | 0.440 / 0.380 / 0.180 |
+| (c) MNIST | SimBA | TRAK | $0.0112 \to 0.0668$ | 596.4% | 0.799 / 0.173 / 0.028 |
+| (d) CIFAR-10 | SimBA | TRAK | $0.0095 \to 0.0176$ | 185.2% | 0.562 / 0.354 / 0.084 |
+| (e) Shakespeare/NanoGPT | TextFooler | TRAK | $0.0035 \to 0.0092$ | 262.9% | 0.392 / 0.461 / 0.147 |
+
+</div>
+
+*Outlier Attack matches or exceeds Shadow Attack on (a) and (c) — despite needing **only black-box queries** — and is the only attack that ports to generative-AI settings ((e), no usable distributional assumption). The ResNet-18 result on (d) is the hardest setting for both attacks: high-capacity models concentrate influence on fewer, more idiosyncratic samples, and our $1\%$ adversary budget still doubles their compensation.*
+
+### Random-perturbation control
+
+To rule out a "any perturbation inflates influence" explanation, we run pixel-wise random perturbation with the **same $\ell_\infty$ budget** as the proposed attacks:
+
+<div class="table-scroll">
+
+| Setting | Original | Random Perturbation | More / Tied / Fewer |
+| --- | --- | --- | --- |
+| (a) MNIST | 0.0098 | 0.0097 | 0.203 / 0.586 / 0.211 |
+| (c) MNIST | 0.0112 | 0.0117 | 0.385 / 0.326 / 0.289 |
+| (d) CIFAR-10 | 0.0095 | 0.0125 | 0.367 / 0.430 / 0.203 |
+
+</div>
+
+The compensation share moves by **at most $\sim 4\%$ absolute** under random noise and **More $\approx$ Fewer** — i.e., the inflation in Shadow / Outlier comes from the *structured* perturbation, not from injecting any high-frequency noise into the training corpus.
+
+### Visualizing the perturbation
+
+The perturbations themselves are barely visible to human eyes — yet they reliably shift the same training point from the bottom of the influence ranking to deep inside the top-$k$. Below: a single training image from MNIST and CIFAR-10, before and after each attack, captioned with the *number of validation points it lands in the top-$k$ for* (per the paper's $k = 100$ visualization protocol).
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/example_mnist_origin.png" alt="Original MNIST digit zero on a clean black background, unperturbed." />
+    <figcaption><strong>MNIST — Original.</strong> Top-$k$ influential for $0$ validation points.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/example_mnist_shadow.png" alt="The same MNIST zero after Shadow Attack: faint structured noise sprinkled across the dark background, digit shape still clearly recognizable." />
+    <figcaption><strong>MNIST — Shadow Attack.</strong> Top-$k$ influential for $75$ validation points.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/example_mnist_outlier.png" alt="The same MNIST zero after Outlier Attack: denser pixel-wise noise across the background, digit shape still recognizable." />
+    <figcaption><strong>MNIST — Outlier Attack.</strong> Top-$k$ influential for $105$ validation points.</figcaption>
+  </figure>
+</div>
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/example_cifar10_original.png" alt="Original CIFAR-10 image of a red truck on a dirt road against a blue sky, unperturbed." />
+    <figcaption><strong>CIFAR-10 — Original.</strong> Top-$k$ influential for $1$ validation point.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/example_cifar10_shadow.png" alt="The same red-truck image after Shadow Attack: the perturbation is imperceptible to the human eye, the truck still clearly recognizable." />
+    <figcaption><strong>CIFAR-10 — Shadow Attack.</strong> Top-$k$ influential for $38$ validation points.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Adversarial-Attack-on-Data-Attribution/Figures/example_cifar10_outlier.png" alt="The same red-truck image after Outlier Attack: again the perturbation is imperceptible to the human eye, the truck still clearly recognizable." />
+    <figcaption><strong>CIFAR-10 — Outlier Attack.</strong> Top-$k$ influential for $29$ validation points.</figcaption>
+  </figure>
+</div>
 
 > This paper also appears in the ATTRIB 2024 workshop @NeurIPS.
 

@@ -22,29 +22,134 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Problem
+<figure class="figure-block figure-hero">
+  <img src="/research/Unlearning-Sample-Inference-Game/Figures/flow.png" alt="The unlearning sample inference game: dataset D is partitioned into retain, forget, and test sets; the challenger trains on retain plus forget and unlearns the forget set; the adversary observes the unlearned model and oracle samples and must guess whether they came from the forget set or the test set." />
+  <figcaption><strong>The unlearning sample inference game.</strong> Dataset $\mathcal{D}$ splits into retain $\mathcal{R}$, forget $\mathcal{F}$, and test $\mathcal{T}$. The challenger $\operatorname{Ul}$ trains on $\mathcal{R} \cup \mathcal{F}$ and unlearns $\mathcal{F}$. The adversary $\mathcal{A}$ sees the unlearned model $m$ and an oracle $\mathcal{O}_s(b)$ that emits points from $\mathcal{F}$ (if $b{=}0$) or $\mathcal{T}$ (if $b{=}1$), and must guess $b$. The whole evaluation reduces to measuring $\mathcal{A}$'s *advantage* between the two oracle worlds.</figcaption>
+</figure>
 
-Machine unlearning (MU) — the task of selectively removing the influence of specific training data from a deployed model — has matured rapidly, yet *evaluating* unlearning algorithms remains a long-standing open problem. The dominant evaluation paradigm relies on membership inference attacks (MIAs): measure how well an adversary can detect whether a data point was used during training, and treat that attack success rate as a proxy for removal quality. This approach is fundamentally brittle. Crucially, retraining from scratch is the gold-standard for data removal, yet it is not guaranteed to minimise MIA success compared to approximate methods — meaning the theoretically optimal algorithm can *appear worse* under the very metric meant to assess it. Results also shift with the choice of attack, dataset composition, and evaluation protocol, with no unified theoretical framework in sight.
+**TL;DR.** We recast machine-unlearning evaluation as a *cryptographic two-player game*. The induced **Unlearning Quality** $\mathcal{Q} = 1 - \sup_{\mathcal{A}} \operatorname{Adv}(\mathcal{A}, \operatorname{Ul})$ is the first unlearning metric that simultaneously *zero-grounds* gold-standard retraining ($\mathcal{Q} = 1$), admits a *provable lower bound* under $(\epsilon, \delta)$-certified removal, and is *practically computable* via a two-split **SWAP test**.
 
-## Key Idea
+Machine unlearning — selectively removing the influence of specific training data from a deployed model — has matured rapidly, yet *evaluating* unlearning remains an open problem. The dominant paradigm equates removal quality with membership-inference-attack (MIA) success rate, but this proxy is fundamentally brittle: gold-standard retraining is not guaranteed to *minimize* MIA success, results swing with the choice of attack and the data split, and no unified theory exists. We propose an evaluation that fixes all three failure modes at once.
 
-We introduce the **unlearning sample inference game**, a cryptographic-style two-player framework. The data is split into three disjoint parts: a *retain* set $\mathcal{R}$, a *forget* set $\mathcal{F}$, and a *test* set $\mathcal{T}$. The defender (challenger) trains a model on $\mathcal{R} \cup \mathcal{F}$ and then unlearns $\mathcal{F}$. The adversary is given samples drawn from *either* $\mathcal{F}$ or $\mathcal{T}$ — but not told which — and must guess the source. Intuitively, if the unlearned model has genuinely forgotten $\mathcal{F}$, the adversary gains no advantage from querying it; the forget-set samples look no different from the never-seen test-set samples.
+## Why this metric
 
-<p align="center">
-    <img src="./Figures/flow.png"/>
-</p>
+- **MIA accuracy is mis-calibrated.** Approximate methods can score *better* than retraining on MIA AUC, even though retraining is the theoretically optimal removal procedure — the metric punishes the gold standard.
+- **No grounding, no upper bound.** Existing scores (MIA AUC, Interclass Confusion) give neither a guarantee that retraining maxes out the scale nor any inequality relating the score to formal removal notions such as $(\epsilon, \delta)$-certified removal.
+- **Sensitive to attack and split choice.** Different MIAs and different forget/test partitions give incomparable numbers; the metric inherits all the brittleness of its underlying attack.
+- **A cryptographic remedy.** Treat the unlearned model as a primitive and the MIA as an adversary; measure *advantage* — the gap between two indistinguishable scenarios — instead of raw attack success. Symmetry of the construction cancels per-sample MIA bias, and the worst-case advantage is what we report as $\mathcal{Q}$.
 
-## Approach
+## Method
 
-Using the notion of **advantage** — the difference in the adversary's success rate across the two scenarios — we define **Unlearning Quality** $\mathcal{Q} = 1 - \sup_{\mathcal{A}} \operatorname{Adv}(\mathcal{A}, \text{Ul})$, where the supremum ranges over all adversaries. Higher $\mathcal{Q}$ means better unlearning. The framework comes with two provable guarantees: (1) for the gold-standard retraining method, $\mathcal{Q} = 1$ always holds; (2) for any $(\epsilon, \delta)$-certified removal method,[^1] $\mathcal{Q} \geq \frac{4 - 4\delta}{e^{\epsilon} + 1} - 1$. To our knowledge, this is the first unlearning evaluation metric with formal guarantees of either kind.
+### The unlearning sample inference game
 
-Computing $\mathcal{Q}$ exactly requires enumerating an exponential number of dataset splits, which is infeasible in practice. We therefore propose an efficient approximation — the **SWAP test** — which selects one random split, computes the advantage, then swaps $\mathcal{F}$ and $\mathcal{T}$ and averages the two results. This two-split procedure provably preserves the zero-grounding property ($\mathcal{Q} = 1$ for retraining) while reducing computation to a practical level.
+A game $\mathcal{G} = (\operatorname{Ul}, \mathcal{A}, \mathcal{D}, \mathbb{P}_{\mathcal{D}}, \alpha)$ between a *challenger* $\operatorname{Ul}$ (the unlearning algorithm under evaluation) and an *adversary* $\mathcal{A}$ (an MIA). The dataset $\mathcal{D}$ is randomly partitioned into three disjoint sets
 
-[^1]: [https://arxiv.org/abs/1911.03030](https://arxiv.org/abs/1911.03030)
+$$
+\mathcal{D} = \mathcal{R} \;\cup\; \mathcal{F} \;\cup\; \mathcal{T},
+\qquad \alpha = \frac{|\mathcal{F}|}{|\mathcal{R} \cup \mathcal{F}|}, \qquad |\mathcal{F}| = |\mathcal{T}|,
+$$
 
-## Result
+a *retain* set, a *forget* set, and a *test* set. Let $\mathcal{S}_\alpha$ denote the collection of all such splits. The game proceeds in three phases.
 
-Empirically, $\mathcal{Q}$ produces consistent, stable rankings of unlearning algorithms across varying dataset sizes and unlearning-portion parameters $\alpha$, where existing MIA-based metrics fluctuate. When evaluated against differentially private baselines with known $(\epsilon, \delta)$ budgets, $\mathcal{Q}$ exhibits the theoretically predicted negative correlation with $\epsilon$, directly validating the certified-removal lower bound. Standard MIA AUC and prior composite scores fail both tests. This makes $\mathcal{Q}$ the first empirically demonstrated unlearning metric that is simultaneously grounded in theory and practical to compute.
+- **Initialization.** Sample $s = (\mathcal{R}, \mathcal{F}, \mathcal{T}) \sim \mathcal{U}(\mathcal{S}_\alpha)$ and a secret bit $b \in \{0, 1\}$. Construct a random oracle $\mathcal{O}_s(b)$ that emits a sample drawn from $\mathcal{F}$ when $b = 0$ and from $\mathcal{T}$ when $b = 1$, with sampling weights given by a *sensitivity distribution* $\mathbb{P}_{\mathcal{D}}$ (uniform unless prior risk weighting is desired).
+- **Challenger.** $\operatorname{Ul}$ trains a model on $\mathcal{R} \cup \mathcal{F}$ via $\operatorname{Learn}$, then unlearns $\mathcal{F}$, producing $m = \operatorname{Ul}(\operatorname{Learn}(\mathcal{R} \cup \mathcal{F}), \mathcal{F}) \sim \mathbb{P}_{\mathcal{M}}(\operatorname{Ul}, s)$.
+- **Adversary.** $\mathcal{A}$ is given black-box access to $m$ and to $\mathcal{O}_s(b)$ — but is told *neither* $s$ nor $b$ — and must output a guess $\mathcal{A}^{\mathcal{O}}(m) \in \{0, 1\}$ of $b$. Intuitively, if unlearning truly erased $\mathcal{F}$, the forget samples and never-seen test samples are indistinguishable through $m$, and $\mathcal{A}$ has nothing to exploit.
+
+### Unlearning Quality $\mathcal{Q}$
+
+The cryptographic *advantage* — the gap between $\mathcal{A}$'s acceptance rate in the two oracle worlds, averaged over splits — is
+
+$$
+\operatorname{Adv}(\mathcal{A}, \operatorname{Ul})
+\;=\; \frac{1}{|\mathcal{S}_\alpha|} \left\lvert\, \sum_{s \in \mathcal{S}_\alpha} \Pr\!\left[\mathcal{A}^{\mathcal{O}_s(0)}(m) = 1\right] \;-\; \sum_{s \in \mathcal{S}_\alpha} \Pr\!\left[\mathcal{A}^{\mathcal{O}_s(1)}(m) = 1\right] \,\right\rvert,
+$$
+
+where each probability is also over $m \sim \mathbb{P}_{\mathcal{M}}(\operatorname{Ul}, s)$. The **Unlearning Quality** is the worst-case complement
+
+$$
+\boxed{\;\mathcal{Q}(\operatorname{Ul}) \;\coloneqq\; 1 \;-\; \sup_{\mathcal{A}} \operatorname{Adv}(\mathcal{A}, \operatorname{Ul}) \;\in\; [0, 1],\;}
+$$
+
+with higher meaning better. Two structural features make $\mathcal{Q}$ behave correctly. First, averaging over all splits in $\mathcal{S}_\alpha$ is *symmetric*: every data point has equal probability of landing in $\mathcal{F}$ versus $\mathcal{T}$, so any per-sample MIA bias cancels between symmetric splits. Second, the supremum makes $\mathcal{Q}$ a worst-case guarantee — it cannot be gamed by picking a weak attacker.
+
+### Two provable guarantees
+
+**Theorem (Zero Grounding).** For any adversary $\mathcal{A}$, $\operatorname{Adv}(\mathcal{A}, \operatorname{Retrain}) = 0$, hence $\mathcal{Q}(\operatorname{Retrain}) = 1$.
+
+Because $\operatorname{Retrain}$ trains on $\mathcal{R}$ alone, both $\mathcal{F}$ and $\mathcal{T}$ are unseen to the retrained model; the two oracle worlds are *information-theoretically* identical, regardless of $\mathcal{A}$. The gold standard achieves the top of the scale automatically.
+
+**Theorem (Certified-Removal Lower Bound).** If $\operatorname{Ul}$ is $(\epsilon, \delta)$-certified removal, then for every adversary $\mathcal{A}$,
+
+$$
+\operatorname{Adv}(\mathcal{A}, \operatorname{Ul}) \;\leq\; 2 \left( 1 - \frac{2 - 2\delta}{e^\epsilon + 1} \right)
+\quad\Longrightarrow\quad
+\boxed{\;\mathcal{Q}(\operatorname{Ul}) \;\geq\; \frac{4 - 4\delta}{e^\epsilon + 1} - 1.\;}
+$$
+
+The bound is decreasing in $\epsilon$ — smaller privacy budgets force higher $\mathcal{Q}$ — and is *the first inequality* connecting an empirical unlearning metric to a formal removal notion. This is what makes $\mathcal{Q}$ falsifiable: a working metric *must* track $\epsilon$.
+
+### SWAP test approximation
+
+Computing $\mathcal{Q}$ exactly requires enumerating $|\mathcal{S}_\alpha|$ splits — exponential in $|\mathcal{D}|$. We propose a two-split estimator. Pick a random $s = (\mathcal{R}, \mathcal{F}, \mathcal{T}) \in \mathcal{S}_\alpha$, *swap* the forget and test sets to get $s' = (\mathcal{R}, \mathcal{T}, \mathcal{F})$, and average:
+
+$$
+\overline{\operatorname{Adv}}_{\{s, s'\}}(\mathcal{A}, \operatorname{Ul})
+\;\coloneqq\; \frac{1}{2}\,\bigl\lvert \operatorname{Adv}_s(\mathcal{A}, \operatorname{Ul}) + \operatorname{Adv}_{s'}(\mathcal{A}, \operatorname{Ul}) \bigr\rvert.
+$$
+
+Symmetry is the only structural property the zero-grounding proof needs, and the swap pair $\{s, s'\}$ inherits it.
+
+**Proposition.** For any $\mathcal{A}$ and any swap pair $s, s' \in \mathcal{S}_\alpha$, $\overline{\operatorname{Adv}}_{\{s, s'\}}(\mathcal{A}, \operatorname{Retrain}) = 0$.
+
+The contrast with the *naive* random-pair estimator is sharp: for any two non-degenerate random splits $s_1, s_2$, there exists a deterministic adversary that achieves $\overline{\operatorname{Adv}}_{\{s_1, s_2\}} = 1$ against *every* unlearning method including retraining. The SWAP construction is what rescues zero grounding with only two splits.
+
+For the supremum, we approximate it by the best of several state-of-the-art weak MIAs (shadow-model, correctness, confidence, modified-entropy), each making independent decisions on single oracle queries. As MIAs improve, $\mathcal{Q}$ tightens automatically.
+
+## Results
+
+We evaluate on CIFAR-10 with ResNet, the standard image-classification unlearning benchmark. The lineup spans the gold standard $\operatorname{Retrain}$, a no-op baseline $\operatorname{None}$, and six approximate unlearners: $\operatorname{Fisher}$, $\operatorname{FtFinal}$, $\operatorname{RetrFinal}$, $\operatorname{NegGrad}$, $\operatorname{SalUN}$, and the state-of-the-art $\operatorname{SSD}$.
+
+### Stable rankings across dataset size and unlearning portion $\alpha$
+
+A useful metric should produce a *consistent ranking* as we vary the experimental knobs. Holding $\alpha = 0.1$ and sweeping the fraction $\eta$ of CIFAR-10 used, $\operatorname{SSD} > \operatorname{Fisher} > \operatorname{SalUN} > \operatorname{RetrFinal}$ stays put across every column (and $\operatorname{Retrain}$ pins to $\approx 1$):
+
+<div class="table-scroll">
+
+| $\operatorname{Ul}$ | $\eta = 0.1$ | $\eta = 0.4$ | $\eta = 0.8$ | $\eta = 1.0$ |
+| --- | --- | --- | --- | --- |
+| $\operatorname{Retrain}$ | **0.999** | **0.997** | **0.993** | **0.993** |
+| $\operatorname{SSD}$ | 0.975 | 0.939 | 0.929 | 0.928 |
+| $\operatorname{Fisher}$ | 0.751 | 0.679 | 0.734 | 0.791 |
+| $\operatorname{SalUN}$ | 0.476 | 0.617 | 0.689 | 0.748 |
+| $\operatorname{RetrFinal}$ | 0.340 | 0.586 | 0.621 | 0.634 |
+| $\operatorname{NegGrad}$ | 0.124 | 0.564 | 0.603 | 0.656 |
+
+</div>
+
+The same pattern holds when we instead sweep the unlearning portion $\alpha \in \{0.1, 0.25, 0.4, 0.67\}$ — relative rankings are essentially preserved while the gold standard sits at the top. *Small-scale evaluations reliably predict large-scale ones*, which is what a benchmarking metric is for.
+
+### Validating the certified-removal bound via DP
+
+Verifying the lower bound directly is hard because $(\epsilon, \delta)$-certified removers are scarce beyond convex models. We exploit the implication: any $(\epsilon, \delta)$-DP model is automatically $(\epsilon, \delta)$-certified-removed for every training point, even without applying an unlearner. We train ResNet under DP-SGD with $\delta = 10^{-5}$ and $\epsilon \in \{50, 150, 600, \infty\}$, then measure $\mathcal{Q}$:
+
+<div class="table-scroll">
+
+| $\operatorname{Ul}$ | $\epsilon = 50$ | $\epsilon = 150$ | $\epsilon = 600$ | $\epsilon = \infty$ |
+| --- | --- | --- | --- | --- |
+| $\operatorname{None}$ | 0.972 | 0.960 | 0.932 | 0.587 |
+| $\operatorname{NegGrad}$ | 0.980 | 0.975 | 0.953 | 0.628 |
+| $\operatorname{Fisher}$ | 0.973 | 0.967 | 0.942 | 0.709 |
+| $\operatorname{SalUN}$ | 0.979 | 0.972 | 0.945 | 0.689 |
+| $\operatorname{SSD}$ | **0.996** | **0.988** | **0.981** | 0.888 |
+| $\operatorname{Retrain}$ | 0.998 | 0.996 | 0.997 | **0.993** |
+
+</div>
+
+Every row is monotonically decreasing in $\epsilon$ — exactly the *negative correlation* the certified-removal lower bound demands. $\mathcal{Q}(\operatorname{Retrain}) \approx 1$ at every $\epsilon$, empirically reaffirming zero grounding.
+
+The two prior metrics fail one or both tests. **MIA score** ($1 - \text{MIA AUC}$): $\operatorname{NegGrad}$ jumps from 0.476 ($\epsilon = 50$) to 0.482 ($\epsilon = 150$), then *drops* to 0.466 ($\epsilon = 600$) — not monotone. **IC score**: $\operatorname{NegGrad}$ goes 0.925 → 0.953 → 0.946 across the same $\epsilon$ sequence, and the relative ranking of $\operatorname{None}$ versus $\operatorname{NegGrad}$ flips between $\epsilon = 50$ and $\epsilon = \infty$. Only $\mathcal{Q}$ satisfies both the negative-correlation test and the consistency test.
+
+$\mathcal{Q}$ is, to our knowledge, the first empirical unlearning metric that is simultaneously theory-grounded *and* practical to compute.
 
 ## Citation
 

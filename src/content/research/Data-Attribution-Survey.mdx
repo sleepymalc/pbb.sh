@@ -65,21 +65,141 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Problem
+<figure class="figure-block figure-hero">
+  <img src="/research/Data-Attribution-Survey/Figures/overall-diag.png" alt="Overall diagram of the survey: training entities (left), the influence-measure core (top center) connecting training entities to model behaviors (right), with applications below the entity cluster and evaluation below the behavior cluster, all linked by attribution scores at the center." />
+  <figcaption><strong>The survey at a glance.</strong> Methods (top) decompose data attribution into <em>training entities</em>, <em>influence measures</em>, and <em>model behaviors</em> — the conceptual spine. Applications (bottom-left) — data selection, fact tracing &amp; concept probing, adversarial attack &amp; defense, data economy — instantiate the framework with different targets and entities. Evaluation (bottom-right) probes the resulting scores along three axes: counterfactual prediction, downstream task utility, and computational cost. Section numbers in parentheses.</figcaption>
+</figure>
 
-Training data fundamentally shapes what a model can do, what it gets wrong, and what biases it inherits — yet as generative AI has scaled, pinning down *which data drives which behavior* has become both more consequential and harder to answer. A body of work on **data attribution** has grown to address this, but it has developed unevenly: methods, application domains, and evaluation protocols have each accumulated their own conventions with little cross-talk. The field lacks a unified treatment that brings these threads together.
+**TL;DR.** Data attribution has fragmented into method-specific dialects, application-specific conventions, and incompatible evaluation protocols. We organize the entire field around a single spine — the **What-What-How Attribution Framework**: *what to attribute* (model behavior), *attribute to what* (training entities), and *how to attribute* (influence measures) — and use it to systematize methods, applications, and evaluation in the era of generative AI.
 
-## Key Idea
+Training data is the fuel of modern AI: it sets what a model can do, where it fails, and which biases it carries. As generative models scaled, the question *which data drives which behavior?* became simultaneously more consequential and more technically demanding. A decade of work on **data attribution** has grown to address it, but methods, applications, and evaluation protocols have each accumulated their own conventions with little cross-talk. This survey gives the field a common vocabulary, a structural map, and an honest accounting of what is — and is not — known.
 
-The survey organizes the entire literature around the **What-What-How Attribution Framework** — three questions that any attribution problem must answer: *what to attribute* (the model behavior of interest), *attribute to what* (the training entities held responsible), and *how to attribute* (the influence measure used to assign credit). This framing cuts across all method families and application settings, giving the field a common vocabulary and exposing structural similarities that domain-specific reviews have obscured.
+## Why this survey
 
-## Approach
+- **A unified vocabulary across the entire literature.** Every attribution problem reduces to three questions. Fixing this framing dissolves apparent disagreements between method families and exposes structural similarities that domain-specific reviews have obscured.
+- **Generative-AI scope as the organizing constraint.** Scale, multi-stage training (pre-training, SFT, RLHF, RLVR), and new behaviors (fact tracing, in-context learning, memorization, copyright) reshape every component of the framework — not just the algorithms, but the *targets* and *entities* themselves.
+- **Evaluation gets its own seat at the table.** We treat counterfactual prediction, downstream utility, and compute cost as separable axes rather than a single number — because in practice attribution methods that win on one often lose on the others.
+- **The data economy as a first-class application.** Attribution is no longer just a debugging tool; it is the technical substrate of data valuation, copyright compensation, and equitable data markets. We treat this seriously rather than tacking it on as an afterthought.
 
-Under that framework the survey proceeds on three fronts. First, it systematically covers the major attribution method families: **influence functions** (gradient-based approximations of leave-one-out retraining), **weighted marginal contributions** (data-Shapley and related cooperative-game estimators), **training dynamics** methods (tracing data effects through the learning trajectory), and **simulators** (surrogate models that predict counterfactual outcomes). Second, it maps these methods onto their principal applications — data selection and curation, fact tracing and source identification, adversarial attacks and defenses, and the emerging **data economy** (valuation, licensing, and compensation). Third, it examines the evaluation landscape, assessing how well attributors predict counterfactual outcomes, whether those predictions translate to downstream utility, and what the computational cost looks like at generative-AI scale.
+## The What-What-How Framework
 
-## Result
+Formally:
 
-The survey closes with a forward-looking account of what the field still needs. Open challenges include scaling attribution faithfully to large generative models, handling the multi-step attribution chains that arise in instruction-tuned and RLHF-trained systems, and establishing evaluation benchmarks that reflect real-world utility rather than proxy metrics. The authors identify the data economy as a particularly fertile direction: as data becomes a tradeable asset, principled attribution methods will be essential for valuation, provenance, and fair compensation.
+$$
+\text{Data attribution measures the } \underbrace{\text{influence}}_{\text{\textit{how}}} \text{ of each } \underbrace{\text{training entity}}_{\text{\textit{to what}}} \text{ on the } \underbrace{\text{model behavior}}_{\text{\textit{what}}}.
+$$
+
+<figure class="figure-block">
+  <img src="/research/Data-Attribution-Survey/Figures/method-overview.png" alt="Three-component cycle of data attribution: training entities D feed into the trained model theta, which exhibits model behaviors f(theta); the influence measure quantifies how each training entity contributes to those behaviors, closing the loop back to the entities." />
+  <figcaption><strong>The three components.</strong> ① <em>Training entities</em> $\mathcal{D}$ produce a trained model $\theta$; ② the trained model exhibits <em>model behaviors</em> $f(\theta)$ — test predictions, activated neurons, loss trajectories; ③ the <em>influence measure</em> $\tau(z_i, \mathcal{S}; f)$ assigns each entity a score for the behavior of interest. Picking different choices on each axis recovers most of the literature.</figcaption>
+</figure>
+
+The three components are conceptually orthogonal: a method choice (*how*) can be paired with many different entity granularities (*to what*) and many different target functions (*what*). Most confusion in the literature comes from collapsing these dimensions.
+
+### What to attribute — model behavior
+
+The target $f(\theta)$ encodes *what we care about*. It is static or dynamic, scalar or set-valued, but it must be measurable from the trained (or training) model. The advent of generative AI radically widens the catalog:
+
+<div class="table-scroll">
+
+| Model family | Common target functions |
+| --- | --- |
+| Decoder-only LLMs | Negative log-likelihood; multi-class margin |
+| Diffusion models | DDPM loss; noise-prediction norm; per-timestep prediction |
+| CLIP / multimodal | Contrastive loss |
+| Beyond loss | Fact recall, in-context learning, memorization, safety/toxicity, generation quality |
+
+</div>
+
+Many emergent behaviors (fact tracing, hallucination, RLHF preference alignment) lack a clean closed-form target and are instead probed through *proxy* targets — a gap the survey flags as a first-class open problem.
+
+### Attribute to what — training entity
+
+The entity is the *unit of credit*. The literature uses five granularities; the choice is dictated by the application and the available structure in the data.
+
+<div class="table-scroll">
+
+| Granularity | Example use |
+| --- | --- |
+| Token | Per-token influence in LLM generation |
+| Concept | Phrases, passages, contextual structures |
+| Sample | Default — single training example |
+| Group | Subset influence under additivity |
+| Domain | Whole datasets or source corpora (e.g., DoReMi, AutoScale, RegMix) |
+
+</div>
+
+A subtle but important distinction: most methods *compute* per-sample scores and *aggregate* upward under an additivity assumption. When additivity fails — as it does for highly correlated or duplicated samples — aggregation breaks, and group/domain attribution must be computed natively.
+
+### How to attribute — influence measure
+
+The influence measure $\tau(z_i, \mathcal{S}; f)$ is the channel that links entities to behavior. We categorize the literature into four families plus a residual class:
+
+- **Influence functions (IF).** First-order approximations of leave-one-out retraining. The classical form $\hat\theta_{-z} - \hat\theta \approx \tfrac{1}{n}\,H_{\hat\theta}^{-1}\nabla_\theta \ell(z;\hat\theta)$, scaled through Hessian approximations (FIM, GGN, K-FAC, EK-FAC, DataInf) and parameter/sample reduction. TRAK reframes IF as a linear datamodel via projected gradients on a logistic surrogate.
+- **Weighted marginal contributions (WMC).** Cooperative-game estimators — Data Shapley, Beta Shapley, Data Banzhaf, weighted Banzhaf — unified as **probabilistic values** $\phi_i = \sum_k \alpha_k^{(n)} \sum_{|S|=k-1} \Delta(z_i, U, S)$ with weights $\alpha_k^{(n)} = \int_0^1 t^{k-1}(1-t)^{n-k}\,d\xi(t)$.
+- **Training-dynamics methods.** Use intermediate checkpoints. Two sub-families: *tracing gradient descent* (TracIn and its ideal limit, accumulating $\eta_t \langle \nabla_\theta f(z_\text{test}), \nabla_\theta \ell(z) \rangle$ along the trajectory), and *trajectory-specific LOO* (SGD-influence and its dynamic LOO descendants).
+- **Simulators.** Surrogate models — Datamodels with $g_\theta(\mathbf{1}_S) \approx f_\mathcal{A}(z;S)$, plus DVRL, RegMix, Simfluence, GPTfluence — trained directly to predict counterfactual outcomes from subset specifications or training curricula.
+- **Other approaches.** Unlearning-based, similarity-based, and representation-based attribution that fit none of the above.
+
+A summary of the trade-offs:
+
+<div class="table-scroll">
+
+| Family | Cost on GenAI | Strengths | Failure modes |
+| --- | --- | --- | --- |
+| Influence functions | Medium–high | Principled LOO approximation; rich theory | iHVP cost; non-convexity, non-convergence |
+| Weighted marginal contributions | Prohibitive | Game-theoretic axioms; native group/domain | Exponential subset enumeration |
+| Training dynamics (TracIn) | Low | Trivially scalable; no Hessian | Biased toward easy / short samples |
+| Simulators (Datamodels) | High (offline) | Direct fit to counterfactuals | Requires many retrains; misspecification |
+
+</div>
+
+## Methods, applications, and evaluation
+
+### Method families in detail
+
+Within each family, the survey is explicit about *how scaling to generative AI changes the algorithm*, not just the runtime. Concretely:
+
+- **For IF:** the iHVP $H_{\hat\theta}^{-1} v$ at $O(np^2 + p^3)$ runtime is the bottleneck. Three orthogonal axes attack it — restricting parameters (last-layer, MLP-only, LoRA-only), filtering samples (TF-IDF, kNN, batch queries), and approximating the iHVP (block-diagonal FIM, K-FAC, EK-FAC, DataInf, LiSSA, gradient projection). The same techniques transfer to TracIn and TRAK, which is why we treat them within a shared complexity table.
+- **For WMC:** the central question is *how many subset evaluations $T$ to achieve an $(\varepsilon,\delta)$-approximation*. Permutation sampling gives $O(n^2 \log n)$, group testing $O(n(\log n)^2)$, MSR (for Banzhaf) $O(n \log n)$, OFA $O(n \log n)$ across all semivalues. The exponential dependence on $|S|$ kills naive Shapley at GenAI scale; this is why WMC is mostly relegated to domain-level or feature-level attribution in modern work.
+- **For training dynamics:** the bottleneck is per-sample gradient materialization. Ghost dot-product factorizes $\langle \nabla_\theta \ell^{(1)}, \nabla_\theta \ell^{(2)} \rangle = \langle a^{(1)}, a^{(2)}\rangle \cdot \langle \partial\ell^{(1)}/\partial s^{(1)}, \partial\ell^{(2)}/\partial s^{(2)}\rangle$ for linear layers — eliminating gradient instantiation. This is the structural insight behind in-run Data Shapley, GREATS, and a slew of follow-ups.
+- **For simulators:** the offline cost is "$M$ retrains" — manageable for CIFAR-scale diffusion (TRAK uses tens to thousands of ensemble models) but unattainable for LLM pre-training. Hence the shift to proxy-model datamodels (DsDm) and trajectory simulators (Simfluence, GPTfluence) that amortize across many test points.
+
+### Applications
+
+The survey covers four primary application clusters; each instantiates the framework with different target functions and entity granularities.
+
+<div class="table-scroll">
+
+| Application | Typical target $f$ | Typical entity | Representative methods |
+| --- | --- | --- | --- |
+| Data selection / curation | Validation loss or self-loss | Sample, domain | LESS, GREATS, MATES, DsDm, RegMix, AutoScale |
+| Fact tracing & concept probing | Token likelihood, factual recall | Sample, concept | Causal attribution beyond n-gram matching; ContextCite |
+| Adversarial attacks & defenses | Loss / behavior on target | Sample | Poisoning detection, backdoor identification |
+| Data economy | Log-likelihood, MMD, utility | Sample, dataset | Data Shapley + variants for valuation and royalties; FairShare; LAVA |
+
+</div>
+
+A distinctive emphasis: the **data economy** thread treats attribution as the technical primitive for *data valuation* (who contributed what?) and *data compensation* (how to pay them?) — including buyer-side market dynamics, privacy-preserving evaluation, and synthetic-data rewards in collaborative generative modeling.
+
+### Evaluation landscape
+
+Evaluations split along three axes:
+
+- **Counterfactual prediction of model behavior.** Does $\tau$ predict what happens under retraining? Sub-protocols: LOO (Pearson with $\ell(z_\text{test}; \hat\theta_{\mathcal{S}\setminus\{z_i\}}) - \ell(z_\text{test}; \hat\theta_\mathcal{S})$); **Linear Datamodeling Score (LDS)**, which is Spearman correlation between attribution-based predictions $g_\tau(z, \mathcal{S}';\mathcal{S}) = \sum_{i: z_i \in \mathcal{S}'} \tau(z_i, \mathcal{S}; f)$ and ground-truth $f(z;\hat\theta_{\mathcal{S}'})$ over random subsets; and **trajectory-specific LOO** for the dynamic regime.
+- **Utility in downstream tasks.** Does $\tau$ steer model behavior when used to add/remove training data? Metrics: top-$k$ / bottom-$k$ removal effects, accuracy drops, FID changes for diffusion, **brittleness** (the minimum $|\mathcal{S}'|$ such that $f(z;\hat\theta_{\mathcal{S}\setminus\mathcal{S}'}) \neq y_z$).
+- **Computational cost.** Pre-compute vs. per-query cost; offline vs. online; storage footprint; ensemble multiplier. At GenAI scale this axis is no longer ignorable — a method that needs 1000 retrains is qualitatively different from one that needs a single backward pass.
+
+A recurring caveat: LDS and brittleness both rely on an **additivity assumption** on $\tau$. When attribution is genuinely non-additive (correlated samples, group effects), high LDS may not translate to downstream utility — and a method with lower LDS may dominate in selection or unlearning tasks.
+
+## Open challenges
+
+- **Scale as a first-class consideration.** A *scale-aware mindset* must permeate GenAI attribution — both as a constraint on algorithms (efficient IF, in-run Shapley, gradient projection) and as a phenomenon to study (how does data influence itself scale with $n$, $p$, $T$?).
+- **Heterogeneous data and multi-stage paradigms.** Frontier LLMs are continual artifacts (pre-training $\to$ SFT $\to$ RLHF / RLVR), trained on text + image + synthetic + preference data. Attribution must answer *cumulative* questions across stages — e.g., "how much value does this new data point add to the existing model?" — and handle modality mixtures and synthetic-data contamination.
+- **Attribution as a tool for responsible AI.** Bias, privacy leakage, copyright traceability, hallucination diagnosis: each requires an attribution component. The survey argues that data attribution should be treated as foundational infrastructure for AI governance, not a niche interpretability tool.
+- **Proactive and dynamic attribution.** Move from post-hoc analysis to integrated training-time use: real-time sampling, weighting, and filtering driven by influence scores.
+- **Application-oriented benchmarks.** LOO and LDS can be fooled and are noisy at scale. The field needs benchmarks that capture the complexity of real GenAI applications (fact tracing on web-scale corpora, RLHF reward shaping, copyright disputes) with standardized protocols (multi-seed, ensembled ground truth).
+- **Synergy with mechanistic interpretability.** Data attribution explains the *training-side* of model behavior; mechanistic interpretability explains the *parameter-side*. Combining the two is a clear path to comprehensive understanding of generative models.
 
 ## Citation
 

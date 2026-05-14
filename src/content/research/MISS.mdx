@@ -26,25 +26,210 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-## Problem
+<figure class="figure-block figure-hero">
+  <img src="/research/MISS/Figures/CL.png" alt="OLS regression with eight numbered training points and a test point. Removing point 1 alone (green line) and removing point 8 alone (pink line) both swing the prediction at the test location, but removing both together (not shown) cancels much of the swing — the size-2 group effect is smaller than either singleton." />
+  <figcaption><strong>Collective influence is not the sum of individuals.</strong> Even in OLS, two training points that each have a large individual effect on a test prediction can <em>cancel</em> when removed together: the size-$2$ group effect $A_{-\{1,8\}}$ falls below $\max(A_{-\{1\}}, A_{-\{8\}})$. Any heuristic that adds individual influence scores misses this — and similar surprises (clusters amplifying, cross-leverage cancelling) recur up to MLPs on MNIST.</figcaption>
+</figure>
 
-The classic [*influence function*](https://arxiv.org/abs/1703.04730) answers a narrow but well-studied question: how much does removing a *single* training sample shift a model's predictions? In practice, the question that matters is broader — which *group* of samples is collectively responsible for a model's behavior? Identifying the most harmful or most informative subset drives applications from data debugging to dataset pruning, yet the single-sample tool does not straightforwardly extend. The dominant approach applies influence-based greedy heuristics: score every sample by its individual influence, pick the top scorer, and repeat. This one-pass procedure implicitly treats collective influence as the sum of individual scores — an assumption that can be dramatically wrong.
+**TL;DR.** **MISS** asks for the size-$k$ training subset whose removal *most* changes a target metric. The standard recipe — score every sample once, take the top-$k$ — provably fails even in OLS: it forgets the leverage correction $1/(1-h_{ii})$ in individual scores, and it forgets that collective influence is *not* additive (clusters *amplify*, cross-leverage *cancels*). An *adaptive iterative* greedy — refit, rescore, repeat — recovers the optimal $2$-MISS solution under cancellation and wins across linear/logistic/MLP benchmarks at the cost of $k$ refits.
 
-## Key Idea
+Influence functions answer a narrow single-sample question: how much does removing $(x_i, y_i)$ shift a chosen statistic? Real applications — data debugging, robustness audits, dataset pruning — instead ask for the *group* of samples collectively responsible. The dominant approach scores every sample by its individual influence, takes the top-$k$, and implicitly assumes group effects are the *sum* of individual ones. We show that assumption is wrong even for ordinary least squares, characterize *why* it is wrong, and pin down when refitting between selections fixes it.
 
-We formalize this as the **Most Influential Subset Selection (MISS)** problem: given training data and a target metric, find the subset $S$ of size at most $k$ whose removal causes the largest change in that metric. We then ask whether standard influence-based greedy heuristics reliably solve it. The answer is no — and provably so. Even in linear regression, these heuristics can select entirely wrong subsets, making MISS a strictly harder problem than its single-sample counterpart.
+## Why MISS
 
-## Approach
+- **Collective $\neq$ sum of individuals.** Even with perfect single-sample scores, greedy can pick the wrong pair in OLS. The non-additivity has two faces: *amplification* (cluster of high-leverage samples blows past $\sum_i A_{-\{i\}}$) and *cancellation* (cross-leverage drags the pair *below* the sum).
+- **Influence scores under-estimate high-leverage samples by exactly $1/(1-h_{ii})$.** This factor is missing from ZAMinfluence — so a sample whose leverage is large enough to flip $1$-MISS is precisely the one the score under-ranks.
+- **Adaptive greedy provably recovers $2$-MISS under cancellation** (Theorem). The refit-and-rescore variant reads marginal contribution given previous picks, paying $k$ refits for a guarantee the static heuristic lacks.
+- **Holds beyond linear theory.** Adaptivity wins on the averaged actual effect $\overline{A_{-S}}$ across *all* tested $k$ on Concrete (OLS), Waveform (logistic), and MNIST (MLP) — the failure modes are pervasive, not pathological.
 
-The analysis isolates two independent failure modes. The first is *influence-function approximation error*: influence scores systematically underestimate the effect of high-leverage samples, because they omit the self-influence correction factor $1/(1 - h_{ii})$ that scales with a sample's leverage score $h_{ii}$. A greedy procedure built on these scores therefore misorients itself from the very first step.
+## Method
 
-The second failure mode is *non-additivity of collective influence*. Even with perfect individual scores, greedy selection can fail because group effects do not decompose additively. Two distinct failure patterns arise: *amplification*, where a cluster of high-leverage samples has a collective impact that grows super-linearly and far exceeds the sum of individual effects; and *cancellation*, where cross-leverage between samples causes their joint effect to fall *below* the sum, so the greedy pair is not the optimal pair.
+### Problem formulation
 
-To address both modes, we propose an *adaptive iterative* variant of the greedy heuristic. Rather than computing all influence scores once against the full training set, it refits the model and recomputes scores at each selection step, so that each new score reflects the marginal contribution of a candidate sample given those already selected. This directly accounts for sample interactions. Under the cancellation setup, we prove that adaptive greedy recovers the optimal 2-MISS solution when the most influential sample belongs to the optimal subset — a guarantee the static heuristic lacks. Adaptivity comes at the cost of $k$ model refits, making the performance–computation tradeoff explicit.
+Let $\hat\theta = \arg\min_\theta \tfrac{1}{n}\sum_{i=1}^n L(f(\theta, x_i), y_i)$ and, for any $S \subseteq [n]$, let $\hat\theta_{-S}$ minimize the same objective with $S$ dropped. Given a target function $\phi:\mathbb{R}^q\to\mathbb{R}$ (e.g. a test prediction), the *actual effect* of removing $S$ is
 
-## Result
+$$
+A_{-S} \;\coloneqq\; \phi(\hat\theta_{-S}) - \phi(\hat\theta).
+$$
 
-Experiments across four real-world datasets — spanning linear regression (Concrete Compressive Strength), logistic regression (Waveform), and a non-linear MLP (MNIST) — corroborate the theoretical picture. The adaptive heuristic achieves a consistently higher averaged actual effect $\bar{A}_{-S}$ and wins on the majority of test instances across all values of $k$. Crucially, the advantage extends beyond the linear setting in which the theory is derived, suggesting that non-additivity is a pervasive rather than pathological phenomenon. The results frame adaptivity as a principled, if computationally heavier, default for MISS, and surface the performance–computation tradeoff as the central open question for future work.
+For $k \ll n$, **$k$-MISS** seeks $S_{\mathrm{opt},k} = \arg\max_{|S|\leq k} A_{-S}$. It generalizes single-sample influence ($k=1$) to a *worst-case collective influence*. The decision version is NP-hard (a variant subsumes robust regression), and naive enumeration is $\binom{n}{k}$ — hence the influence-greedy heuristics.
+
+We work in OLS for theory: $X\in\mathbb{R}^{n\times d}$, $y=X\theta^\star - e$, $N = X^\top X$, hat matrix $H = X N^{-1} X^\top$ with diagonal *leverage* $h_{ii}$ and off-diagonal *cross-leverage* $h_{ij}$, residual $r_i = x_i^\top \hat\theta - y_i$, and target $\phi(\theta) = x_{\mathrm{test}}^\top \theta$.
+
+### Failure mode 1: leverage-blind influence scores
+
+<figure class="figure-block figure-right">
+  <img src="/research/MISS/Figures/IF.png" alt="OLS regression on an 8-point synthetic dataset: removing the high-leverage point 1 (green line) tilts the regression most at the test location, but the influence-function score ranks point 8 (pink line) higher. The legend lists scaled influence estimates by sample." />
+  <figcaption><strong>Influence ranks the wrong sample.</strong> ZAMinfluence's top-scored point (<span style="color:#e879ad">8</span>) is <em>not</em> the one whose removal moves the test prediction the most — that is the high-leverage point (<span style="color:#16a34a">1</span>). The miss is exactly the $1/(1-h_{ii})$ correction the influence function drops.</figcaption>
+</figure>
+
+Plugging squared loss into the influence-function definition, ZAMinfluence scores each sample by $v_i = x_{\mathrm{test}}^\top N^{-1} x_i r_i$. The classical leave-one-out identity from regression diagnostics gives the *exact* perturbation,
+
+$$
+\hat\theta_{-\{i\}} - \hat\theta \;=\; \frac{N^{-1} x_i r_i}{1 - h_{ii}}, \qquad A_{-\{i\}} \;=\; \frac{x_{\mathrm{test}}^\top N^{-1} x_i r_i}{1 - h_{ii}} \;=\; \frac{v_i}{1 - h_{ii}}.
+$$
+
+So the influence score *systematically under-estimates* the individual effect by exactly the self-influence factor
+
+$$
+\boxed{\;\frac{1}{1 - h_{ii}}\;}
+$$
+
+The error scales with leverage, so the under-estimate is largest on the samples most likely to be the answer — outliers and high-leverage points.
+
+<div class="table-scroll">
+
+| Quantity | Under-estimates by | When is the gap large? |
+| --- | --- | --- |
+| $v_i = x_{\mathrm{test}}^\top N^{-1} x_i r_i$ (ZAMinfluence) | factor $(1 - h_{ii})$ | $h_{ii} \to 1$ (high-leverage / outlier $x_i$) |
+| $A_{-\{i\}} = v_i / (1 - h_{ii})$ (LAGS, exact) | $-$ | $-$ |
+
+</div>
+
+A simple correction yields **Leverage-Adjusted Greedy Selection (LAGS)**: score by $A_{-\{i\}}$ instead of $v_i$. We prove (Thm. 1) that whenever $h_{11} > h_{nn}$, there exists a label-generation scale $p$ on which ZAMinfluence picks the wrong $1$-MISS sample — LAGS does not.
+
+### Failure mode 2: non-additivity of collective influence
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/AP.png" alt="OLS regression illustrating amplification: removing the green cluster (points 1 and 2, both with high leverage) shifts the test prediction more than removing the pink cluster (points 7 and 8, which had the largest individual effects). The legend lists individual effects per sample." />
+    <figcaption><strong>Amplification.</strong> Points <span style="color:#e879ad">7</span>, <span style="color:#e879ad">8</span> have the top individual effects, yet the green high-leverage cluster $\{1, 2\}$ collectively swings the test prediction further: $A_{-\{1,2\}} > A_{-\{7,8\}}$. LAGS picks $\{7,8\}$ and loses.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/CL.png" alt="OLS regression illustrating cancellation: removing point 1 (green) and removing point 8 (pink) both swing the test prediction in their own direction, but removing them together (brown) brings the prediction back near the original. The legend lists individual effects per sample." />
+    <figcaption><strong>Cancellation.</strong> Points <span style="color:#e879ad">8</span> and <span style="color:#16a34a">1</span> have the top-$2$ individual effects, but their cross-leverage flips signs: $A_{-\{1,8\}} < A_{-\{8\}}$ — removing both <em>together</em> is worse than removing <span style="color:#e879ad">8</span> alone. LAGS picks the cancelling pair.</figcaption>
+  </figure>
+</div>
+
+LAGS fixes the per-sample score but still aggregates additively. Closed-form pair analysis exposes why this is wrong. For $S = \{i, j\}$ in OLS,
+
+$$
+A_{-\{i,j\}}
+\;=\;
+\frac{(1 - h_{ii})(1 - h_{jj})\bigl(A_{-\{i\}} + A_{-\{j\}}\bigr) \;+\; h_{ij}\,x_{\mathrm{test}}^\top N^{-1}(x_i r_j + x_j r_i)}
+     {(1 - h_{ii})(1 - h_{jj}) - h_{ij}^2}.
+$$
+
+Two cross-terms drive non-additivity: $h_{ij}^2$ in the denominator *inflates* the sum, and $h_{ij}(x_i r_j + x_j r_i)$ in the numerator can *cancel* it. Two regimes follow:
+
+<div class="table-scroll">
+
+| Regime | Trigger | Pair effect vs. sum | LAGS verdict |
+| --- | --- | --- | --- |
+| **Amplification** | cluster of identical / high-leverage samples; $h_{ij}$ near $h_{ii}$ | $A_{-\{i,j\}} \gg A_{-\{i\}} + A_{-\{j\}}$ | misses cluster; picks high-residual pair |
+| **Cancellation** | $\mathrm{sign}(h_{ij}) \neq \mathrm{sign}(r_n/r_1)$, small $\lvert A_{-\{1\}}\rvert$ | $A_{-\{i,j\}} < \max\bigl(A_{-\{i\}}, A_{-\{j\}}\bigr)$ | picks two singly-strong samples that *fight* each other |
+
+</div>
+
+For amplification, $c$ identical copies of $(x_i, y_i)$ give
+
+$$
+\frac{A_{-\{i\}^c}}{A_{-\{i\}}} \;=\; \frac{c\,(1 - h_{ii})}{1 - c\,h_{ii}} \;>\; c,
+$$
+
+unbounded as $h_{ii} \to 1/c$ (Prop. 4): even a minor-influence sample becomes catastrophic in cluster. Theorem 2 makes this concrete — for $c$ copies each of $(x_1,y_1),(x_n,y_n)$ with $h_{11} > h_{nn}$, there exists $p$ where LAGS fails $c$-MISS. Theorem 3 does the same for cancellation in $2$-MISS, requiring only a single non-zero cross-leverage $h_{1n}$.
+
+**Takeaway.** LAGS works iff all cross-leverages are zero — a measure-zero condition. The first-order approximation drops the Neumann series $(I_k - X_S N^{-1} X_S^\top)^{-1} = I_k + M_S + M_S^2 + \cdots$ down to $I_k$; the failure modes are the omitted terms.
+
+### Adaptive iterative greedy
+
+The fix is structural, not algebraic. At step $t$ with current selection $S_t$:
+1. **Refit** the model on $[n]\setminus S_t$, obtaining $\hat\theta_{-S_t}$.
+2. **Rescore** every remaining $i$ by its individual effect *given* the refit:
+   $A'_{-\{i\}} \;\coloneqq\; \phi(\hat\theta_{-S_t \cup \{i\}}) - \phi(\hat\theta_{-S_t})$.
+3. **Append** $\arg\max_i A'_{-\{i\}}$ (if positive) to $S_t$; repeat until $|S_t|=k$.
+
+The new score $A'$ captures *marginal contribution given prior picks*, exactly the dependency LAGS ignores. Two properties of $A'$ (Prop. 5) drive the analysis:
+
+- **Sign consistency.** $A'_{-\{i\}}$ and $A_{-\{i,n\}} - A_{-\{i\}}$ have the same sign, so the second pick reads the right direction.
+- **Order preservation.** $\{A'_{-\{i\}}\}$ is order-isomorphic to $\{A_{-\{i,n\}}\}$, so ranking by $A'$ is ranking by true joint effect.
+
+These give the central recovery result.
+
+**Theorem (cancellation $\Rightarrow$ adaptive recovers $2$-MISS).** Under the OLS label model with $A_{-\{1\}}, A_{-\{n\}} > 0$ and $A_{-\{1,n\}} < A_{-\{n\}}$ (cancellation), if $n \in S_{\mathrm{opt},2}$, then the adaptive greedy algorithm returns $S_{\mathrm{opt},2}$.
+
+The price is explicit: $k$ refits instead of one, with the static and adaptive variants sitting on a clean tradeoff axis.
+
+<div class="table-scroll">
+
+| Variant | Per-sample score | Aggregation | Refits | Provable in cancellation? |
+| --- | --- | --- | --- | --- |
+| ZAMinfluence | $v_i$ | additive top-$k$ | $0$ | no (also fails $1$-MISS) |
+| **LAGS** | $A_{-\{i\}} = v_i/(1-h_{ii})$ | additive top-$k$ | $0$ | no |
+| **Adaptive greedy** | $A'_{-\{i\}}$ (post-refit) | iterative argmax | $k$ | yes (Theorem) |
+
+</div>
+
+A symmetric caveat: under amplification, adaptivity *also* fails, because the recovery proof requires $n \in S_{\mathrm{opt},k}$, and amplification places the optimal subset inside a cluster the first refit never enters. Second-order group influence $Q_{-S} = x_{\mathrm{test}}^\top N^{-1} X_S^\top (I_k + X_S N^{-1} X_S^\top)(X_S\hat\theta - y_S)$ — keeping the next Neumann term — is the natural lever there, at the cost of submodularity (we show $Q_{-S}$ is generally not submodular, so even $1{-}1/e$ guarantees are off the table).
+
+## Results
+
+We compare *vanilla greedy* (LAGS for regression, ZAMinfluence for classification) against *adaptive greedy* across a regression, a classification, and a non-linear setting. The metric is the **averaged actual effect** $\overline{A_{-S}} = \mathbb{E}_{z}\bigl[A_{-S}(z)\bigr]$ over held-out test points, plus a per-instance **winning rate** between the two algorithms.
+
+<div class="table-scroll">
+
+| Task | Dataset | Model | Greedy uses |
+| --- | --- | --- | --- |
+| Regression | Concrete Compressive Strength (UCI) | OLS | LAGS |
+| Classification | Waveform Database (UCI) | Logistic regression | ZAMinfluence |
+| Classification (non-linear) | MNIST | 2-layer MLP, $5$-model ensemble | ZAMinfluence + ensemble |
+
+</div>
+
+For the MLP, the optimum is not unique, so we follow [TRAK](https://arxiv.org/abs/2303.14186)-style ensembling: $5$ models trained from identical initialization with different seeds, and both the influence estimate and the actual effect are averaged over the ensemble. Refits scale as $k\times \text{(ensemble size)}$ — a worst-case-by-design cost.
+
+### Adaptive greedy wins across $k$ and across datasets
+
+Across all three settings and all $k$ tested, adaptive greedy delivers a *higher* averaged actual effect than the vanilla baseline and a *winning rate above $50\%$* on the held-out instances. The gap is consistent rather than dataset-specific:
+
+<div class="table-scroll">
+
+| Setting | $\overline{A_{-S}}$ ranking | Winning rate (adaptive vs. vanilla) |
+| --- | --- | --- |
+| Concrete / OLS | Adaptive $>$ LAGS, every $k$ | adaptive wins majority, every $k$ |
+| Waveform / logistic | Adaptive $>$ ZAMinfluence, every $k$ | adaptive wins majority, every $k$ |
+| MNIST / MLP (ensemble) | Adaptive $>$ ZAMinfluence, every $k$ | adaptive wins majority, every $k$ |
+
+</div>
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/Linear_Regression_uci_actual.png" alt="Averaged actual effect on Concrete Compressive Strength (OLS) as a function of subset size k from 1 to 100. The adaptive curve sits strictly above the LAGS curve for all k beyond ~15." />
+    <figcaption><strong>Concrete / OLS — $\overline{A_{-S}}$.</strong> Adaptive LAGS dominates LAGS for all $k$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/Logistic_Regression_uci_actual.png" alt="Averaged actual effect on Waveform (logistic regression) as a function of k. The adaptive curve sits above the ZAMinfluence curve across all k." />
+    <figcaption><strong>Waveform / logistic — $\overline{A_{-S}}$.</strong> Adaptive ZAMinfluence dominates ZAMinfluence.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/MLP_MNIST_actual.png" alt="Averaged actual effect on MNIST with a 2-layer MLP ensemble as a function of k from 1 to 50. The adaptive curve sits above the ZAMinfluence curve throughout." />
+    <figcaption><strong>MNIST / MLP — $\overline{A_{-S}}$.</strong> Adaptive ZAMinfluence sustains the lead under non-linearity.</figcaption>
+  </figure>
+</div>
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/Linear_Regression_uci_winning.png" alt="Per-instance winning rate on Concrete: adaptive LAGS wins on ~90% of held-out test points across most k." />
+    <figcaption><strong>Concrete / OLS — winning rate.</strong> Adaptive wins on $\sim 90\%$ of held-out instances.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/Logistic_Regression_uci_winning.png" alt="Per-instance winning rate on Waveform: adaptive ZAMinfluence wins on the majority of test instances across all k." />
+    <figcaption><strong>Waveform / logistic — winning rate.</strong> Majority wins on every $k$.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/MISS/Figures/MLP_MNIST_winning.png" alt="Per-instance winning rate on MNIST MLP ensemble: adaptive ZAMinfluence wins on the majority of test instances across all k." />
+    <figcaption><strong>MNIST / MLP — winning rate.</strong> Majority wins on every $k$, even with ensembling.</figcaption>
+  </figure>
+</div>
+
+<p class="figure-legend"><strong>Top row:</strong> averaged actual effect $\overline{A_{-S}}$ on held-out test points as a function of subset size $k$. <strong>Bottom row:</strong> per-instance winning rate of adaptive vs.\ vanilla greedy. <span style="color:#22d3ee"><strong>━●</strong></span> LAGS &nbsp;·&nbsp; <span style="color:#f97316"><strong>━●</strong></span> Adaptive LAGS &nbsp;·&nbsp; <span style="color:#eab308"><strong>━●</strong></span> ZAMinfluence &nbsp;·&nbsp; <span style="color:#9333ea"><strong>━●</strong></span> Adaptive ZAMinfluence. The y-axis label is rendered only on the leftmost panel of each row by the paper's matplotlib layout but applies to every plot in the row.</p>
+
+Two consequences are worth flagging:
+
+- **Non-additivity is not a linear-theory artifact.** The MLP gap establishes that the *qualitative* picture — interactions between training samples drive the joint effect — survives nonlinearity, even though the closed-form leverage decomposition does not.
+- **Performance–compute is the central knob.** The vanilla heuristic is $O(n)$ scores then a sort; adaptive pays $k$ retrains. The empirical gap argues that for any MISS deployment where the *answer* (not the runtime) is load-bearing, the refit cost is well spent. Hybrid scoring functions that approximate $A'$ without retraining are an obvious open direction.
+
+A final implication for evaluation: any metric that *grades a data-attribution method by its agreement with an additive proxy* — most prominently the [Linear Datamodeling Score](https://proceedings.mlr.press/v202/park23c/park23c.pdf) — inherits the bias documented here. The MISS perspective suggests evaluation metrics need to be *non-additive and contextual* to discriminate between attribution methods that capture sample interactions and those that merely score well against an additive yardstick.
 
 > This paper also appears in the ATTRIB 2024 workshop @NeurIPS.
 
