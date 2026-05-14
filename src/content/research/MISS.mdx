@@ -91,12 +91,12 @@ A simple correction yields **Leverage-Adjusted Greedy Selection (LAGS)**: score 
 ### Failure mode 2: non-additivity of collective influence
 
 <div class="figure-row">
-  <figure class="figure-block">
-    <img src="/research/MISS/Figures/AP.png" alt="OLS regression illustrating amplification: removing the green cluster (points 1 and 2, both with high leverage) shifts the test prediction more than removing the pink cluster (points 7 and 8, which had the largest individual effects). The legend lists individual effects per sample." />
+  <figure class="figure-block" style="flex: 1.308 1 0; min-width: 0">
+    <img src="/research/MISS/Figures/AP.png" style="width: 100%; height: auto" alt="OLS regression illustrating amplification: removing the green cluster (points 1 and 2, both with high leverage) shifts the test prediction more than removing the pink cluster (points 7 and 8, which had the largest individual effects). The legend lists individual effects per sample." />
     <figcaption><strong>Amplification.</strong> Points <span style="color:#e879ad">7</span>, <span style="color:#e879ad">8</span> have the top individual effects, yet the green high-leverage cluster $\{1, 2\}$ collectively swings the test prediction further: $A_{-\{1,2\}} > A_{-\{7,8\}}$. LAGS picks $\{7,8\}$ and loses.</figcaption>
   </figure>
-  <figure class="figure-block">
-    <img src="/research/MISS/Figures/CL.png" alt="OLS regression illustrating cancellation: removing point 1 (green) and removing point 8 (pink) both swing the test prediction in their own direction, but removing them together (brown) brings the prediction back near the original. The legend lists individual effects per sample." />
+  <figure class="figure-block" style="flex: 1.340 1 0; min-width: 0">
+    <img src="/research/MISS/Figures/CL.png" style="width: 100%; height: auto" alt="OLS regression illustrating cancellation: removing point 1 (green) and removing point 8 (pink) both swing the test prediction in their own direction, but removing them together (brown) brings the prediction back near the original. The legend lists individual effects per sample." />
     <figcaption><strong>Cancellation.</strong> Points <span style="color:#e879ad">8</span> and <span style="color:#16a34a">1</span> have the top-$2$ individual effects, but their cross-leverage flips signs: $A_{-\{1,8\}} < A_{-\{8\}}$ — removing both <em>together</em> is worse than removing <span style="color:#e879ad">8</span> alone. LAGS picks the cancelling pair.</figcaption>
   </figure>
 </div>
@@ -242,8 +242,6 @@ Two consequences are worth flagging:
 - **Performance–compute is the central knob.** The vanilla heuristic is $O(n)$ scores then a sort; adaptive pays $k$ retrains. The empirical gap argues that for any MISS deployment where the *answer* (not the runtime) is load-bearing, the refit cost is well spent. Hybrid scoring functions that approximate $A'$ without retraining are an obvious open direction.
 
 A final implication for evaluation: any metric that *grades a data-attribution method by its agreement with an additive proxy* — most prominently the [Linear Datamodeling Score](https://proceedings.mlr.press/v202/park23c/park23c.pdf) — inherits the bias documented here. The MISS perspective suggests evaluation metrics need to be *non-additive and contextual* to discriminate between attribution methods that capture sample interactions and those that merely score well against an additive yardstick.
-
-> This paper also appears in the ATTRIB 2024 workshop @NeurIPS.
 
 <div class="takeaway">
 
