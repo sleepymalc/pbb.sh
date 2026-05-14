@@ -111,14 +111,15 @@
 /* --- Tables: shaded rows, tabular numbers, polished frame --- */
 .markdown-body.research-detail table {
   display: table;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
+  margin: 1.25em auto 1.85em;
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-base);
   overflow: hidden;
   font-variant-numeric: tabular-nums;
-  margin: 1.25em 0 1.85em;
   font-size: 0.95em;
 }
 
@@ -149,9 +150,9 @@
 }
 
 .markdown-body.research-detail .table-scroll > table {
-  margin: 0;
+  margin: 0 auto;
   width: max-content;
-  min-width: 100%;
+  max-width: none;
 }
 
 .markdown-body.research-detail tbody tr:last-child td {
@@ -481,9 +482,13 @@
   margin-bottom: 0;
 }
 
-/* --- Citation block: monospaced, contained --- */
-.markdown-body.research-detail h2:has(+ pre) + pre {
+/* --- Citation block: monospaced, contained, with a subtle purple tint --- */
+.markdown-body.research-detail h2:has(+ pre) + pre,
+.markdown-body.research-detail h2:has(+ pre) + pre.astro-code,
+.markdown-body.research-detail h2:has(+ pre) + pre.shiki {
   font-size: 0.82em;
+  background-color: color-mix(in srgb, var(--color-tag-purple) 5%, var(--color-bg-card)) !important;
+  border: 1px solid color-mix(in srgb, var(--color-tag-purple) 18%, var(--color-border));
 }
 
 :root.dark .markdown-body.research-detail > p:first-of-type {

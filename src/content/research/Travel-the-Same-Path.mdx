@@ -75,3 +75,9 @@ The more interesting result is *transfer*. The same policy — trained exclusive
 ### Beyond branching
 
 The same recipe — formulate the discrete control choice inside an exact solver as an MDP, supervise a GCN with an expensive oracle, deploy the cheap network — applies wherever a state-of-the-art exact algorithm is bottlenecked by a sequential decision. Cutting-plane selection is the immediate next target; node selection and primal-heuristic scheduling are natural extensions.
+
+<div class="takeaway">
+
+**Takeaway.** Exact algorithms whose bottleneck is a sequential discrete decision are natural targets for *learned amortization*: replace one expensive oracle call (strong branching) with a cheap GCN forward pass, keep optimality by construction, and trade training-time supervision for inference-time speed. What transfers across instance sizes is the *qualitative* structure of which fractional variables matter, not absolute coordinates — so the same trained policy accelerates strictly larger TSPs than it ever saw during training.
+
+</div>

@@ -82,7 +82,7 @@ $$
 \mathcal{M}_\ell \;\coloneqq\; \bigl\{ \theta \in \mathbb{R}^{\dim(\mathcal{S})} \,\bigm|\, \theta_x = 0 \text{ for all non-}\ell\text{-body parameters } x \in \Omega \bigr\}.
 $$
 
-Setting $\mathcal{B} = \mathcal{M}_\ell$ retains interactions of order $\leq \ell$ and *discards* every higher-order coupling — small $\ell$ keeps coarse structure (shape), larger $\ell$ keeps fine joint statistics (shape × color). Because the constraint is linear in $\theta$, $\mathcal{M}_\ell$ is $e$-flat, so the encoder remains a convex KL minimization. There is an intrinsic trade-off: $\dim(\mathcal{B}) \to \dim(\mathcal{S})$ preserves more information but invites the curse of dimensionality at the augmenting step; $\ell$ is the lever.
+Setting $\mathcal{B} = \mathcal{M}_\ell$ retains interactions of order $\leq \ell$ and *discards* every higher-order coupling — small $\ell$ keeps only the coarsest, low-order structure; larger $\ell$ retains finer joint statistics across more modes. Because the constraint is linear in $\theta$, $\mathcal{M}_\ell$ is $e$-flat, so the encoder remains a convex KL minimization. There is an intrinsic trade-off: $\dim(\mathcal{B}) \to \dim(\mathcal{S})$ preserves more information but invites the curse of dimensionality at the augmenting step; $\ell$ is the lever.
 
 ### Decoder: backward projection
 
@@ -235,9 +235,25 @@ The reduction $8.58 \to 4.54$ is the largest among all baselines, and PNL is the
 
 ### Controllability via $\ell$
 
-The $\ell$-body parameter is a true design knob, not a hyperparameter to be tuned. For MNIST, choosing $\mathcal{B} = \mathcal{M}_1$ on the reshaped tensor $\mathbb{R}_{\geq 0}^{7 \times 2 \times 2 \times 7 \times 2 \times 2}$ retains $\dim(\mathcal{B}) = 17$ — enough to preserve *digit shape* while throwing away pixel-level texture. For CIFAR-10, setting $\mathcal{B} = \mathcal{M}_5$, $\mathcal{D} = \mathcal{M}_4^*$ on a higher-order reshape gives $\dim(\mathcal{B}) = 1410$ — large enough to preserve fine *shape × color* coupling (an ostrich keeps its beak and eye colors; the background loses its uncoupled hue). Sweeping $\ell$ traces a clean trade-off: higher $\ell$ → finer reconstruction → but reduced augmentation diversity. No comparable knob exists in mixup, manifold mixup, or autoencoder-based augmentation.
+The $\ell$-body parameter is a true design knob, not a hyperparameter to be tuned. For MNIST, choosing $\mathcal{B} = \mathcal{M}_1$ on the reshaped tensor $\mathbb{R}_{\geq 0}^{7 \times 2 \times 2 \times 7 \times 2 \times 2}$ retains $\dim(\mathcal{B}) = 17$ — enough to preserve *digit shape* while throwing away pixel-level texture. For CIFAR-10, setting $\mathcal{B} = \mathcal{M}_5$, $\mathcal{D} = \mathcal{M}_4^*$ on a higher-order reshape gives $\dim(\mathcal{B}) = 1410$ — large enough to preserve fine *shape × color* coupling (an ostrich keeps its beak and eye colors; the background loses its uncoupled hue).
 
-The neighbor count $k$ behaves predictably as well: $k=1$ overfits to a single neighbor (the local manifold $\mathcal{D}$ degenerates), while $k \in \{4, 8, 16\}$ all produce robust, non-trivial augmentations — exactly the qualitative behavior the geometry predicts.
+<div class="remark">
+
+**Remark** (On the neighbor count $k$). The number of neighbors behaves predictably: $k = 1$ overfits to a single neighbor (the local manifold $\mathcal{D}$ degenerates), while $k \in \{4, 8, 16\}$ all produce robust, non-trivial augmentations — exactly the qualitative behavior the geometry predicts.
+
+</div>
+
+<div class="takeaway">
+
+**Takeaway.** Sweeping $\ell$ traces a clean trade-off: higher $\ell$ → finer reconstruction → but reduced augmentation diversity. No comparable knob exists in mixup, manifold mixup, or autoencoder-based augmentation.
+
+</div>
+
+<div class="takeaway">
+
+**Takeaway.** Designing the latent space (via posets + log-linear model) rather than learning it gives a single semantic knob $\ell$ and an information-geometric guarantee: augmentation is *cheaper to traverse than the raw data space*. Most useful exactly where learning-based augmentation breaks down — the small-data, modality-poor regime.
+
+</div>
 
 ## Citation
 

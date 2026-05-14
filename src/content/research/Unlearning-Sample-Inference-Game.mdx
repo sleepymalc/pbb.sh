@@ -74,17 +74,25 @@ with higher meaning better. Two structural features make $\mathcal{Q}$ behave co
 
 ### Two provable guarantees
 
-**Theorem (Zero Grounding).** For any adversary $\mathcal{A}$, $\operatorname{Adv}(\mathcal{A}, \operatorname{Retrain}) = 0$, hence $\mathcal{Q}(\operatorname{Retrain}) = 1$.
+<div class="theorem">
+
+**Theorem** (Zero Grounding). *For any adversary $\mathcal{A}$, $\operatorname{Adv}(\mathcal{A}, \operatorname{Retrain}) = 0$, hence $\mathcal{Q}(\operatorname{Retrain}) = 1$.*
+
+</div>
 
 Because $\operatorname{Retrain}$ trains on $\mathcal{R}$ alone, both $\mathcal{F}$ and $\mathcal{T}$ are unseen to the retrained model; the two oracle worlds are *information-theoretically* identical, regardless of $\mathcal{A}$. The gold standard achieves the top of the scale automatically.
 
-**Theorem (Certified-Removal Lower Bound).** If $\operatorname{Ul}$ is $(\epsilon, \delta)$-certified removal, then for every adversary $\mathcal{A}$,
+<div class="theorem">
+
+**Theorem** (Certified-Removal Lower Bound). *If $\operatorname{Ul}$ is $(\epsilon, \delta)$-certified removal, then for every adversary $\mathcal{A}$,*
 
 $$
 \operatorname{Adv}(\mathcal{A}, \operatorname{Ul}) \;\leq\; 2 \left( 1 - \frac{2 - 2\delta}{e^\epsilon + 1} \right)
 \quad\Longrightarrow\quad
-\boxed{\;\mathcal{Q}(\operatorname{Ul}) \;\geq\; \frac{4 - 4\delta}{e^\epsilon + 1} - 1.\;}
+\mathcal{Q}(\operatorname{Ul}) \;\geq\; \frac{4 - 4\delta}{e^\epsilon + 1} - 1.
 $$
+
+</div>
 
 The bound is decreasing in $\epsilon$ — smaller privacy budgets force higher $\mathcal{Q}$ — and is *the first inequality* connecting an empirical unlearning metric to a formal removal notion. This is what makes $\mathcal{Q}$ falsifiable: a working metric *must* track $\epsilon$.
 
@@ -99,9 +107,17 @@ $$
 
 Symmetry is the only structural property the zero-grounding proof needs, and the swap pair $\{s, s'\}$ inherits it.
 
-**Proposition.** For any $\mathcal{A}$ and any swap pair $s, s' \in \mathcal{S}_\alpha$, $\overline{\operatorname{Adv}}_{\{s, s'\}}(\mathcal{A}, \operatorname{Retrain}) = 0$.
+<div class="proposition">
 
-The contrast with the *naive* random-pair estimator is sharp: for any two non-degenerate random splits $s_1, s_2$, there exists a deterministic adversary that achieves $\overline{\operatorname{Adv}}_{\{s_1, s_2\}} = 1$ against *every* unlearning method including retraining. The SWAP construction is what rescues zero grounding with only two splits.
+**Proposition.** *For any $\mathcal{A}$ and any swap pair $s, s' \in \mathcal{S}_\alpha$, $\overline{\operatorname{Adv}}_{\{s, s'\}}(\mathcal{A}, \operatorname{Retrain}) = 0$.*
+
+</div>
+
+<div class="remark">
+
+**Remark** (Why SWAP, not random pairs). For any two non-degenerate *random* splits $s_1, s_2$, there exists a deterministic adversary achieving $\overline{\operatorname{Adv}}_{\{s_1, s_2\}} = 1$ against *every* unlearning method, including retraining. Zero-grounding requires symmetry between forget and test sets — and only the SWAP pair $\{s, s'\}$ has it.
+
+</div>
 
 For the supremum, we approximate it by the best of several state-of-the-art weak MIAs (shadow-model, correctness, confidence, modified-entropy), each making independent decisions on single oracle queries. As MIAs improve, $\mathcal{Q}$ tightens automatically.
 
@@ -150,6 +166,12 @@ Every row is monotonically decreasing in $\epsilon$ — exactly the *negative co
 The two prior metrics fail one or both tests. **MIA score** ($1 - \text{MIA AUC}$): $\operatorname{NegGrad}$ jumps from 0.476 ($\epsilon = 50$) to 0.482 ($\epsilon = 150$), then *drops* to 0.466 ($\epsilon = 600$) — not monotone. **IC score**: $\operatorname{NegGrad}$ goes 0.925 → 0.953 → 0.946 across the same $\epsilon$ sequence, and the relative ranking of $\operatorname{None}$ versus $\operatorname{NegGrad}$ flips between $\epsilon = 50$ and $\epsilon = \infty$. Only $\mathcal{Q}$ satisfies both the negative-correlation test and the consistency test.
 
 $\mathcal{Q}$ is, to our knowledge, the first empirical unlearning metric that is simultaneously theory-grounded *and* practical to compute.
+
+<div class="takeaway">
+
+**Takeaway.** Treating the MIA as the *adversary* in a two-player game — rather than as the metric itself — gives unlearning evaluation what it lacked: a worst-case guarantee, an automatic zero-grounding of retraining ($\mathcal{Q}(\operatorname{Retrain}) = 1$), and a formal $(\epsilon, \delta)$-certified-removal lower bound. The SWAP test makes the worst-case computable in two splits, and the metric tightens *automatically* as stronger MIAs come along.
+
+</div>
 
 ## Citation
 

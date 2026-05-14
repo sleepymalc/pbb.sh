@@ -129,7 +129,11 @@ $$
 
 unbounded as $h_{ii} \to 1/c$ (Prop. 4): even a minor-influence sample becomes catastrophic in cluster. Theorem 2 makes this concrete — for $c$ copies each of $(x_1,y_1),(x_n,y_n)$ with $h_{11} > h_{nn}$, there exists $p$ where LAGS fails $c$-MISS. Theorem 3 does the same for cancellation in $2$-MISS, requiring only a single non-zero cross-leverage $h_{1n}$.
 
+<div class="takeaway">
+
 **Takeaway.** LAGS works iff all cross-leverages are zero — a measure-zero condition. The first-order approximation drops the Neumann series $(I_k - X_S N^{-1} X_S^\top)^{-1} = I_k + M_S + M_S^2 + \cdots$ down to $I_k$; the failure modes are the omitted terms.
+
+</div>
 
 ### Adaptive iterative greedy
 
@@ -146,7 +150,11 @@ The new score $A'$ captures *marginal contribution given prior picks*, exactly t
 
 These give the central recovery result.
 
-**Theorem (cancellation $\Rightarrow$ adaptive recovers $2$-MISS).** Under the OLS label model with $A_{-\{1\}}, A_{-\{n\}} > 0$ and $A_{-\{1,n\}} < A_{-\{n\}}$ (cancellation), if $n \in S_{\mathrm{opt},2}$, then the adaptive greedy algorithm returns $S_{\mathrm{opt},2}$.
+<div class="theorem">
+
+**Theorem** (Cancellation $\Rightarrow$ adaptive recovers $2$-MISS). *Under the OLS label model with $A_{-\{1\}}, A_{-\{n\}} > 0$ and $A_{-\{1,n\}} < A_{-\{n\}}$ (cancellation), if $n \in S_{\mathrm{opt},2}$, then the adaptive greedy algorithm returns $S_{\mathrm{opt},2}$.*
+
+</div>
 
 The price is explicit: $k$ refits instead of one, with the static and adaptive variants sitting on a clean tradeoff axis.
 
@@ -160,7 +168,11 @@ The price is explicit: $k$ refits instead of one, with the static and adaptive v
 
 </div>
 
-A symmetric caveat: under amplification, adaptivity *also* fails, because the recovery proof requires $n \in S_{\mathrm{opt},k}$, and amplification places the optimal subset inside a cluster the first refit never enters. Second-order group influence $Q_{-S} = x_{\mathrm{test}}^\top N^{-1} X_S^\top (I_k + X_S N^{-1} X_S^\top)(X_S\hat\theta - y_S)$ — keeping the next Neumann term — is the natural lever there, at the cost of submodularity (we show $Q_{-S}$ is generally not submodular, so even $1{-}1/e$ guarantees are off the table).
+<div class="remark">
+
+**Remark** (Amplification breaks adaptive too). Under *amplification*, adaptivity *also* fails — the recovery proof requires $n \in S_{\mathrm{opt},k}$, and amplification places the optimal subset inside a cluster the first refit never enters. Second-order group influence $Q_{-S} = x_{\mathrm{test}}^\top N^{-1} X_S^\top (I_k + X_S N^{-1} X_S^\top)(X_S\hat\theta - y_S)$ — keeping the next Neumann term — is the natural lever there, at the cost of submodularity ($Q_{-S}$ is generally non-submodular, so even $1{-}1/e$ guarantees are off the table).
+
+</div>
 
 ## Results
 
@@ -232,6 +244,12 @@ Two consequences are worth flagging:
 A final implication for evaluation: any metric that *grades a data-attribution method by its agreement with an additive proxy* — most prominently the [Linear Datamodeling Score](https://proceedings.mlr.press/v202/park23c/park23c.pdf) — inherits the bias documented here. The MISS perspective suggests evaluation metrics need to be *non-additive and contextual* to discriminate between attribution methods that capture sample interactions and those that merely score well against an additive yardstick.
 
 > This paper also appears in the ATTRIB 2024 workshop @NeurIPS.
+
+<div class="takeaway">
+
+**Takeaway.** Collective influence is *not* the sum of individual influences — cluster amplification and cross-leverage cancellation are the rule, not the exception. Static top-$k$ greedy reads the wrong direction; **adaptive refit-and-rescore** reads marginal contribution given previous picks, and provably recovers $2$-MISS under cancellation. The same lesson hits evaluation: any metric scored against an *additive* proxy is blind to exactly the methods that capture sample interactions.
+
+</div>
 
 ## Citation
 

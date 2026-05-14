@@ -95,11 +95,15 @@ Keeping the label fixed is essential: a flipped $y$ would be a *negatively* infl
 
 The attack inflates gradients on $\hat\theta = \mathcal{T}(Z_0)$, but the *paid* attribution $\tau_{\mathrm{IF}}(z_j', z_{\text{test}}; \hat\theta')$ is computed on the retrained model $\hat\theta' = \mathcal{T}(Z \setminus \{z_j\} \cup \{z_j'\})$. The following theorem closes that gap.
 
+<div class="theorem">
+
 **Theorem 5.1** (Informal). *Consider ERM with twice-differentiable, $m$-strongly convex, $L$-Lipschitz loss $\ell$, and influence-function attribution*
+
 $$
 \tau_{\mathrm{IF}}(z_j, z_{\text{test}}; \hat\theta) \;=\; -\nabla_\theta \ell(\hat\theta, z_{\text{test}})^{\!\top} H(\hat\theta)^{-1} \nabla_\theta \ell(\hat\theta, z_j),
 \qquad H(\hat\theta) \coloneqq \frac{1}{n}\sum_{i=1}^n \nabla_\theta^2 \ell(\hat\theta, z_i),
 $$
+
 *with $\lvert \tau_{\mathrm{IF}} \rvert, \lVert \nabla_\theta \ell \rVert_2, \lVert \nabla_\theta^2 \ell \rVert_{\mathrm{op}} = \Theta(1)$. If $z_j \to z_j'$, then for every test point $z_{\text{test}}$ and every $i \ne j$,*
 
 $$
@@ -108,9 +112,15 @@ $$
 \tau_{\mathrm{IF}}(z_j', z_{\text{test}}; \hat\theta') \;=\; \tau_{\mathrm{IF}}(z_j', z_{\text{test}}; \hat\theta) + O(1/n).
 $$
 
+</div>
+
 The proof goes through $\lVert \hat\theta' - \hat\theta \rVert \le 4L / (mn)$ (strong convexity + Lipschitzness) and a first-order Neumann expansion $\lVert H'^{-1} - H^{-1} \rVert_{\mathrm{op}} = O(4LM / (m^3 n))$, then chains them through the influence formula. Generalizing to $k$ simultaneous perturbations sharpens the bound to $O(k/n)$.
 
+<div class="takeaway">
+
 **Why this matters for the attack.** The adversary can score perturbations on $\hat\theta$ (cheap, no retraining) while the platform pays based on $\hat\theta'$ (expensive, post-retraining). Theorem 5.1 says the two scores are within $O(1/n)$, so adversarial-example gradient inflation on $\hat\theta$ — which is exactly what the black-box attacks optimize — survives the retrain.
+
+</div>
 
 ## Results
 
@@ -199,6 +209,12 @@ The perturbations themselves are barely visible to human eyes — yet they relia
 </div>
 
 > This paper also appears in the ATTRIB 2024 workshop @NeurIPS.
+
+<div class="takeaway">
+
+**Takeaway.** Data-attribution-based compensation is *not* adversarially robust by default. The very inductive bias that makes attribution useful — outliers inflate influence — makes it gameable by an adversary controlling $\sim 1\%$ of the corpus, with **black-box queries alone**. Any production data economy needs adversarial robustness baked into the attribution method, not bolted on as a downstream filter.
+
+</div>
 
 ## Citation
 

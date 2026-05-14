@@ -83,11 +83,15 @@ Training data is the fuel of modern AI: it sets what a model can do, where it fa
 
 ## The What-What-How Framework
 
-Formally:
+<div class="definition">
+
+**Definition** (What-What-How). *Data attribution measures the*
 
 $$
-\text{Data attribution measures the } \underbrace{\text{influence}}_{\text{\textit{how}}} \text{ of each } \underbrace{\text{training entity}}_{\text{\textit{to what}}} \text{ on the } \underbrace{\text{model behavior}}_{\text{\textit{what}}}.
+\underbrace{\text{influence}}_{\text{\textit{how}}} \text{ of each } \underbrace{\text{training entity}}_{\text{\textit{to what}}} \text{ on the } \underbrace{\text{model behavior}}_{\text{\textit{what}}}.
 $$
+
+</div>
 
 <figure class="figure-block">
   <img src="/research/Data-Attribution-Survey/Figures/method-overview.png" alt="Three-component cycle of data attribution: training entities D feed into the trained model theta, which exhibits model behaviors f(theta); the influence measure quantifies how each training entity contributes to those behaviors, closing the loop back to the entities." />
@@ -200,6 +204,12 @@ A recurring caveat: LDS and brittleness both rely on an **additivity assumption*
 - **Proactive and dynamic attribution.** Move from post-hoc analysis to integrated training-time use: real-time sampling, weighting, and filtering driven by influence scores.
 - **Application-oriented benchmarks.** LOO and LDS can be fooled and are noisy at scale. The field needs benchmarks that capture the complexity of real GenAI applications (fact tracing on web-scale corpora, RLHF reward shaping, copyright disputes) with standardized protocols (multi-seed, ensembled ground truth).
 - **Synergy with mechanistic interpretability.** Data attribution explains the *training-side* of model behavior; mechanistic interpretability explains the *parameter-side*. Combining the two is a clear path to comprehensive understanding of generative models.
+
+<div class="takeaway">
+
+**Takeaway.** Once you decompose the field along *what to attribute* / *attribute to what* / *how to attribute*, methods, applications, and evaluation become composable design choices on the same three axes — and apparent disagreements across literatures dissolve into different choices. Scale-awareness is now a property of the algorithm and the phenomenon (not a deployment afterthought), and the data economy is no longer a side application but core infrastructure for AI governance.
+
+</div>
 
 ## Citation
 

@@ -24,7 +24,7 @@ authors:
   url: "https://hanzhaoml.github.io/"
 ---
 
-**TL;DR.** Random projection of influence scores $g^\top F^{-1} g'$ is governed not by Euclidean geometry but by an *inverse-sensitive* spectral object — the $\lambda$-whitened influence subspace $B = F^{1/2}(F + \lambda I)^{-1/2}$ — and the right complexity parameter is the **effective dimension** $d_\lambda(F) = \operatorname{tr}(F(F + \lambda I)^{-1})$, not $\mathrm{rank}(F)$. We give tight upper and lower bounds in three nested regimes (unregularized, ridge-regularized, Kronecker-factored) and quantify the leakage from out-of-range test gradients.
+**TL;DR.** Scaling influence-function methods to large models means compressing per-example gradients with random projection, and the textbook justification is Johnson–Lindenstrauss. But JL preserves Euclidean distances, while influence relies on *inverting* a curvature matrix — a fundamentally different problem. We replace the JL argument with a tight theory keyed to the curvature's **effective dimension** at the regularization scale — an instance-adaptive quantity that can be far smaller than the rank — with matching upper and lower bounds across unregularized, ridge-regularized, and Kronecker-factored settings, plus a leakage term for test gradients that fall outside the curvature's support.
 
 Influence functions and most modern data-attribution scores share the form $\tau_\lambda(g, g') = g^\top (F + \lambda I)^{-1} g'$, where $F \succeq 0$ is a curvature operator (Hessian, GGN, empirical Fisher). At neural-network scale, $F \in \mathbb{R}^{d \times d}$ is unformable and uninvertible, so practitioners sketch with $P \in \mathbb{R}^{m \times d}$ and replace the score by $\tilde\tau_\lambda(g, g') = (Pg)^\top (PFP^\top + \lambda I_m)^{-1}(Pg')$. The standard justification — "by Johnson–Lindenstrauss" — is a category error: JL preserves Euclidean distances, but $\tau_\lambda$ is sensitive to *inversion*, not to $\lVert Pg \rVert_2$. We replace that folk argument with a precise, instance-adaptive theory of when projection provably preserves influence.
 
@@ -50,21 +50,15 @@ $$
 
 Let $r \coloneqq \mathrm{rank}(F)$ with compact eigendecomposition $F = U \Lambda U^\top$ ($U \in \mathbb{R}^{d \times r}$ orthonormal, $\Lambda \succ 0$). We take $P$ to be an *oblivious sketching matrix*: rows $P_i^\top = \frac{1}{\sqrt{m}} W_i^\top$ with $W_i$ i.i.d.\ isotropic sub-Gaussian — covering Gaussian, Rademacher, and sparse JL transforms.
 
-The central object of the analysis is the $\lambda$-**whitened influence subspace**
-
-$$
-B \coloneqq F^{1/2} (F + \lambda I)^{-1/2},
-\qquad
-B B^\top = B^\top B = F (F + \lambda I)^{-1}.
-$$
-
-Because $F$ and $F + \lambda I$ share eigenbasis, $B$ commutes with the resolvent and reveals the directions that actually need to survive the sketch.
-
 ### Unregularized regime: a sharp phase transition
 
 With $\lambda = 0$, the resolvent $F^{-1}$ has no damping and any collapse on $\mathrm{range}(F)$ is fatal.
 
-> **Theorem (Unregularized barrier).** For $g, g' \in \mathrm{range}(F)$, $\tilde\tau_0 = \tau_0$ for all such $g, g'$ if and only if $P$ is injective on $\mathrm{range}(F)$, i.e., $\mathrm{rank}(PU) = r$. If $\mathrm{rank}(PU) < r$ — in particular if $m < r$ — *no uniform multiplicative approximation* is possible over $\mathrm{range}(F) \setminus \{0\}$, at any constant factor.
+<div class="theorem">
+
+**Theorem** (Unregularized barrier). *For $g, g' \in \mathrm{range}(F)$, $\tilde\tau_0 = \tau_0$ for all such $g, g'$ if and only if $P$ is injective on $\mathrm{range}(F)$, i.e., $\mathrm{rank}(PU) = r$. If $\mathrm{rank}(PU) < r$ — in particular if $m < r$ — no uniform multiplicative approximation is possible over $\mathrm{range}(F) \setminus \{0\}$, at any constant factor.*
+
+</div>
 
 Either the sketch is injective on $\mathrm{range}(F)$ (and influence is preserved *exactly* with probability one for continuous sketches), or no $\varepsilon$ guarantee exists at all. In overparametrized regimes $r \approx n$, so $m$ must scale with the dataset.
 
@@ -78,18 +72,36 @@ $$
 
 a classical Bayesian model-selection quantity that counts only eigenvalues large relative to $\lambda$.
 
-> **Theorem (Regularized upper bound).** For oblivious $P$, $\lambda > 0$, and any $\varepsilon, \delta \in (0, 1)$, if
-> $$
-> m \;=\; \Omega\!\left( \frac{d_\lambda(F) + \log(1/\delta)}{\varepsilon^2} \right),
-> $$
-> then with probability at least $1 - \delta$, for all $g, g' \in \mathrm{range}(F)$,
-> $$
-> \bigl\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \bigr\rvert \;\leq\; \varepsilon \sqrt{\tau_0(g, g)}\,\sqrt{\tau_0(g', g')}.
-> $$
+<div class="theorem">
 
-The proof reduces the problem to controlling $\lVert B^\top (P^\top P - I) B \rVert_2 \leq \varepsilon/2$, which yields the **ridge-regularized sandwich** $(1 - \tfrac{\varepsilon}{2})(F + \lambda I) \preceq G + \lambda I \preceq (1 + \tfrac{\varepsilon}{2})(F + \lambda I)$ for $G \coloneqq F^{1/2} P^\top P F^{1/2}$, and then resolvent perturbation through the identity $A(A + \lambda I)^{-1} = I - \lambda(A + \lambda I)^{-1}$. The key relaxation over an oblivious subspace embedding (which would force $m = \Omega(r/\varepsilon^2)$ via uniform multiplicative accuracy on $\mathrm{range}(F^{1/2})$) is that we only need approximate isometry on the *whitened* subspace $B$, not on $F^{1/2}$ itself.
+**Theorem** (Regularized upper bound). *For oblivious $P$, $\lambda > 0$, and any $\varepsilon, \delta \in (0, 1)$, if*
 
-> **Theorem (Lower bound).** For Gaussian oblivious $P$, there exists a family of $F \succeq 0$ such that if $m = o(d_\lambda(F)/\varepsilon^2)$, then some $g \in \mathrm{range}(F)$ admits $\lvert \tilde\tau_\lambda(g, g) - \tau_\lambda(g, g) \rvert = \Omega(\varepsilon)\,\tau_0(g, g)$ with constant probability.
+$$
+m \;=\; \Omega\!\left( \frac{d_\lambda(F) + \log(1/\delta)}{\varepsilon^2} \right),
+$$
+
+*then with probability at least $1 - \delta$, for all $g, g' \in \mathrm{range}(F)$,*
+
+$$
+\bigl\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \bigr\rvert \;\leq\; \varepsilon \sqrt{\tau_0(g, g)}\,\sqrt{\tau_0(g', g')}.
+$$
+
+</div>
+
+The proof hinges on the *$\lambda$-whitened influence subspace*
+
+$$
+B \coloneqq F^{1/2} (F + \lambda I)^{-1/2},
+\qquad B B^\top = B^\top B = F (F + \lambda I)^{-1},
+$$
+
+which captures the directions that actually need to survive the sketch: eigendirections of $F$ damped by $\lambda$ contribute weight $\lambda_j(F)/(\lambda_j(F)+\lambda)$ to $BB^\top$, recovering $d_\lambda(F) = \operatorname{tr}(BB^\top)$. The argument reduces to controlling $\lVert B^\top (P^\top P - I) B \rVert_2 \leq \varepsilon/2$, which yields a **ridge-regularized sandwich** $(1 - \tfrac{\varepsilon}{2})(F + \lambda I) \preceq G + \lambda I \preceq (1 + \tfrac{\varepsilon}{2})(F + \lambda I)$ for $G \coloneqq F^{1/2} P^\top P F^{1/2}$, and then resolvent perturbation through $A(A + \lambda I)^{-1} = I - \lambda(A + \lambda I)^{-1}$. The key relaxation over an oblivious subspace embedding (which would force $m = \Omega(r/\varepsilon^2)$ via uniform multiplicative accuracy on $\mathrm{range}(F^{1/2})$) is that we only need approximate isometry on the *whitened* subspace $B$, not on $F^{1/2}$ itself.
+
+<div class="theorem">
+
+**Theorem** (Lower bound). *For Gaussian oblivious $P$, there exists a family of $F \succeq 0$ such that if $m = o(d_\lambda(F)/\varepsilon^2)$, then some $g \in \mathrm{range}(F)$ admits $\lvert \tilde\tau_\lambda(g, g) - \tau_\lambda(g, g) \rvert = \Omega(\varepsilon)\,\tau_0(g, g)$ with constant probability.*
+
+</div>
 
 The construction takes a diagonal $F$ with a top block of $k$ eigenvalues at scale $\lambda$ — so $d_\lambda(F) = \Theta(k)$ — and reduces sketched influence to an anti-concentration bound on the Wishart matrix $\tfrac{1}{m} W_L^\top W_L$. Upper and lower bounds match: $d_\lambda(F)$ is the *fundamental* complexity parameter.
 
@@ -99,13 +111,19 @@ K-FAC approximates each layer's curvature as $F \approx A \otimes E$, with $A \i
 
 The unregularized barrier becomes stricter: $\tilde\tau_0 = \tau_0$ on $\mathrm{range}(F)$ iff $P_A$ is injective on $\mathrm{range}(A)$ *and* $P_E$ is injective on $\mathrm{range}(E)$, forcing $m_A \geq \mathrm{rank}(A)$, $m_E \geq \mathrm{rank}(E)$, and hence $m = m_A m_E \geq \mathrm{rank}(F)$.
 
-> **Theorem (Factorized regularized upper bound).** Let $F = A \otimes E$, $P = P_A \otimes P_E$, $\lambda \leq \lVert A \rVert_2 \lVert E \rVert_2$, and define $\lambda_E \coloneqq \lambda/\lVert E \rVert_2$, $\lambda_A \coloneqq \lambda/\lVert A \rVert_2$. If
-> $$
-> m_A \,=\, \Omega\!\left(\frac{d_{\lambda_E}(A) + \log(1/\delta)}{\varepsilon^2}\right),
-> \qquad
-> m_E \,=\, \Omega\!\left(\frac{d_{\lambda_A}(E) + \log(1/\delta)}{\varepsilon^2}\right),
-> $$
-> then with probability $\geq 1 - \delta$, $\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \rvert \leq \varepsilon \sqrt{\tau_0(g, g)} \sqrt{\tau_0(g', g')}$ for all $g, g' \in \mathrm{range}(F)$.
+<div class="theorem">
+
+**Theorem** (Factorized regularized upper bound). *Let $F = A \otimes E$, $P = P_A \otimes P_E$, $\lambda \leq \lVert A \rVert_2 \lVert E \rVert_2$, and define $\lambda_E \coloneqq \lambda/\lVert E \rVert_2$, $\lambda_A \coloneqq \lambda/\lVert A \rVert_2$. If*
+
+$$
+m_A \,=\, \Omega\!\left(\frac{d_{\lambda_E}(A) + \log(1/\delta)}{\varepsilon^2}\right),
+\qquad
+m_E \,=\, \Omega\!\left(\frac{d_{\lambda_A}(E) + \log(1/\delta)}{\varepsilon^2}\right),
+$$
+
+*then with probability $\geq 1 - \delta$, $\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \rvert \leq \varepsilon \sqrt{\tau_0(g, g)} \sqrt{\tau_0(g', g')}$ for all $g, g' \in \mathrm{range}(F)$.*
+
+</div>
 
 Two consequences. First, each mode is regularized by the *opposing* factor's signal strength: $A$ sees ridge $\lambda_E = \lambda/\lVert E \rVert_2$, and vice versa. Second, the *total* sketch size is
 
@@ -123,13 +141,18 @@ $$
 \bigl\lvert \tilde\tau_\lambda(g, g') - \tau_\lambda(g, g') \bigr\rvert \;\leq\; \underbrace{\bigl\lvert \tilde\tau_\lambda(g, g'_\parallel) - \tau_\lambda(g, g'_\parallel) \bigr\rvert}_{\text{Theorem above}} \;+\; \underbrace{\bigl\lvert \tilde\tau_\lambda(g, g'_\perp) \bigr\rvert}_{\text{leakage}}.
 $$
 
-> **Theorem (Leakage).** For $k$ test gradients with $k' \coloneqq \dim \mathrm{Span}\{g'_{j,\perp}\}_{j=1}^k$, if $m = \Omega((r + \min\{\log(k/\delta),\, k' + \log(1/\delta)\})/\varepsilon^2)$, then with probability $\geq 1 - \delta$, uniformly in $j$,
-> $$
-> \begin{aligned}
-> \text{Unreg.:} \quad &\bigl\lvert \tilde\tau_0(g, g'_{j,\perp}) \bigr\rvert \;\leq\; \varepsilon \,\lVert g \rVert_2 \,\lVert g'_{j,\perp} \rVert_2 \,/\, \lambda_{\min}^+(F), \\
-> \text{Reg.:} \quad &\bigl\lvert \tilde\tau_\lambda(g, g'_{j,\perp}) \bigr\rvert \;\leq\; \varepsilon \,\lVert g \rVert_2 \,\lVert g'_{j,\perp} \rVert_2 \!\left( \frac{1}{\lambda} + \frac{2 \lVert F \rVert_2}{\lambda^2} \right).
-> \end{aligned}
-> $$
+<div class="theorem">
+
+**Theorem** (Leakage). *For $k$ test gradients with $k' \coloneqq \dim \mathrm{Span}\{g'_{j,\perp}\}_{j=1}^k$, if $m = \Omega((r + \min\{\log(k/\delta),\, k' + \log(1/\delta)\})/\varepsilon^2)$, then with probability $\geq 1 - \delta$, uniformly in $j$,*
+
+$$
+\begin{aligned}
+\text{Unreg.:} \quad &\bigl\lvert \tilde\tau_0(g, g'_{j,\perp}) \bigr\rvert \;\leq\; \varepsilon \,\lVert g \rVert_2 \,\lVert g'_{j,\perp} \rVert_2 \,/\, \lambda_{\min}^+(F), \\
+\text{Reg.:} \quad &\bigl\lvert \tilde\tau_\lambda(g, g'_{j,\perp}) \bigr\rvert \;\leq\; \varepsilon \,\lVert g \rVert_2 \,\lVert g'_{j,\perp} \rVert_2 \!\left( \frac{1}{\lambda} + \frac{2 \lVert F \rVert_2}{\lambda^2} \right).
+\end{aligned}
+$$
+
+</div>
 
 Both bounds decay at the standard $O(m^{-1/2})$ rate; the regularized bound is explicit in $\lambda$ and $\lVert F \rVert_2$, formalizing the cost of operating off the curvature's support. An analogous factorized statement (Kronecker $P = P_A \otimes P_E$) follows via a factor-level cross-term lemma, with the same primitives controlled by union-bound or subspace arguments.
 
@@ -168,14 +191,56 @@ Plotted on the same axes, the JL bound and our bound diverge in both directions:
 
 The point isn't that JL is wrong about distances; it's that influence is *not a distance*. The right concentration object is $\lVert B^\top(P^\top P - I) B \rVert_2$ on the $\lambda$-whitened subspace, and once that is in hand the three regimes fall out as instances of one resolvent perturbation argument.
 
+### Experiments
+
+We empirically test the theory on three dattri-style settings — MNIST + LR, MNIST + MLP, and CIFAR-2 + ResNet9 — each with $5000$ training and $500$ test examples (so $r \leq 5000$), the empirical Fisher as $F$, and a sparse JL transform as $P$.
+
+#### Spectrum decay: $d_\lambda(F) \ll r$ in practice
+
+<figure class="figure-block">
+  <img src="/research/Projection-IF/Figures/spectrum_combined.png" alt="Ordered eigenvalue spectrum of the empirical Fisher on MNIST+LR, MNIST+MLP, CIFAR-2+ResNet9: in each panel the eigenvalues drop by several orders of magnitude within the first few hundred indices, then taper off." />
+  <figcaption><strong>Empirical Fisher spectrum.</strong> Eigenvalues $\lambda_i$ ordered, log scale. Every setting decays sharply: even a modest $\lambda$ pushes most $\lambda_i/(\lambda_i+\lambda)$ factors near zero, so $d_\lambda(F) = \sum_i \lambda_i/(\lambda_i+\lambda)$ ends up far below $r$.</figcaption>
+</figure>
+
+#### Approximation error tracks $d_\lambda(F)$, not $r$
+
+We measure $\varepsilon_\lambda(g, g') = \lvert \tilde\tau_\lambda - \tau_\lambda \rvert / \sqrt{\tau_0(g,g)\,\tau_0(g',g')}$ — the normalized error from our upper bound — at the $95^{\text{th}}$ percentile across $(g, g')$ pairs, and plot it against the *normalized* sketch size $m/d_\lambda(F)$.
+
+<figure class="figure-block">
+  <img src="/research/Projection-IF/Figures/bilinear_combined.png" alt="Approximation error versus normalized sketch size m over d_lambda(F) on the three settings. Curves for different lambda collapse and begin decaying once m exceeds a constant times d_lambda(F), with a dashed reference line for 1 over sqrt(m over d_lambda)." />
+  <figcaption><strong>Error scales with $d_\lambda(F)$, not $\mathrm{rank}(F)$.</strong> Curves at different $\lambda$ collapse onto one trend after rescaling: the error starts decaying once $m$ is on the order of $d_\lambda(F)$, with the slope matching the predicted $\varepsilon \lesssim 1/\sqrt{m/d_\lambda(F)}$ rate. The hidden constants are modest, and the residual leakage from the out-of-range theorem decays quickly with $m$.</figcaption>
+</figure>
+
+#### Faithfulness ≠ utility: the best $\lambda^\star$ is intermediate
+
+A small $\varepsilon_\lambda$ does not imply a useful score: making $\lambda$ very large makes the inverse less sensitive to sketching (so $\varepsilon_\lambda$ shrinks) but also washes out the curvature signal in $F$. We see this directly in [LDS](https://arxiv.org/abs/2202.00622):
+
+<figure class="figure-block">
+  <img src="/research/Projection-IF/Figures/faithfulness_utility_combined.png" alt="Top row: LDS versus lambda on the three settings, with different colors for different sketch sizes m. Each curve peaks at an intermediate lambda. Bottom row: 95th-percentile approximation error versus lambda; error is monotonically decreasing in lambda." />
+  <figcaption><strong>Faithfulness vs. utility.</strong> <em>Top:</em> downstream LDS peaks at an <em>intermediate</em> $\lambda^\star$ on every setting — sharply on MNIST + LR, more broadly on MLP and ResNet9. <em>Bottom:</em> approximation error $\varepsilon_\lambda$ keeps shrinking as $\lambda$ grows, so the $\lambda$ that minimizes $\varepsilon_\lambda$ is <em>not</em> the $\lambda$ that maximizes LDS.</figcaption>
+</figure>
+
+This is exactly the pattern that breaks the JL framing: stronger $\lambda$ is *safer* for sketching but *worse* for the downstream task once the curvature signal washes out.
+
 ### A two-stage hyperparameter recipe
 
-Because minimizing approximation error $\varepsilon_\lambda$ is not the same as maximizing downstream utility (LDS, LOO correlation), the theory motivates a *faithfulness–utility* split:
+Putting the two halves together motivates a clean *faithfulness–utility* split:
 
-1. **Choose $\lambda^\star$ for utility.** On a small validation set with $m$ large, sweep $\lambda$ and pick the $\lambda^\star$ that maximizes the downstream metric — typically an intermediate value, since both $\lambda \to 0$ (unstable inverse) and $\lambda \to \infty$ (signal washed out) hurt.
+1. **Choose $\lambda^\star$ for utility.** On a small validation set with $m$ large, sweep $\lambda$ and pick the $\lambda^\star$ that maximizes the downstream metric — typically an intermediate value (above).
 2. **Choose $m$ for faithfulness.** Fix $\lambda = \lambda^\star$ and grow $m$ until $m \gtrsim C \cdot d_{\lambda^\star}(F)$ with $C \in (10, 100)$.
 
+<figure class="figure-block">
+  <img src="/research/Projection-IF/Figures/hyperparam_selection.png" alt="Left: LDS versus lambda for three settings, with a star marker on the lambda* that maximizes LDS in each. Right: held-out LDS versus normalized sketch size m over d_lambda*(F); square markers indicate where each setting first reaches 95% of its max LDS, all within the 10–100 region." />
+  <figcaption><strong>The recipe in practice.</strong> <em>Left:</em> validation-set sweep over $\lambda$ picks $\lambda^\star$ (stars). <em>Right:</em> held-out LDS vs. $m/d_{\lambda^\star}(F)$ — square markers mark where each setting first hits $95\%$ of its max LDS. On all three datasets, $m \in (10, 100) \cdot d_{\lambda^\star}(F)$ suffices, making the instance-adaptive bound directly operational.</figcaption>
+</figure>
+
 The first stage is sample-efficient (small validation set, no need for tight sketches); the second is principled (governed by an instance-adaptive quantity, not a worst-case rank).
+
+<div class="takeaway">
+
+**Takeaway.** Influence is *not a distance*, so JL is the wrong tool to justify sketching it. The right complexity parameter is the **effective dimension** $d_\lambda(F)$ at the regularization scale — instance-adaptive, often orders of magnitude smaller than the rank. Three settings (unregularized, regularized, factorized) all fall out of the same resolvent perturbation argument, and the operational recipe is simple: pick $\lambda^\star$ on a small validation set, then scale $m$ to $10\text{–}100 \cdot d_{\lambda^\star}(F)$.
+
+</div>
 
 ## Citation
 

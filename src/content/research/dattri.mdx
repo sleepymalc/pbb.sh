@@ -153,7 +153,11 @@ Numbers below are the best score over the hyperparameter sweep documented in the
 
 </div>
 
-Grad-Cos's near-$0.5$ AUC is *theoretically* expected: its self-influence score is identically $1$ (the gradient is parallel to itself), so it carries no signal for noisy-label ranking.
+<div class="remark">
+
+**Remark** (Why Grad-Cos AUC is at chance). Grad-Cos's $\approx 0.5$ AUC is *theoretically* expected: its self-influence score is identically $1$ — the gradient is parallel to itself — so it carries no signal for noisy-label ranking. Self-influence is a structural failure mode of cosine-based scores, not a tuning issue.
+
+</div>
 
 <div class="figure-row">
   <figure class="figure-block">
@@ -198,10 +202,14 @@ The MLP/MNIST LOO column is uniformly $\leq 0.03$ for *every* method — includi
 
 <p class="figure-legend">Same color legend as above. The top row (LR, convex) shows the regime where <em>both</em> metrics agree; the bottom row (MLP, non-convex) is the headline failure mode of LOO — every bar collapses to the floor while LDS still discriminates by a factor of $4{-}5\times$.</p>
 
-Two takeaways the benchmark forces:
+<div class="takeaway">
+
+**Two takeaways the benchmark forces.**
 
 - **LOO is not a faithful ground truth in non-convex regimes.** This empirically corroborates [Bae et al. (2022)](https://arxiv.org/abs/2209.05364): once the loss landscape has multiple minima, removing one training point may move the optimizer between basins, and the LOO output difference no longer reflects local influence. The LR setting ($0.80$ LDS) is the only one where LOO and LDS agree.
 - **Ensembling is the deciding axis at scale.** A single-model TRAK-1 underperforms TracIn on MAESTRO ($0.07$ vs $0.13$ LDS), but TRAK-50 leads by $0.19$. The same story plays out on Shakespeare ($0.04 \to 0.23$). The library's $50$ shipped checkpoints per setting were specifically sized to make this comparison reproducible.
+
+</div>
 
 ### Cost profile
 
@@ -224,6 +232,12 @@ Wall-clock and peak memory on a single A40 GPU for the two largest feasible sett
 </div>
 
 TRAK's memory grows mostly with the projection dimension (constant in the ensemble size), and runtime scales linearly with the number of ensemble checkpoints. RPS-L2 is the cheapest by an order of magnitude because it only touches the last linear layer — useful as a fast sanity baseline, but the AUC and LDS columns show why it isn't a substitute for the gradient-based methods.
+
+<div class="takeaway">
+
+**Takeaway.** One API for four method families plus a benchmark with shipped checkpoints turns data-attribution comparison from "rerun everyone's repo" into a one-flag experiment. The empirical headline: **TRAK ensembling is the deciding axis at scale**, and **LOO is no longer a faithful ground truth** outside the convex regime — LDS is the metric to optimize against.
+
+</div>
 
 ## Citation
 

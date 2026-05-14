@@ -32,16 +32,13 @@ authors:
   url: "https://jiaqima.github.io/"
 ---
 
-<div class="figure-row" style="align-items: flex-start">
-  <figure class="figure-block" style="flex-grow: 1.17">
-    <img src="/research/GraSS/Figures/GraSS.png" alt="The GraSS two-stage pipeline: a length-p gradient g is first sparsified by Mask_{k'} to a length-k' subvector g' (highlighted), then sparse-projected by SJLT_k onto the compressed gradient hat_g of length k." />
-    <figcaption><strong>GraSS in one picture.</strong> A per-sample gradient $g \in \mathbb{R}^p$ is first sparsified down to a $k'$-dimensional subvector $g'$ (pink), then sparse-projected by $\operatorname{SJLT}_k$ onto the compressed gradient $\hat g \in \mathbb{R}^k$. Total cost $O(k')$, with $k < k' \ll p$.</figcaption>
-  </figure>
-  <figure class="figure-block" style="flex-grow: 2.97">
-    <img src="/research/GraSS/Figures/FactGraSS.png" alt="FactGraSS for one linear layer: the forward input z_in and the backward gradient signal Dz_out are first sparsified by Mask_{k_in'} and Mask_{k_out'} to small dimensions, their Kronecker product forms the moderate-size sparsified gradient g'_il, and SJLT_{k_l} compresses it down to hat_g_il of size k_in by k_out." />
-    <figcaption><strong>FactGraSS.</strong> The linear-layer variant: sparsify the two factors $z^{\mathrm{in}}_{i,l}, \mathcal{D} z^{\mathrm{out}}_{i,l}$ independently, Kronecker-product them into the sparsified gradient $g'_{i,l}$, then sparse-project with $\operatorname{SJLT}_{k_l}$ — the full $\nabla_{W_l}\ell$ is never materialized.</figcaption>
-  </figure>
-</div>
+<figure class="figure-block figure-hero">
+  <div class="figure-row" style="align-items: center; margin: 0">
+    <img src="/research/GraSS/Figures/GraSS.png" style="flex: 1.172 1 0; min-width: 0; max-width: 100%; height: auto" alt="The GraSS two-stage pipeline: a length-p gradient g is first sparsified by Mask_{k'} to a length-k' subvector g' (highlighted), then sparse-projected by SJLT_k onto the compressed gradient hat_g of length k." />
+    <img src="/research/GraSS/Figures/FactGraSS.png" style="flex: 2.974 1 0; min-width: 0; max-width: 100%; height: auto" alt="FactGraSS for one linear layer: the forward input z_in and the backward gradient signal Dz_out are first sparsified by Mask_{k_in'} and Mask_{k_out'} to small dimensions, their Kronecker product forms the moderate-size sparsified gradient g'_il, and SJLT_{k_l} compresses it down to hat_g_il of size k_in by k_out." />
+  </div>
+  <figcaption><strong>GraSS (left) and FactGraSS (right).</strong> <em>Left:</em> a per-sample gradient $g \in \mathbb{R}^p$ is first sparsified down to a $k'$-dimensional subvector $g'$ (pink), then sparse-projected by $\operatorname{SJLT}_k$ onto the compressed gradient $\hat g \in \mathbb{R}^k$ — total cost $O(k')$, with $k < k' \ll p$. <em>Right:</em> the linear-layer variant sparsifies the two factors $z^{\mathrm{in}}_{i,l}$ and $\mathcal{D} z^{\mathrm{out}}_{i,l}$ independently, Kronecker-products them into the sparsified gradient $g'_{i,l}$, then sparse-projects with $\operatorname{SJLT}_{k_l}$ — the full $\nabla_{W_l}\ell$ is never materialized.</figcaption>
+</figure>
 
 **TL;DR.** **GraSS** is a two-stage per-sample-gradient compression pipeline — *sparsify* (random or learned mask) then *sparse-project* (SJLT) — that drives both time and space cost from $O(pk)$ to $O(k')$ with $k < k' \ll p$, *sub-linear* in model size. Its linear-layer variant **FactGraSS** never materializes the full gradient, runs at **72,218 tokens/sec** on Llama-3.1-8B (vs. **27,292** for [LoGra](https://openreview.net/forum?id=zPKeJAEo27)), and is backed by a custom CUDA kernel for SJLT.
 
@@ -66,24 +63,19 @@ Gradient-based data attribution — influence functions, [TRAK](https://arxiv.or
 
 Consider a first linear layer $h = \operatorname{ReLU}(Wz)$ with $W \in \mathbb{R}^{d_{\mathrm{out}} \times d_{\mathrm{in}}}$. Because $\operatorname{ReLU}(x) = \max(0, x)$ zeroes every negative pre-activation, the chain rule pushes those zeros straight into $\nabla_W \ell(z; \hat\theta)$. The same holds for any activation with a vanishing region — GELU, SiLU, and so on at saturation. Critically, this is a *per-sample* phenomenon: averaging $g_i$ over a mini-batch immediately destroys the pattern, which is why standard training pipelines never see it.
 
-The Sparse Johnson–Lindenstrauss Transform ($\operatorname{SJLT}$) of [Dasgupta–Kumar–Sarlós](https://arxiv.org/abs/1006.3585) and [Kane–Nelson](https://arxiv.org/abs/1006.3585) keeps only $s = o_\epsilon(k)$ nonzero entries per column of the projection matrix. Viewed as a column-scan, applying $\operatorname{SJLT}$ to a vector $g$ touches $s \cdot \operatorname{nnz}(g)$ entries — *linear in the input's nonzero count*, *independent of $k$*:
-
-$$
-\operatorname{SJLT}_k(g) \in \mathbb{R}^k,\qquad \text{time} = O(s \cdot \operatorname{nnz}(g)),\ s = o_\epsilon(k).
-$$
+The Sparse Johnson–Lindenstrauss Transform ($\operatorname{SJLT}$) of [Dasgupta–Kumar–Sarlós](https://arxiv.org/abs/1006.3585) and [Kane–Nelson](https://arxiv.org/abs/1006.3585) keeps only $s = o_\epsilon(k)$ nonzero entries per column of the projection matrix. Viewed as a column-scan, applying $\operatorname{SJLT}$ to a vector $g$ to land at $\operatorname{SJLT}_k(g) \in \mathbb{R}^k$ touches $s \cdot \operatorname{nnz}(g)$ entries, so it takes $O(s \cdot \operatorname{nnz}(g))$ time with $s = o_\epsilon(k)$ — *linear in the input's nonzero count*, *independent of $k$*.
 
 We default to $s = 1$, which still preserves pair-wise distances with small empirical error and unlocks the largest speedups.
 
-<div class="figure-row">
-  <figure class="figure-block">
-    <img src="/research/GraSS/Figures/matrix-multiplication.png" alt="Dense Rademacher projection: a full k-by-p projection matrix P multiplies the length-p input g column by column, summing p rank-1 contributions to land at hat_g of length k." />
-    <figcaption><strong>Dense Rademacher projection.</strong> A $k \times p$ matrix $P$ is applied column-wise: every entry of $g$ scales a full column of $P$. Cost is $O(pk)$ — both space and time scale with the input dimension.</figcaption>
-  </figure>
-  <figure class="figure-block">
-    <img src="/research/GraSS/Figures/SJLT-matrix-multiplication.png" alt="Sparse Rademacher projection (s = 1): each column of P has at most one nonzero entry, so each input coordinate g(j) writes to exactly one output coordinate, dropping the per-column cost to O(s)." />
-    <figcaption><strong>Sparse Rademacher projection ($s = 1$).</strong> Each column of $P$ has at most one nonzero — the same matrix-vector product collapses to a single scatter per input coordinate. Cost is $O(s \cdot \operatorname{nnz}(g))$, *linear in the gradient's sparsity*.</figcaption>
-  </figure>
-</div>
+<figure class="figure-block">
+  <img src="/research/GraSS/Figures/matrix-multiplication.png" alt="Dense Rademacher projection: a full k-by-p projection matrix P multiplies the length-p input g column by column, summing p rank-1 contributions to land at hat_g of length k." />
+  <figcaption><strong>Dense Rademacher projection.</strong> A $k \times p$ matrix $P$ is applied column-wise: every entry of $g$ scales a full column of $P$. Cost is $O(pk)$ — both space and time scale with the input dimension.</figcaption>
+</figure>
+
+<figure class="figure-block">
+  <img src="/research/GraSS/Figures/SJLT-matrix-multiplication.png" alt="Sparse Rademacher projection (s = 1): each column of P has at most one nonzero entry, so each input coordinate g(j) writes to exactly one output coordinate, dropping the per-column cost to O(s)." />
+  <figcaption><strong>Sparse Rademacher projection ($s = 1$).</strong> Each column of $P$ has at most one nonzero — the same matrix-vector product collapses to a single scatter per input coordinate. Cost is $O(s \cdot \operatorname{nnz}(g))$, *linear in the gradient's sparsity*.</figcaption>
+</figure>
 
 ### Sparsification: random and selective masks
 
@@ -157,7 +149,11 @@ $$
 k_l' \;\leq\; \sqrt{k_l \cdot p_l} \;\iff\; c \;\leq\; \sqrt{p_l / k_l}.
 $$
 
-For a typical Llama-style layer with $p_l = 4096 \times 4096$ and $k_l = 64 \times 64$, any blow-up factor $c \leq 64$ works — easy to satisfy. Aggregating over layers with $k' \coloneqq \sum_l k_l'$, the network-level cost is $O(k')$, the same sub-linear bound as GraSS but *without ever materializing $\nabla_{W_l} \ell$*.
+<div class="remark">
+
+**Remark.** For a typical Llama-style layer with $p_l = 4096 \times 4096$ and $k_l = 64 \times 64$, any blow-up factor $c \leq 64$ works — easy to satisfy. Aggregating over layers with $k' \coloneqq \sum_l k_l'$, the network-level cost is $O(k')$, the same sub-linear bound as GraSS but *without ever materializing $\nabla_{W_l} \ell$*.
+
+</div>
 
 ## System: a CUDA kernel for SJLT
 
@@ -168,9 +164,9 @@ A textbook PyTorch implementation of SJLT loses to dense `bmm` at the problem si
 
 We wrote a custom CUDA kernel ([TRAIS-Lab/sjlt](https://github.com/TRAIS-Lab/sjlt)) that re-tiles the scatter to minimize hot-spot contention and aligns memory access along the output dimension. At $p = 131{,}072$ with $s = 1$, the kernel beats dense Rademacher and Gaussian projections in wall-time at every $k$ we tested while inheriting SJLT's linear scaling in $\operatorname{nnz}(g)$ — neither dense baseline exploits input sparsity at all. This is what makes the sub-linear theory translate into the throughput numbers below.
 
-<figure class="figure-block" style="max-width: 56%; margin-left: auto; margin-right: auto">
-  <img src="/research/GraSS/Figures/SJLT-benchmark.png" alt="Top panel: projection time in seconds versus target dimension k on a log-log scale, with dense Gaussian rising linearly past 1e-2 s while SJLT (CUDA, green) stays flat near 5e-4 s. Bottom panel: relative pair-wise distance error decreasing from ~1e-1 to ~1e-2 as k grows for all methods. Opacity encodes input sparsity levels." />
-  <figcaption><strong>SJLT CUDA kernel vs. dense matmul.</strong> Projection time (top) and pair-wise distance error (bottom) at $p = 131{,}072$, $s = 1$. <span style="color:#16a34a"><strong>━</strong></span> SJLT (CUDA, ours) stays flat across $k$ — independent of target dimension; <span style="color:#facc15"><strong>━</strong></span> dense Gaussian scales linearly in $k$ and crosses over already at $k \approx 256$. Opacity encodes input-sparsity levels; only SJLT exploits it.</figcaption>
+<figure class="figure-block">
+  <img src="/research/GraSS/Figures/SJLT-benchmark.png" alt="Left panel: projection time in seconds versus target dimension k on a log-log scale, with dense Gaussian rising linearly past 1e-2 s while SJLT (CUDA, green) stays flat near 5e-4 s. Right panel: relative pair-wise distance error decreasing from ~1e-1 to ~1e-2 as k grows for all methods. Opacity encodes input sparsity levels." />
+  <figcaption><strong>SJLT CUDA kernel vs. dense matmul.</strong> Projection time (left) and pair-wise distance error (right) at $p = 131{,}072$, $s = 1$. <span style="color:#16a34a"><strong>━</strong></span> SJLT (CUDA, ours) stays flat across $k$ — independent of target dimension; <span style="color:#facc15"><strong>━</strong></span> dense Gaussian scales linearly in $k$ and crosses over already at $k \approx 256$. Opacity encodes input-sparsity levels; only SJLT exploits it.</figcaption>
 </figure>
 
 ## Results
@@ -249,6 +245,12 @@ On Llama-3.1-8B-Instruct with a 1B-token slice of OpenWebText, on a single NVIDI
 ### Qualitative attribution on Llama-3.1-8B
 
 We filter out the well-known [gradient-norm outliers](https://arxiv.org/abs/2405.13954) (error logs, ASCII dumps, repetitive tokens) and inspect the top-10 most influential samples identified by FactGraSS at $k_l = 4096$. Prompted with *"To improve data privacy,"* the model emits a structured GDPR-style response, and FactGraSS surfaces a training paragraph from a news-site terms-of-service discussing account-level privacy enforcement, "right to delete," and personal-data handling — a topically aligned, non-trivial attribution that the gradient-norm baseline misses.
+
+<div class="takeaway">
+
+**Takeaway.** Per-sample gradient sparsity is the structural property data-attribution pipelines had been leaving on the table. *Sparsify-then-sparse-project* compresses each gradient in $O(k')$ — strictly sub-linear in $p$ — and the linear-layer variant **FactGraSS** never materializes $\nabla_{W_l}\ell$, delivering **+165%** compression throughput over LoGra on Llama-3.1-8B. The framework is drop-in for TRAK and influence functions, and we ship a custom CUDA kernel for SJLT to make the theory translate to wall-clock wins.
+
+</div>
 
 ## Citation
 

@@ -128,13 +128,15 @@ The MSE splits cleanly into a *bias* $\mathcal{B}(U_t) \coloneqq \mathbb{E}[\inf
 
 </div>
 
-<div class="takeaway">
-
-**Takeaway.** Three patterns govern the spectrum:
+Three patterns govern the spectrum:
 
 - **The two extremes are mirror images.** Target-Only is unbiased but its variance $\operatorname{tr}(\Sigma_\star)/m$ blows up when the target batch is small. Full-Training has zero variance but carries an irreducible *distribution-mismatch bias* $\lVert g_{\mathrm{tr}} - g_\star \rVert^2$ that no amount of training data can erase.
 - **Subset methods occupy the middle of the spectrum.** Both Global Subset and Group-Wise Subset improve the bias over Full-Training (their feasible set is strictly larger than $\{\hat g_{\mathrm{tr}}\}$) at the cost of $O(\sigma/\sqrt m \cdot \sqrt{\log\binom{n}{k}})$ extra variance — a logarithmic, not linear, dependence on the combinatorial complexity of the subset.
 - **Refining the partition strictly reduces bias.** Because $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G})$, the group-wise bias is no larger; the variance bound only grows linearly in the number of groups $P$, so a layer-wise partition trades $P\times$ variance multiplier for a strictly smaller approximation error — and in practice the bias reduction dominates.
+
+<div class="takeaway">
+
+**Takeaway.** *Larger feasible sets reduce bias but increase variance*, since the update has more freedom to align both with $g_\star$ and **also with noise** $\xi$. Full-Training is stable but biased; Target-Only is unbiased but unstable when $m$ is small; Global and Group-Wise Subset Updates interpolate between them, with the partition $\mathcal{G}$ and subset size $k$ providing additional design knobs.
 
 </div>
 
@@ -342,6 +344,12 @@ Per-step wall-clock overhead of Layer-Wise / Global Subset Update relative to Fu
 </div>
 
 *Overhead shrinks sharply with model size — once `w.grad` becomes compute-bound rather than IO/launch-bound, materializing only $k = n/2$ samples gives back $\sim 1.46\times$ on Llama-3.2-3B, almost cancelling the scoring cost.* The pipeline also remains compatible with activation checkpointing without changing the asymptotic memory footprint.
+
+<div class="takeaway">
+
+**Takeaway.** The leverage is the *primal–dual* view of **data selection ↔ data regularization**. Jumping between the two reinterprets existing methods on a single bias–variance spectrum and suggests new ones the primal view never would — often with surprising findings (e.g., the 32× per-layer score-magnitude gap that lets Layer-Wise beat Global Subset).
+
+</div>
 
 ## Citation
 
