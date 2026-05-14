@@ -261,6 +261,9 @@ export const siteConfig: SiteConfig = {
       conferences: 'ICML 2026, ICLR 2026, NeurIPS 2025, ICLR 2025, ICML 2024, IEEE BigData 2023',
       journals: 'TMLR',
       programCommittee: 'AAAI 2025',
+      awards: {
+        'ICML 2026': 'Silver Reviewer Award',
+      },
     },
   },
 

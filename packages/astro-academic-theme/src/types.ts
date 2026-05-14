@@ -115,6 +115,7 @@ export interface ServiceSection {
     conferences: string;
     journals: string;
     programCommittee: string;
+    awards?: Record<string, string>;
   };
 }
 
