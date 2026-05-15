@@ -16,6 +16,7 @@
     "@astrojs/sitemap": "^3.7.0",
     "@tailwindcss/vite": "^4.0.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "astro": "^6.1.2",
     "astro-academic-theme": "file:./packages/astro-academic-theme",
     "marked": "^15.0.0",
