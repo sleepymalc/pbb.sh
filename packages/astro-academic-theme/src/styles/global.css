@@ -295,6 +295,10 @@ ul { margin: 0; }
   line-height: 1.6;
   word-wrap: break-word;
   color: var(--color-text);
+  /* Contain absolutely-positioned .katex-mathml (whose <math> children
+     overflow its 1px box) so they don't extend html.scrollWidth. */
+  position: relative;
+  overflow-x: clip;
 }
 
 @media (max-width: 480px) {
