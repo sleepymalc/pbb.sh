@@ -364,6 +364,19 @@ const lastName = nameParts[nameParts.length - 1];
       z-index: 50;
       background: var(--color-bg);
       overflow: clip;
+      transition: transform 0.25s ease;
+    }
+
+    body.header-hidden .mobile-profile {
+      transform: translateY(-100%);
+    }
+
+    .page-nav-row {
+      transition: top 0.25s ease;
+    }
+
+    body.header-hidden .page-nav-row {
+      top: 0;
     }
 
     .mobile-profile::after {
@@ -517,4 +530,30 @@ const lastName = nameParts[nameParts.length - 1];
   syncProfileHeight();
   window.addEventListener('resize', syncProfileHeight);
   document.addEventListener('astro:after-swap', syncProfileHeight);
+
+  // Hide mobile header on scroll down, show on scroll up
+  if (!window._headerScrollInit) {
+    window._headerScrollInit = true;
+    var lastY = window.scrollY;
+    var ticking = false;
+    function updateHeader() {
+      var y = window.scrollY;
+      var delta = y - lastY;
+      if (window.innerWidth > 1023 || y < 50) {
+        document.body.classList.remove('header-hidden');
+      } else if (delta > 5) {
+        document.body.classList.add('header-hidden');
+      } else if (delta < -5) {
+        document.body.classList.remove('header-hidden');
+      }
+      lastY = y;
+      ticking = false;
+    }
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        requestAnimationFrame(updateHeader);
+        ticking = true;
+      }
+    }, { passive: true });
+  }
 </script>
