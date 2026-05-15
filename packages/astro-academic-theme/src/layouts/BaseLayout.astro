@@ -169,12 +169,18 @@ const lastName = nameParts[nameParts.length - 1];
 </html>
 
 <style>
+  html {
+    overflow-x: clip;
+    overscroll-behavior-y: none;
+  }
+
   body {
     margin: 0;
     background: var(--color-bg);
     color: var(--color-text);
     overflow-y: scroll;
     overflow-x: clip;
+    overscroll-behavior-y: none;
   }
 
   .outer-padding {
@@ -216,17 +222,20 @@ const lastName = nameParts[nameParts.length - 1];
   .layout-grid {
     display: flex;
     flex-wrap: wrap;
+    min-width: 0;
   }
 
   .sidebar-col {
     width: 33.33%;
     display: none;
+    min-width: 0;
   }
 
   .content-col {
     width: 66.67%;
     padding: 0 2.5rem 2.5rem;
     padding-left: 1.5rem;
+    min-width: 0;
   }
 
   @media (min-width: 1024px) {
