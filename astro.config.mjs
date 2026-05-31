@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 
 export default defineConfig({
   site: 'https://pbb.wtf',
+  trailingSlash: 'always',
   integrations: [
     mdx(),
     sitemap(),
