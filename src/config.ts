@@ -33,7 +33,7 @@ export const siteConfig: SiteConfig = {
   ],
 
   news: [
-    { date: 'Jun. 2026', text: "💼 Incoming intern at [*SIG*](https://sig.com/) Deep Learning team, come hanging out in Philly!" },
+    { date: 'Jun. 2026', text: "💼 Interning at [*SIG*](https://sig.com/) Deep Learning team, come hanging out in Philly!" },
     { date: 'Feb. 2026', text: "🏛️ We are organizing the [Data Foundations of AI](https://data-foundations-of-ai.github.io/), come check out if you work on data as well!" },
     { date: 'Jan. 2026', text: "📝 One paper accepted by *ICLR 2026*.", papers: [
       { title: 'PNL', href: './research/PNL/' },
