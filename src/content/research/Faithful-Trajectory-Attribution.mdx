@@ -1,0 +1,119 @@
+---
+title: "How Faithful Is Trajectory-Based Data Attribution? Error Sources, Remedies, and Practical Guidelines"
+tags: ["Data", "Attribution", "Algorithm", "Theory"]
+date: 2026-05-12 00:00:00 -0500
+priority: -20260512
+path: "research/Faithful-Trajectory-Attribution"
+excerpt: "We give the first systematic error analysis of trajectory-based data attribution — pinpointing optimizer mismatch as the dominant error, proposing AdamW-influence to fix it, and turning the analysis into a K-step look-ahead recipe for data selection."
+selected: true
+venue: "arXiv preprint"
+links:
+- name: "arXiv"
+  url: "https://arxiv.org/abs/2605.18814"
+authors:
+- name: "Junwei Deng"
+  url: "https://theaperdeng.github.io/"
+- name: "**Pingbang Hu**"
+  url: "https://pbb.sh/"
+- name: "Suliang Jin"
+- name: "Hao Lu"
+- name: "Jiachen T. Wang"
+  url: "https://tianhaowang.netlify.app/"
+- name: "Shichang Zhang"
+  url: "https://shichangzh.github.io/"
+- name: "Jiaqi W. Ma"
+  url: "https://jiaqima.github.io/"
+---
+
+**TL;DR.** Trajectory-based data attribution estimates a training point's influence by *unrolling the training run*. We give the first systematic error analysis — splitting the total error into **config-level**, **algorithm-level**, and **system-level** — and act on each. The dominant config-level error is *optimizer mismatch*: every existing estimator is derived assuming SGD, yet modern models train with **AdamW**. Our **AdamW-influence** closes that gap and lifts Spearman correlation with ground-truth influence by **10% to over 300%** across MLP, CNN, GPT-2, and Llama-3.2-1B. We then isolate the residual *first-order Taylor* error, show it is governed by **learning rate** and **trajectory length**, and derive a **closed-form error proxy** computable along the original run *without retraining*. Finally, a **$K$-step look-ahead** framework unifies offline and online data selection — and short-horizon online selection often *matches or beats* offline.
+
+Trajectory-based data attribution answers a deceptively simple question: *how much did this training example change the final model?* Rather than the static leave-one-out of classical influence functions, it **unrolls the optimization trajectory** — tracking how a perturbation to one sample's gradient propagates, step by step, all the way to the final parameters. The estimates feed data selection, data valuation, and model diagnosis. Yet despite this reach, no one had asked the prior question: *how faithful are these estimates in the first place?* This paper gives the first end-to-end error analysis of trajectory-based attribution, concrete remedies for the largest error sources, and a practical recipe for using the estimates downstream.
+
+## Why this paper
+
+- **[A taxonomy of error](#the-error-taxonomy).** Total error decomposes into *config-level* (modeling assumptions: optimizer, schedule, weight decay), *algorithm-level* (the first-order approximation itself), and *system-level* (finite precision, checkpoint spacing). Naming the sources is what makes them fixable.
+- **[Optimizer mismatch is the big one](#config-level-optimizer-mismatch--adamw-influence).** Existing estimators assume SGD; real models use AdamW. Correcting it — **AdamW-influence** — buys **10% to over 300%** Spearman improvement across four settings.
+- **[The remaining error is predictable — and measurable for free](#algorithm-level-a-predictable-error-you-can-measure-for-free).** A closed-form proxy, evaluable along the original trajectory *without retraining*, tracks the true first-order error; learning rate and trajectory length are the knobs.
+- **[One framework for data selection](#practical-guidelines-k-step-look-ahead).** $K$-step look-ahead places offline and online selection on a single axis — and short horizons frequently win.
+
+## The error taxonomy
+
+The ground-truth object is the *trajectory-specific leave-one-out* effect: rerun training with a single example removed and read off the change in the validation metric. Every attribution method is an approximation to this counterfactual, and the paper organizes the gap into three levels.
+
+- **Config-level.** The estimator is derived under assumptions that do not match the actual run — the optimizer, the learning-rate schedule, weight decay. This term is both the largest and the most fixable, because it is a *modeling* error rather than an intrinsic one.
+- **Algorithm-level.** Even with the configuration matched exactly, the estimator linearizes the trajectory. The discarded higher-order terms are an irreducible error of the *method itself*.
+- **System-level.** Finite-precision arithmetic, checkpoint granularity, and similar implementation realities.
+
+The three contributions below attack the first two levels: a remedy for the dominant config-level error, and a characterization (plus a free diagnostic) for the algorithm-level error.
+
+## Config-level: optimizer mismatch → AdamW-influence
+
+**SGD-influence, recapped.** For a run $\theta_0 \to \cdots \to \theta_T$ with per-step Hessians $H_t$, the standard unrolled estimate of the effect of upweighting training point $z$ at step $t^*$ on the validation loss at $z_{\mathrm{val}}$ is
+
+$$
+\widehat{\mathrm{TSLOO}}(z; z_{\mathrm{val}}) \;\approx\; \eta_{t^*}\,\nabla_\theta \ell(\theta_T, z_{\mathrm{val}})^\top \left[\prod_{t=t^*+1}^{T-1}\!\big(I - \eta_t H_t\big)\right] \nabla_\theta \ell(\theta_{t^*}, z).
+$$
+
+Each factor $I - \eta_t H_t$ is the linearized one-step parameter map; the product propagates a gradient perturbation from step $t^*$ to the end of training. The catch: this derivation assumes **plain SGD**.
+
+**The mismatch.** Modern training is **AdamW** — per-coordinate adaptive scaling by a running second moment, momentum through a first moment, and decoupled weight decay. The one-step update is no longer $I - \eta_t H_t$, so propagating a perturbation with the SGD map systematically *mis-estimates* influence. Because virtually every large model today is trained with AdamW, this is the error that dominates in practice.
+
+**AdamW-influence.** We re-derive the propagation for AdamW. The key move is to inject the perturbation at the **gradient level** — where AdamW's nonlinearity actually lives — and to carry **three coupled states** through the trajectory: the parameters together with AdamW's first- and second-moment buffers, rather than the parameters alone. The per-step map then splits into a *Hessian-free* part (momentum and adaptive rescaling) and a *Hessian-mediated* part, and the backward propagation tracks all three states jointly.
+
+<div class="remark">
+
+**Cost.** AdamW-influence keeps the same $O(T)$ asymptotic cost as SGD-influence — it just carries three coupled states instead of one, for roughly $3\times$ the per-step memory and compute. No retraining, no extra trajectory.
+
+</div>
+
+**It moves the numbers.** Across all four settings — an **MLP** and a **CNN** on image classification, **GPT-2** continual pretraining, and **Llama-3.2-1B** instruction tuning — accounting for AdamW raises the Spearman correlation between estimated and ground-truth influence by **10% to over 300%**. The gap is consistent rather than cherry-picked: wherever the model was trained with AdamW, the SGD-derived estimator was leaving fidelity on the table.
+
+<div class="takeaway">
+
+**Takeaway.** The single most impactful fix is not a better approximation — it is *matching the estimator to the optimizer*. Trajectory-based attribution derived under SGD and applied to AdamW-trained models pays a large, avoidable config-level error, and **AdamW-influence** recovers it at $O(T)$ cost.
+
+</div>
+
+## Algorithm-level: a predictable error you can measure for free
+
+With the optimizer matched, what remains is intrinsic to the method: each step is linearized around the *unperturbed* trajectory, a first-order Taylor expansion that drops the higher-order terms. The paper pins down what governs the size of that residual.
+
+- **Learning rate.** A larger $\eta$ moves each step further from the linearization point, amplifying the dropped higher-order terms.
+- **Trajectory length.** The error compounds as the perturbation propagates, so the longer the unrolled horizon, the more it accumulates. Shorter horizons are intrinsically more faithful.
+
+The practically useful part is a **closed-form proxy** for this residual that can be evaluated *along the original trajectory, without retraining* — no counterfactual runs, just quantities already available from the training trace. Because the proxy tracks the true first-order error closely, a practitioner can *predict* when an attribution estimate is trustworthy, and tune the learning rate and horizon accordingly, instead of discovering the error only after an expensive ground-truth retrain.
+
+<div class="takeaway">
+
+**Takeaway.** The algorithm-level error is not a black box. It grows with learning rate and trajectory length, and a free, retraining-as-needed-never proxy lets you read off its magnitude directly from the run you already have.
+
+</div>
+
+## Practical guidelines: $K$-step look-ahead
+
+The payoff is a single knob that unifies the two ways people actually do influence-guided data selection.
+
+- **Offline** propagates the perturbation all the way to the end of training — horizon $K = T - t^*$. Maximal look-ahead, but also maximal *accumulated* first-order error.
+- **Online** scores with a short horizon, down to $K = 0$ (immediate per-step scoring). Cheap, single-pass, and far less approximation error.
+
+Casting both as **$K$-step look-ahead** exposes the trade-off cleanly: a longer horizon sees more of the training future, but accumulates more of the algorithm-level error characterized above. Two empirical findings follow.
+
+- **Short horizons are competitive.** Online selection with a *small-to-moderate* $K$ often matches or exceeds full-trajectory offline selection — the extra look-ahead of going offline is frequently outweighed by the extra error it accrues.
+- **The optimal horizon tracks the learning rate.** The best $K$ grows as the learning rate shrinks: smaller steps keep the linearization valid for longer, so a longer horizon pays off; larger steps favor short horizons. The horizon and the learning rate should be tuned *jointly*.
+
+<div class="takeaway">
+
+**Takeaway.** "Offline vs. online" is not a binary — it is one point each on a $K$-step look-ahead axis, and the sweet spot is usually a *short* online horizon chosen against the learning rate. The result is an actionable selection recipe rather than a default to expensive full-trajectory attribution.
+
+</div>
+
+## Citation
+
+```bibtex
+@article{deng2026faithful,
+  title={How Faithful Is Trajectory-Based Data Attribution? Error Sources, Remedies, and Practical Guidelines},
+  author={Deng, Junwei and Hu, Pingbang and Jin, Suliang and Lu, Hao and Wang, Jiachen T and Zhang, Shichang and Ma, Jiaqi W},
+  journal={arXiv preprint arXiv:2605.18814},
+  year={2026}
+}
+```

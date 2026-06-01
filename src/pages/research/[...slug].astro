@@ -121,6 +121,11 @@ function linkIcon(name: string): string | null {
       font-weight: 600;
       border-left-color: var(--color-link);
     }
+
+    /* KaTeX mirrored from headings should match the TOC's text size */
+    .toc-list a .katex {
+      font-size: 1em;
+    }
   </style>
 
   <script>
@@ -132,7 +137,13 @@ function linkIcon(name: string): string | null {
       tocLinks.forEach((link) => {
         const id = (link as HTMLElement).dataset.tocId!;
         const el = document.getElementById(id);
-        if (el) headingEls.push({ el, id });
+        if (el) {
+          // Mirror the heading's rendered content (including KaTeX math) into the
+          // TOC entry, so e.g. "$K$-step" shows real math instead of plain "K".
+          // KaTeX's CSS hides the duplicate MathML/annotation, so only one glyph shows.
+          (link as HTMLElement).innerHTML = el.innerHTML;
+          headingEls.push({ el, id });
+        }
       });
 
       function update() {
