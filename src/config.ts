@@ -7,7 +7,7 @@ export const siteConfig: SiteConfig = {
   author: 'Pingbang Hu',
   authorAlternative: '胡平邦',
   avatar: 'avatar.png',
-  location: 'San Francisco, CA',
+  location: 'Philadelphia, PA',
 
   pages: {
     home: '/',
