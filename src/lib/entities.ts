@@ -70,7 +70,7 @@ export const entities: Entity[] = [
   },
   {
     name: 'Citadel',
-    aliases: ['Citadel GQS', 'Citadel GQS PhD Colloquium'],
+    aliases: ['Citadel GQS'],
     color: '#002E6D',
     colorDark: '#6FA3DD',
     logo: '/logos/citadel.png',

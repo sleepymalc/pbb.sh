@@ -237,7 +237,7 @@ export const siteConfig: SiteConfig = {
     },
     {
       title: 'Science of Data: Predictable, Optimizable, and Scalable',
-      venue: 'Citadel GQS PhD Colloquium',
+      venue: 'Citadel GQS',
       date: 'May 2026',
       icon: 'microphone',
     },
