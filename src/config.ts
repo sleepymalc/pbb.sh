@@ -138,7 +138,7 @@ export const siteConfig: SiteConfig = {
       role: 'Machine Learning Ph.D. Intern',
       organization: 'Susquehanna International Group',
       date: 'Jun. 2026 - Aug. 2026',
-      description: 'TBA',
+      description: '<strong>Deep Learning Alpha</strong>: Research deep learning-based alpha signals on equity.',
       icon: 'briefcase',
     },
     {
