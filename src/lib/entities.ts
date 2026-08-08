@@ -62,6 +62,14 @@ export const entities: Entity[] = [
     logo: '/logos/sig.jpeg',
   },
   {
+    name: 'Citadel',
+    aliases: ['Citadel GQS', 'Citadel GQS PhD Colloquium'],
+    color: '#002E6D',
+    colorDark: '#6FA3DD',
+    logo: '/logos/citadel.png',
+    logoDark: '/logos/citadel-dark.png',
+  },
+  {
     name: 'National Institute of Informatics',
     aliases: ['NII'],
     color: '#7B5EA7',
