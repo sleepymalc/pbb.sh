@@ -30,6 +30,7 @@ export interface SiteConfig {
   experience: ExperienceGroup[];
   researchExperience?: ResearchExperience[];
   teachingExperience?: TeachingExperience[];
+  talks?: Talk[];
   service?: ServiceSection;
 
   news?: NewsItem[];
@@ -98,6 +99,13 @@ export interface TeachingExperience {
   institution: string;
   date: string;
   notes?: string;
+  icon?: string;
+}
+
+export interface Talk {
+  title: string;
+  venue: string;
+  date: string;
   icon?: string;
 }
 

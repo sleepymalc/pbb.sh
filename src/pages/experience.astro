@@ -5,7 +5,7 @@ import TimelineItem from 'astro-academic-theme/components/TimelineItem.astro';
 import { siteConfig } from '@/config';
 import { getEntity } from '@/lib/entities';
 
-const { education, researchExperience, teachingExperience, service, awards } = siteConfig;
+const { education, researchExperience, teachingExperience, talks, service, awards } = siteConfig;
 ---
 
 <BaseLayout config={siteConfig} title="Experience" currentPath="/experience/">
@@ -76,6 +76,27 @@ const { education, researchExperience, teachingExperience, service, awards } = s
               <div class="tl-notes" set:html={item.notes} />
             )}
           </TimelineItem>
+        ))}
+      </Timeline>
+    </section>
+  )}
+
+  <!-- Invited Talks -->
+  {talks && talks.length > 0 && (
+    <section class="exp-section">
+      <h2 class="section-heading">Invited Talks</h2>
+      <Timeline showLine={false}>
+        {talks.map((talk) => (
+          <TimelineItem
+            title={talk.title}
+            subtitle={talk.venue}
+            date={talk.date}
+            icon={talk.icon || 'microphone'}
+            logo={getEntity(talk.venue)?.logo}
+            logoDark={getEntity(talk.venue)?.logoDark}
+            entityColor={getEntity(talk.venue)?.color}
+            entityColorDark={getEntity(talk.venue)?.colorDark}
+          />
         ))}
       </Timeline>
     </section>

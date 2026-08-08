@@ -82,18 +82,18 @@ export const siteConfig: SiteConfig = {
     {
       date: 'Aug. 2023 - Aug. 2025',
       icon: 'scroll',
-      title: 'M.S. in Mathematics',
+      title: 'M.S. in Applied Mathematics',
       location: 'University of Illinois Urbana-Champaign',
     },
     {
-      date: 'Sep. 2021 - May 2023',
+      date: 'Aug. 2021 - May 2023',
       icon: 'graduation-cap',
       title: 'B.S. in Computer Science',
       minor: 'Mathematics',
       location: 'University of Michigan',
     },
     {
-      date: 'Sep. 2019 - Aug. 2023',
+      date: 'Aug. 2019 - Aug. 2023',
       icon: 'graduation-cap',
       title: 'B.E. in Electrical and Computer Engineering',
       minor: 'Computer Science',
@@ -112,6 +112,9 @@ export const siteConfig: SiteConfig = {
 
   awards: [
     { date: 'Oct. 2025', title: 'Anthropic AI Safety Research Fellowship', organization: 'Anthropic' },
+    { date: 'Nov. 2024', title: 'Graduate Conference Travel Award', organization: 'University of Illinois Urbana-Champaign' },
+    { date: 'Oct. 2024', title: 'NeurIPS 2024 Scholar Award', organization: 'NeurIPS' },
+    { date: 'Aug. 2024', title: 'Excellent Internship Award', organization: 'National Institute of Informatics' },
     { date: 'Oct. 2021', title: 'Hong Kong, Macao and Taiwan Overseas Chinese Student Scholarship', organization: 'Shanghai Jiao Tong University' },
     { date: 'Nov. 2020', title: 'Undergraduate Excellent Scholarship', organization: 'Shanghai Jiao Tong University' },
     { date: 'Jun. 2020', title: 'Bao Gang Excellent Scholarship', organization: 'Shanghai Jiao Tong University' },
@@ -225,6 +228,27 @@ export const siteConfig: SiteConfig = {
     },
   ],
 
+  talks: [
+    {
+      title: 'Towards Market Data Valuation under Complex Training',
+      venue: 'Susquehanna International Group',
+      date: 'Aug. 2026',
+      icon: 'microphone',
+    },
+    {
+      title: 'Science of Data: Predictable, Optimizable, and Scalable',
+      venue: 'Citadel GQS PhD Colloquium',
+      date: 'May 2026',
+      icon: 'microphone',
+    },
+    {
+      title: 'Agentic Backdoor via Pre-Training Poisoning',
+      venue: 'Anthropic',
+      date: 'May 2026',
+      icon: 'microphone',
+    },
+  ],
+
   service: {
     organizing: [
       {
@@ -259,7 +283,7 @@ export const siteConfig: SiteConfig = {
     ],
     reviewing: {
       conferences: 'NeurIPS 2026, ICML 2026, ICLR 2026, NeurIPS 2025, ICLR 2025, ICML 2024, IEEE BigData 2023',
-      journals: 'TMLR',
+      journals: 'ACM Computing Surveys, TMLR',
       programCommittee: 'AAAI 2027, AAAI 2025',
       awards: {
         'ICML 2026': 'Silver Reviewer Award',
