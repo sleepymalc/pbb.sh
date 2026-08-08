@@ -62,6 +62,13 @@ export const entities: Entity[] = [
     logo: '/logos/sig.jpeg',
   },
   {
+    name: 'NeurIPS',
+    aliases: ['Neural Information Processing Systems'],
+    color: '#68448B',
+    colorDark: '#A182BC',
+    logo: '/logos/neurips.svg',
+  },
+  {
     name: 'Citadel',
     aliases: ['Citadel GQS', 'Citadel GQS PhD Colloquium'],
     color: '#002E6D',
