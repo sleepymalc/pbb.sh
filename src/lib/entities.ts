@@ -77,6 +77,14 @@ export const entities: Entity[] = [
     logoDark: '/logos/citadel-dark.png',
   },
   {
+    name: 'Google DeepMind',
+    aliases: ['DeepMind'],
+    color: '#0053D6',
+    colorDark: '#8AB4F8',
+    logo: '/logos/deepmind.svg',
+    logoDark: '/logos/deepmind-dark.svg',
+  },
+  {
     name: 'National Institute of Informatics',
     aliases: ['NII'],
     color: '#7B5EA7',
