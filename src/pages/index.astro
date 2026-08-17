@@ -44,7 +44,9 @@ const researchIntroHtml = highlightEntities(
 // Render news items
 const newsItems = (siteConfig.news ?? []).map((item) => {
   const parts = item.date.split(/\s+/);
-  const month = parts.length > 1 ? parts[0] : '';
+  // Normalize months to a uniform 3-letter form ("Jun. " / "May" → "Jun" / "May")
+  // so all date pills have the same text length
+  const month = parts.length > 1 ? parts[0].replace('.', '').slice(0, 3) : '';
   const year = parts.length > 1 ? parts[1] : item.date;
   return {
     date: item.date,
