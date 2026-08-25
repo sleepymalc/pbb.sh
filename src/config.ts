@@ -33,7 +33,7 @@ export const siteConfig: SiteConfig = {
   ],
 
   news: [
-    { date: 'Aug. 2026', text: "🎤 Giving a talk on *Dr. Post-Training* at [*Google DeepMind*](https://deepmind.google/)!" },
+    { date: 'Aug. 2026', text: "🎤 Giving a talk on *Data-Centric AI: Faithful Data Attribution and Data Regularization* at [*Google DeepMind*](https://deepmind.google/)!" },
     { date: 'Aug. 2026', text: "🎤 Giving a talk on *Towards Market Data Valuation under Complex Training* at [*SIG*](https://sig.com/)!" },
     { date: 'Jun. 2026', text: "💼 Interning at [*SIG*](https://sig.com/) Deep Learning team, come hanging out in Philly!" },
     { date: 'May 2026', text: "🎤 Giving a talk on *Science of Data: Predictable, Optimizable, and Scalable* at [*Citadel GQS*](https://www.citadel.com/)!" },
@@ -234,7 +234,7 @@ export const siteConfig: SiteConfig = {
 
   talks: [
     {
-      title: 'Dr. Post-Training',
+      title: 'Data-Centric AI: Faithful Data Attribution and Data Regularization',
       venue: 'Google DeepMind',
       date: 'Aug. 2026',
       icon: 'microphone',
