@@ -292,7 +292,7 @@ export const siteConfig: SiteConfig = {
       },
     ],
     reviewing: {
-      conferences: 'NeurIPS 2026, ICML 2026, ICLR 2026, NeurIPS 2025, ICLR 2025, ICML 2024, IEEE BigData 2023',
+      conferences: 'ICLR 2027, NeurIPS 2026, ICML 2026, ICLR 2026, NeurIPS 2025, ICLR 2025, ICML 2024, IEEE BigData 2023',
       journals: 'ACM Computing Surveys, TMLR',
       programCommittee: 'AAAI 2027, AAAI 2025',
       awards: {
