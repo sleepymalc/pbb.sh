@@ -28,7 +28,7 @@ export const siteConfig: SiteConfig = {
 
   researchIntro: [
     "Research-wise, I'm interested in the broad area of ML and AI, with the goal being to draw theoretical insights from practical problems and develop algorithms with provable guarantees and desirable properties such as *efficiency*, *robustness*, and *fairness*. Recently, my research focuses on *understanding **data***, including the following three aspects:",
-    '1. **Data Attribution**: Understanding how training data *influences* AI models.\n2. **Data Curation**: How to curate/generate/augment (synthetic) data that further helps models *generalize*?\n3. **Data-Centric Privacy**: Can above be done *without* compromising privacy when safety-critical or sensitive data is involved? This includes (differential) privacy, machine unlearning, etc.',
+    '1. **Data Attribution**: Understanding how training data *influences* AI models.\n2. **Data Curation**: How to curate/generate/augment (synthetic) data that further helps models *generalize*?\n3. **Data Safety**: Can the above be done *safely* when sensitive or untrusted data is involved? This includes protecting privacy via (differential) privacy and machine unlearning, as well as defending against *data poisoning* and other adversarial manipulations of training data.',
     "Previously I have worked on *graph neural networks* with [Jiaqi Ma](https://jiaqima.github.io/) and *fast graph algorithms* with [Thatchaphol Saranurak](https://sites.google.com/site/thsaranurak/). Generally speaking, I held (actually *hold*) a strong interest in theoretical stuffs that involves *geometry*.",
   ],
 
