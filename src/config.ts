@@ -28,7 +28,7 @@ export const siteConfig: SiteConfig = {
 
   researchIntro: [
     "Research-wise, I'm interested in the broad area of ML and AI, with the goal being to draw theoretical insights from practical problems and develop algorithms with provable guarantees and desirable properties such as *efficiency*, *robustness*, and *fairness*. Recently, my research focuses on *understanding **data***, including the following three aspects:",
-    '1. **Data Attribution**: Understanding how training data *influences* AI models.\n2. **Data Curation**: How to curate/generate/augment (synthetic) data that further helps models *generalize*?\n3. **Data Safety**: Can the above be done *safely* when sensitive or untrusted data is involved? This includes protecting privacy via (differential) privacy and machine unlearning, as well as defending against *data poisoning* and other adversarial manipulations of training data.',
+    '1. **Data Attribution**: Understanding how training data *influences* AI models.\n2. **Data Curation**: How to curate/generate/augment (synthetic) data that further helps models *generalize*?\n3. **Data Safety**: Can we leverage the above insights to make AI models *safe* against untrusted or poisoned training data?',
     "Previously I have worked on *graph neural networks* with [Jiaqi Ma](https://jiaqima.github.io/) and *fast graph algorithms* with [Thatchaphol Saranurak](https://sites.google.com/site/thsaranurak/). Generally speaking, I held (actually *hold*) a strong interest in theoretical stuffs that involves *geometry*.",
   ],
 
@@ -149,7 +149,7 @@ export const siteConfig: SiteConfig = {
       role: 'AI Safety Research Fellow',
       organization: 'Anthropic',
       date: 'Jan. 2026 - May 2026',
-      description: '<strong>Data-Safety</strong>: Secret.',
+      description: '<strong>Data Safety</strong>: Research on pretraining data poisoning with agentic backdoor.',
       icon: 'shield-halved',
     },
     {
@@ -165,7 +165,7 @@ export const siteConfig: SiteConfig = {
       organization: 'National Institute of Informatics',
       date: 'May 2024 - Aug. 2024',
       description:
-        '<a href="/research/PNL/"><strong>Pseudo-Nonlinear Data Augmentation</strong></a>: Develop an information-geometric data augmentation algorithm advised by <a href="https://mahito.info/index_e.html">Mahito Sugiyama</a>. Won the <strong>Excellent Internship Evaluation</strong> 😬',
+        '<a href="/research/PNL/"><strong>Data Augmentation</strong></a>: Develop an information-geometric data augmentation algorithm. Won the <strong>Excellent Internship Evaluation</strong> 😬',
       icon: 'flask',
     },
     {
@@ -173,7 +173,7 @@ export const siteConfig: SiteConfig = {
       organization: 'University of Michigan',
       date: 'May 2022 - Apr. 2023',
       description:
-        '<strong>Deep Learning Foundation</strong>: Develop various techniques to understand deep neural networks advised by <a href="https://weihu.me/">Wei Hu</a> under the <a href="https://sure.engin.umich.edu/">SURE Program</a>.',
+        '<strong>Deep Learning Theory</strong>: Develop various techniques to understand deep neural networks under the <a href="https://sure.engin.umich.edu/">SURE Program</a>.',
       icon: 'microscope',
     },
     {
@@ -181,7 +181,7 @@ export const siteConfig: SiteConfig = {
       organization: 'University of Michigan',
       date: 'Mar. 2022 - Dec. 2022',
       description:
-        '<strong>Detection Sets</strong>: Design the first almost linear time algorithm on finding minimal balanced cuts advised by <a href="https://sites.google.com/site/thsaranurak/">Thatchaphol Saranurak</a>.',
+        '<strong>Graph Algorithm</strong>: Design the first almost linear time algorithm on finding minimal balanced cuts.',
       icon: 'microscope',
     },
   ],
