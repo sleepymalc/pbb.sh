@@ -4,7 +4,7 @@ tags: ["Data", "Algorithm", "Theory"]
 date: 2026-05-08 00:00:00 -0500
 priority: -20260508
 path: "research/Dr-Post-Training"
-excerpt: "We reconceptualize general data in LLM post-training as a data-induced regularizer, unifying existing data selection methods along a bias-variance spectrum."
+excerpt: "We reconceptualize general data in LLM post-training as a data-induced regularizer: existing data selection methods become points on a bias–variance spectrum, a theory ties the regularization strength to how well the general data cover the target and how much target noise they let through, and across SFT, RLHF, and RLVR the best strength tracks the mismatch between general and target data."
 selected: true
 cover: "/research/Dr-Post-Training/preview.png"
 venue: "arXiv preprint"
@@ -29,17 +29,18 @@ authors:
   <figcaption><strong>Two views of the same update.</strong> <em>Left:</em> the conventional <em>data-selection</em> lens — pick the training subset $S$ closest to the target. <em>Right:</em> the <em>data-regularization</em> lens we propose — let the training batch $B_t$ induce a feasible set $U_t$ and project the target estimate $\hat g_\star$ onto it.</figcaption>
 </figure>
 
-**TL;DR.** **Dr. Post-Training** recasts general training data as a *data-induced regularizer* and the model update as a Euclidean projection of the target gradient onto a training-batch-induced feasible set—turning data selection into one knob on a principled bias–variance spectrum.
+**TL;DR.** **Dr. Post-Training** recasts general training data as a *data-induced regularizer*: at each step the scarce target batch names the ideal update direction, the abundant general batch induces a feasible set $U_t$ of admissible directions, and the update is the Euclidean projection of the target gradient onto $U_t$. Standard training, target-only fine-tuning, and existing data-selection methods are special cases with different feasible sets, ordered on a bias–variance spectrum. Two quantities of $U_t$ govern everything: a **bias** (how far the set is from the population target gradient) and an **exposed variance** (how much target noise the set lets through). They bound the error of a single update and decide whether the trajectory converges on the target. **Group-Wise Subset Update** turns the regularization strength into an explicit knob, and a one-pass, memory-tight system realizes it at a per-step cost on par with standard training. Across SFT, RLHF, and RLVR the best strength tracks the mismatch between general and target data: gains are largest where the target is diluted in the pool (F1 on *less-mix/tydiqa* **4.9% → 48.3%**), and standard training stays competitive where the two are aligned.
 
-Large language model (LLM) post-training operates on *scarce, high-fidelity target data* alongside abundant but imperfectly aligned general data. Existing work asks *which* general samples to keep; we ask *what constraint* they should impose on the update. The answer is a single projection step that subsumes standard training and prior data-selection methods as special cases, and exposes a richer design space — **Group-Wise Subset Update** — that consistently beats state-of-the-art baselines across SFT, RLHF, and RLVR.
+Large language model (LLM) post-training operates on *scarce, high-fidelity target data* alongside abundant but imperfectly aligned general data. Training on the target alone is faithful but statistically noisy; training on the general pool is stable but biased by the misalignment. Existing work asks *which* general samples to keep; we ask *what constraint* they should impose on the update. The answer is a single projection step that subsumes standard training and prior data-selection methods, exposes a richer design space — **Group-Wise Subset Update** — and comes with a theory that says when each point on the spectrum should win.
 
 ## Why Dr. Post-Training
 
 - **[One unified framework](#method).** A single projection-based update that subsumes standard training, target-only fine-tuning, and existing data-selection methods (top-$k$, thresholding, greedy curation) as special cases on one bias–variance spectrum — across SFT, RLHF, and RLVR.
-- **[Group-Wise Subset Update](#our-proposal-group-wise-subset-update).** Strictly enlarges the feasible set over Global Subset — provably less bias.
+- **[Two quantities govern the spectrum](#bias-variance-tradeoffs-and-convergence).** The *bias* of a feasible set and the *exposed variance* it lets through bound the one-step error via a noisy projection oracle inequality, and the same two quantities decide whether repeated updates converge on the target objective.
+- **[Group-Wise Subset Update](#our-proposal-group-wise-subset-update).** Strictly enlarges the feasible set over Global Subset, so its bias is provably no larger, while its exposed-variance bound grows at most $P$-fold in the number of groups.
+- **[Gains track the mismatch](#results).** On the broad *less-mix* pool, Layer-Wise Subset lifts *tydiqa* F1 from **4.9% → 48.3%**; on *Tulu 3*, IFEval rises **32.5% → 35.3%**; in RLHF the curated updates reach standard PPO's final reward about **5× sooner** and end an **order of magnitude lower in toxicity**; in RLVR on MATH, final accuracy goes **63.0% → 63.8%**. Where the pool is already in-distribution, standard training and Global Subset are competitive or best — exactly as the theory predicts.
 - **[Plays well with the modern stack](#system-a-one-pass-memory-tight-implementation).** LoRA, [MeSO](https://arxiv.org/abs/2403.03507), activation checkpointing, and gradient accumulation — no two-pass backward, no retained graph.
-- **[It moves the numbers](#results).** SFT F1 on *less-mix/tydiqa* jumps from **10.1% → 27.4%**, with consistent gains across the RLHF detoxification and RLVR-on-MATH settings we tested.
-- **[Overhead shrinks with scale](#system-efficiency-overhead-vanishes-with-scale).** Single forward–backward; the **34% → 3%** wall-clock overhead from SmolLM2-360M to LLaMA-3.2-3B keeps closing — pointing to break-even, or even a speedup, at production scale.
+- **[Per-step cost on par with standard training](#system-efficiency-on-par-with-standard-training-at-3b).** The curated step costs **+20%** on SmolLM2-360M, **+8%** on TinyLlama-1.1B, and **−2%** on Llama-3.2-3B, where skipping half of the weight gradient pays for the scoring.
 
 ## Method
 
@@ -51,7 +52,7 @@ $$
 u_t \;=\; \arg\min_{u \in U_t}\, \mathcal{L}_\star(\theta_t - \eta_t u),
 $$
 
-where the *feasible set* $U_t$ is built from the training batch $B_t$ only, and the target batch $B_t^\star$ enters solely through the target loss $\mathcal{L}_\star$.
+where the *feasible set* $U_t$ is built from the training batch $B_t$ only, and the target batch $B_t^\star$ enters solely through the target loss $\mathcal{L}_\star$. *The target batch identifies the desired direction; the training batch constrains which directions are admissible.*
 
 ### From constrained optimization to a projection
 
@@ -87,26 +88,26 @@ $$
 
 Because the projection factorizes, each group solves an independent top-$k$ on its own score $s_i^{(p)} := \langle g_i^{(p)}, \hat g_\star^{(p)} \rangle$. The practically important case is **Layer-Wise Subset Update**, with one group per linear layer.
 
-The chain $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G}) \subseteq U_t^\star = \mathbb{R}^d$ orders all four families by expressiveness; the partition $\mathcal{G}$ and subset size $k$ are the explicit design knobs that move along the regularization spectrum.
+The chain $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G}) \subseteq U_t^\star = \mathbb{R}^d$ orders all four families by expressiveness, and both subset families collapse to $U_t^{\mathrm{tr}}$ at $k = n$. The partition $\mathcal{G}$ and the subset size $k$ are the explicit knobs that move along the regularization spectrum: coarser partitions regularize harder, finer ones let the target drive more of the update.
 
-### Bias–variance characterization
+### Bias-variance tradeoffs and convergence
 
 <figure class="figure-block">
   <img src="/research/Dr-Post-Training/Figures/spectrum.png" alt="Data-regularization spectrum: Target-Only, Group-Wise Subset, Global Subset, and Full-Training arranged from weakest to strongest regularization, trading variance for bias." />
   <figcaption><strong>Data-regularization spectrum.</strong> Four feasible sets, ordered by how much they constrain the update. Moving right (stronger data regularization) reduces variance at the cost of bias; moving left does the reverse. The two subset families occupy the middle, and the partition $\mathcal{G}$ and subset size $k$ slide along the axis.</figcaption>
 </figure>
 
-We measure the quality of an update $u$ at step $t$ by its **conditional mean-squared error** against the unknown population target gradient $g_\star = g_\star(\theta_t)$,
+We measure the quality of an update $u$ at step $t$ by its **mean-squared error** against the unknown population target gradient $g_\star = g_\star(\theta_t)$,
 
 $$
 \mathrm{MSE}(u) \;\coloneqq\; \mathbb{E}\bigl[\lVert u - g_\star \rVert^2 \,\bigm|\, \theta_t\bigr],
 $$
 
-where $g_\star$ is fixed given $\theta_t$ and the expectation is over the joint randomness in the training batch $B_t$ and the target batch $B_t^\star$. **Why bound MSE?** Because majorization–minimization turns it directly into per-step progress on the target loss:
+with the expectation over both batches. **Why bound MSE?** Because majorization–minimization turns it directly into per-step progress on the target loss:
 
 <div class="lemma">
 
-**Lemma** (Majorization). *Under a $\beta$-smooth target loss with $\eta_t \leq 1/\beta$,*
+**Lemma** (Descent). *Under a $\beta$-smooth target loss with $\eta_t \leq 1/\beta$,*
 
 $$
 \mathbb{E}\bigl[\mathcal{L}_\star(\theta_{t+1}) \,\bigm|\, \theta_t\bigr] \;\leq\; \mathcal{L}_\star(\theta_t) - \frac{\eta_t}{2}\lVert g_\star \rVert^2 + \frac{\eta_t}{2}\,\mathrm{MSE}(u_t).
@@ -114,32 +115,99 @@ $$
 
 </div>
 
-The *expected* per-step decrease on the target loss is therefore lower-bounded by $\tfrac{\eta_t}{2}\!\left(\lVert g_\star\rVert^2 - \mathrm{MSE}(u_t)\right)$ — a single scalar that turns each data regularizer into a guaranteed-progress rate, so the whole spectrum can be compared on one axis.
+The projected update $u_t = \operatorname{Proj}_{U_t}(\hat g_\star)$ can miss $g_\star$ for two reasons. **Bias:** restricted to training-supported directions, $U_t$ may contain nothing near $g_\star$. **Variance:** the projection sees $\hat g_\star = g_\star + \xi$, so the target-batch noise $\xi$ perturbs which element of $U_t$ it picks.
 
-The MSE splits cleanly into a *bias* $\mathcal{B}(U_t) \coloneqq \mathbb{E}[\inf_{u \in U_t}\lVert u - g_\star \rVert^2 \mid \theta_t]$ — a property of the data regularizer alone, averaged over the training-batch randomness — and a residual *variance* $\mathcal{V}(u_t) \coloneqq \mathrm{MSE}(u_t) - \mathcal{B}(U_t)$, the extra error from picking the update inside $U_t$ using the noisy target-batch estimate $\hat g_\star$ in place of the unknown $g_\star$. By construction $\mathrm{MSE}(u_t) = \mathcal{B}(U_t) + \mathcal{V}(u_t)$, and we can pin down both halves for every method on the spectrum. Write $\Sigma_{\mathrm{tr}} \coloneqq \mathrm{Cov}(g_i)$ and $\Sigma_\star \coloneqq \mathrm{Cov}(g_j^\star)$.
+<div class="remark">
+
+**Intuition** (Only the noise along candidate differences matters). The choice between two candidates $u, u' \in U_t$ depends on $\xi$ only through $\langle u - u', \xi \rangle$. Noise orthogonal to every candidate difference cannot change the projection, so a feasible set is exposed to exactly the noise living in its *update-difference subspace*.
+
+</div>
+
+Formally, for a feasible set $U_t$ define the **bias** $\mathcal{B}(U_t) \coloneqq \mathbb{E}\bigl[\inf_{u \in U_t} \lVert u - g_\star \rVert^2\bigr]$ and the **exposed variance** $\mathcal{V}(U_t) \coloneqq \mathbb{E}\bigl[\lVert \operatorname{Proj}_{\mathcal{D}(U_t)}(\xi) \rVert^2\bigr]$, where $\mathcal{D}(U_t) \coloneqq \operatorname{span}\{u - u' : u, u' \in U_t\}$. The bias is a property of the regularizer alone and does not depend on $m$; the exposed variance equals $\mathbb{E}[\operatorname{tr}(\operatorname{Proj}_{\mathcal{D}(U_t)} \Sigma_\star)]/m$ and shrinks with the target batch.
+
+<figure class="figure-block figure-right-sm">
+  <img src="/research/Dr-Post-Training/Figures/Theory/one-step-error.png" alt="Geometry of the one-step error: a feasible set U_t drawn as a blob, the population target gradient g-star outside it, the noisy estimate g-hat-star displaced by noise xi, and the projection u_t on the set. The distance from g-star to the set is the bias; the gap between MSE and bias is the excess error." />
+  <figcaption><strong>Geometry of the one-step error.</strong> The bias is the distance from $g_\star$ to $U_t$; the noise $\xi$ moves the projection to $u_t$, and the gap between $\mathrm{MSE}$ and $\mathcal{B}$ is the excess error.</figcaption>
+</figure>
 
 <div class="theorem">
 
-**Theorem** (Bias–variance characterization, informal). *Under a $\beta$-smooth target loss, bounded training gradients $\lVert g_i \rVert \leq C$, and sub-Gaussian target noise with parameter $\sigma/\sqrt m$:*
+**Theorem** (One-step error, informal). *For any feasible set $U_t$ determined by the training batch, the projected update satisfies*
 
-- ***Target-Only*** *is unbiased, $\mathcal{B}(U_t^{\star}) = 0$, but $\mathcal{V}(u_t^{\star}) = \operatorname{tr}(\Sigma_\star)/m$.*
-- ***Full-Training*** *has zero variance, $\mathcal{V}(u_t^{\mathrm{tr}}) = 0$, but carries the bias floor $\mathcal{B}(U_t^{\mathrm{tr}}) = \lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \operatorname{tr}(\Sigma_{\mathrm{tr}})/n$.*
-- ***Global Subset*** *trades both: bias has no closed form, while the variance satisfies $\mathcal{V}(u_t^{\mathrm{glob}}(k)) \leq \tfrac{4C\sigma}{\sqrt m}\sqrt{2\log(2\binom{n}{k})}$.*
-- ***Group-Wise Subset*** *strictly improves the Global Subset bias, $\mathcal{B}(U_t^{\mathrm{grp}}(k;\mathcal{G})) \leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$, at the price of $P\times$ in the variance bound, $\mathcal{V}(u_t^{\mathrm{grp}}(k;\mathcal{G})) \leq \tfrac{4CP\sigma}{\sqrt m}\sqrt{2\log(2\binom{n}{k})}$.*
+$$
+\sqrt{\mathrm{MSE}(u_t)} \;\leq\; \sqrt{\mathcal{B}(U_t)} + 2\sqrt{\mathcal{V}(U_t)} .
+$$
+
+*If $U_t \subseteq U_t'$, then $\mathcal{B}(U_t') \leq \mathcal{B}(U_t)$ and $\mathcal{V}(U_t) \leq \mathcal{V}(U_t')$: enlarging the feasible set can only decrease the bias and increase the exposed variance.*
+
+</div>
+
+The proof compares $u_t$ with the oracle choice $u^\dagger \in \arg\min_{u \in U_t} \lVert u - g_\star \rVert$ only through the minimality of $u_t$, so it holds for the discrete, non-convex feasible sets above, where the projection is neither unique nor Lipschitz. For target noise with variance at most $\sigma^2/m$ per direction, the two quantities are:
+
+<div class="table-scroll">
+
+| | Full-Training | Global Subset | Group-Wise Subset | Target-Only |
+| --- | --- | --- | --- | --- |
+| | ← strong: $\mathcal{B}\uparrow$ $\mathcal{V}\downarrow$ — *data regularization* — weak: $\mathcal{B}\downarrow$ $\mathcal{V}\uparrow$ → | | | |
+| $\mathcal{B}(U_t)$ | $\lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \operatorname{tr}(\Sigma_{\mathrm{tr}})/n$ | $\mathcal{B}(U_t^{\mathrm{glob}}(k))$ | $\leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$ | $0$ |
+| $\mathcal{V}(U_t)$ | $0$ | $\leq (n-1)\sigma^2/m$ | $\leq P(n-1)\sigma^2/m$ | $\operatorname{tr}(\Sigma_\star)/m \leq d\sigma^2/m$ |
 
 </div>
 
 Three patterns govern the spectrum:
 
-- **The two extremes are mirror images.** Target-Only is unbiased but its variance $\operatorname{tr}(\Sigma_\star)/m$ blows up when the target batch is small. Full-Training has zero variance but carries an irreducible *distribution-mismatch bias* $\lVert g_{\mathrm{tr}} - g_\star \rVert^2$ that no amount of training data can erase.
-- **Subset methods occupy the middle of the spectrum.** Both Global Subset and Group-Wise Subset improve the bias over Full-Training (their feasible set is strictly larger than $\{\hat g_{\mathrm{tr}}\}$) at the cost of $O(\sigma/\sqrt m \cdot \sqrt{\log\binom{n}{k}})$ extra variance — a logarithmic, not linear, dependence on the combinatorial complexity of the subset.
-- **Refining the partition strictly reduces bias.** Because $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G})$, the group-wise bias is no larger; the variance bound only grows linearly in the number of groups $P$, so a layer-wise partition trades $P\times$ variance multiplier for a strictly smaller approximation error — and in practice the bias reduction dominates.
+- **The two extremes are mirror images.** Full-Training pays the full mismatch but sees no target noise; Target-Only is unbiased but exposed to all $d$ noise directions. The training-batch term $\operatorname{tr}(\Sigma_{\mathrm{tr}})/n$ counts as *bias* because it persists even with a noiseless target.
+- **Subset methods expose only $n-1$ directions.** Any two $k$-subset averages differ by a combination of the $n-1$ gradient differences $g_i - g_1$, so the exposed variance of Global Subset is at most $(n-1)\sigma^2/m$ — it depends on the feasible set only through the dimension of its update-difference subspace, not on $k$ or on the number $\binom{n}{k}$ of candidates.
+- **Refining the partition lowers bias and grows the variance bound at most $P$-fold.** Because $U_t^{\mathrm{glob}}(k) \subseteq U_t^{\mathrm{grp}}(k;\mathcal{G})$, the group-wise bias is no larger; the update-difference subspace splits into one block per group, so the bound becomes $\sigma^2 \sum_p \min\{\lvert G_p \rvert, n-1\}/m$.
+
+Squaring the bound gives $\mathrm{MSE}(u_t) \leq \mathcal{B}(U_t) + 4\sqrt{\mathcal{B}(U_t)\mathcal{V}(U_t)} + 4\mathcal{V}(U_t)$. Since $\mathcal{V}(U_t) = O(1/m)$ while the bias does not depend on $m$, the excess error $\mathrm{MSE}(u_t) - \mathcal{B}(U_t)$ decays as $1/m$ when $\mathcal{B}(U_t) = 0$ but only as $1/\sqrt m$ otherwise — the rate set by the cross term, and the worst case over near-ties between candidates.
+
+<div class="remark">
+
+**Remark** (Two complexity measures). The classical finite-class argument bounds the same excess error through the *cardinality* of the feasible set under a gradient-norm bound $\lVert g_i \rVert \leq C$: $\mathcal{E}(u_t^{\mathrm{glob}}) \leq \tfrac{4C\sigma}{\sqrt m}\sqrt{2\log\bigl(2\binom{n}{k}\bigr)}$, and $P$ times that for Group-Wise. Neither bound dominates: the finite-class bound has no cross term but needs $C$ and decays as $1/\sqrt m$ even when the bias vanishes; the oracle inequality needs no norm bound and keeps the $1/m$ rate in that case. A unified bound lets every group pay the *smaller* of the two measures, $\min\{\dim \mathcal{D}(U_t^{(p)}),\, 2\log\binom{n}{k} + 2\}$ — for our $n = 8$, $k = 4$ the dimension wins (7 versus about 10.5), whereas large candidate batches with small subsets favor the log-cardinality.
+
+</div>
+
+<figure class="figure-block">
+  <img src="/research/Dr-Post-Training/Figures/Theory/regimes.png" alt="Three panels of MSE bound versus target batch size m under small, moderate, and large training-target mismatch. Full-Training is a flat line, Global and Group-Wise Subset decay as one over square root of m with Group-Wise lower in bias, and Target-Only decays as one over m. Shaded regions mark which method has the smallest MSE: with small mismatch the winner moves Full-Training to Global to Group-Wise to Target-Only as m grows; with large mismatch Group-Wise dominates almost everywhere before Target-Only takes over." />
+  <figcaption><strong>Who wins where.</strong> MSE bounds as a function of the target batch size $m$ under small, moderate, and large mismatch (left to right). Full-Training is constant; Global and Group-Wise Subset decay as $1/\sqrt m$, Group-Wise with the larger excess-error constant but the smaller bias; Target-Only decays as $1/m$. Shaded regions mark the method with the smallest bound.</figcaption>
+</figure>
+
+Which update dominates depends on the target batch size, the mismatch, and the feasible-set complexity. Under *small* mismatch all four methods have a regime: as $m$ grows the preferred update moves from Full-Training to Global Subset to Group-Wise Subset to Target-Only. Under *moderate* mismatch Group-Wise dominates Global over a wider range of $m$. Under *large* mismatch the bias of Full-Training and Global Subset is large enough that Group-Wise wins even at small $m$, before Target-Only takes over once enough target data are available. The SFT pools below span exactly these regimes: the in-distribution *Dolci* pools, the mixed pool, and *Tulu 3*, where the target skill is most diluted.
+
+**From one step to the trajectory.** Summing the descent lemma over steps bounds the average target gradient by the average one-step error, so convergence hinges on the error *relative to the current gradient*. We say the feasible sets *cover* the target gradient along the trajectory if
+
+$$
+\sqrt{\mathcal{B}(U_t)} + 2\sqrt{\mathcal{V}(U_t)} \;\leq\; q\,\lVert g_\star(\theta_t) \rVert + \phi_t \quad \text{for every } t, \text{ with } q < 1,
+$$
+
+that is, some feasible direction approximates the target gradient to within a fraction $q$ of its length while exposing comparable noise, up to a floor $\phi_t \geq 0$ from the training–target mismatch and the target noise.
+
+<div class="theorem">
+
+**Theorem** (Convergence on the target, informal). *Let the feasible sets cover the target gradient with $q < 1$, let $0 < \eta_t \leq 1/\beta$, and $T \geq 1$. Then*
+
+$$
+\frac{\sum_{t < T} \eta_t\, \mathbb{E}\lVert g_\star(\theta_t) \rVert^2}{\sum_{t < T} \eta_t}
+\;\leq\; \frac{4}{1 - q^2} \cdot \frac{\mathcal{L}_\star(\theta_0) - \inf_\theta \mathcal{L}_\star(\theta)}{\sum_{t < T} \eta_t}
+\;+\; \frac{2(1 + q^2)}{(1 - q^2)^2} \cdot \frac{\sum_{t < T} \eta_t\, \phi_t^2}{\sum_{t < T} \eta_t}.
+$$
+
+*If the floors vanish and the step size is constant, then $g_\star(\theta_t) \to 0$ almost surely; under the Polyak–Łojasiewicz condition the target loss converges linearly and $\theta_t$ converges almost surely, with finite path length, to a minimizer of $\mathcal{L}_\star$.*
+
+</div>
+
+The first term is the optimization term — initial suboptimality over the total step size — and vanishes as $\sum_t \eta_t \to \infty$. The second is a *stationarity floor* set by the part of the one-step error that does not shrink with the gradient: distribution mismatch and target noise. No convexity of $\mathcal{L}_\star$ or of $U_t$, and no uniqueness of the minimizer, is required. The theorem also makes the knob quantitative. Refining the partition improves the coverage ratio (the bias part of the condition) but enlarges the exposed dimension $d_{\mathrm{eff}} = \sum_p \min\{\lvert G_p \rvert, n-1\}$ (the variance part); in the relative-noise regime the condition $q < 1$ reads $m > 4 d_{\mathrm{eff}}\sigma_1^2/(1 - \sqrt{\rho})^2$, so a finer partition is *certified* only when the coverage it gains outweighs the noise it exposes — and since exposed noise scales as $1/m$, **larger target batches certify finer partitions**.
 
 <div class="takeaway">
 
-**Takeaway.** *Larger feasible sets reduce bias but increase variance*, since the update has more freedom to align both with $g_\star$ and **also with noise** $\xi$. Full-Training is stable but biased; Target-Only is unbiased but unstable when $m$ is small; Global and Group-Wise Subset Updates interpolate between them, with the partition $\mathcal{G}$ and subset size $k$ providing additional design knobs.
+**Takeaway.** *Larger feasible sets reduce bias but raise exposed variance*: the update gains freedom to align with $g_\star$ but **also with the noise** $\xi$. The same two quantities govern convergence along the trajectory. Full-Training is stable but biased, Target-Only unbiased but unstable at small $m$, and the subset updates interpolate between them — which is best depends on the mismatch, and the experiments below follow that prediction.
 
 </div>
+
+### Beyond two distributions
+
+The framework needs only two ingredients: a **training signal** that can be optimized reliably but may be biased, and a **target signal** that is too noisy or costly to optimize directly. In SFT the target batch provides the noisy signal and the training batch induces the feasible set. Reinforcement learning has the same structure: the signal of interest is the *expected reward*, but optimizing it directly by policy gradient is high-variance, whereas surrogates such as PPO's clipped objective or GRPO's group-relative estimator stabilize training at the cost of optimization bias. Treating the reward gradient as the target and the surrogate's per-rollout gradients as the feasible set gives the RLHF and RLVR instantiations below. The convergence guarantees are stated for the two-distribution setting; the structure motivates the RL variants without extending the guarantees to them.
 
 ## System: a one-pass, memory-tight implementation
 
@@ -185,7 +253,7 @@ The score $s_i^{(l)} = \langle \hat g_\star^{(l)},\, g_i^{(l)} \rangle$ can be e
 **Direct** materializes per-sample gradients and pays an $O(n \cdot d/L)$ memory tax.
 **GIP** ([Wang et al. 2024](https://openreview.net/forum?id=232VcN8tSx)) reorders the contraction to avoid forming $g_i^{(l)}$, but pays *quadratic* in sequence length $T$ — fatal for long-context training.
 **PIP** factors the score as $s_i^{(l)} = \sum_\tau (\partial \ell / \partial e_{i,\tau}^{(l)})^\top \hat G_\star^{(l)}\, a_{i,\tau}^{(l)}$ — a matrix-vector product per token — so the cost stays *linear* in $T$ without materializing the full per-sample gradient. PIP dominates Direct whenever $T \lesssim \sqrt{d/L}$, and dominates GIP whenever $T$ is large.
-**Compressed scoring** drops the $d/L$ dependence entirely by computing $\tilde g_i = \Pi^{(l)}(g_i^{(l)}) \in \mathbb{R}^\kappa$ via factorized projection ([GraSS](https://arxiv.org/abs/2505.18976)), then approximates $s_i^{(l)} \approx \langle \tilde g_\star^{(l)},\, \tilde g_i^{(l)} \rangle$. Strictly more efficient than the three exact methods in every regime; we use it as the default.
+**Compressed scoring** drops the $d/L$ dependence entirely by computing $\tilde g_i = \Pi^{(l)}(g_i^{(l)}) \in \mathbb{R}^\kappa$ via factorized projection ([GraSS](https://arxiv.org/abs/2505.18976)), then approximates $s_i^{(l)} \approx \langle \tilde g_\star^{(l)},\, \tilde g_i^{(l)} \rangle$. Cheapest in every regime, at an accuracy cost that grows with the partition's granularity (see the ablations below); the main-text experiments use exact scoring.
 
 ### The full algorithm
 
@@ -218,139 +286,208 @@ The schedule composes cleanly with **LoRA** (the outer-product factorization car
 
 ## Results
 
-We evaluate on Llama-3.2-1B (SFT), GPT-Neo-2.7B with LoRA (RLHF), and Qwen3-1.7B (RLVR), comparing against standard training (**Full-Training**), prior state-of-the-art curation ([**GREATS**](https://openreview.net/forum?id=232VcN8tSx) for SFT, [**IIF**](https://openreview.net/forum?id=sYK4yPDuT1) for RL; both correspond to our **Global Subset** in this framework), and our **Layer-Wise Subset Update**. All numbers are averaged over 5 seeds.
+We evaluate across four settings: question-answering SFT on Llama-3.2-1B, reasoning and instruction-following SFT on Qwen3-1.7B-Base, RLHF detoxification on GPT-Neo-2.7B with LoRA, and RLVR on MATH with Qwen3-1.7B-Base. Baselines are standard training (**Full-Training**) and the state-of-the-art curation methods ([**GREATS**](https://openreview.net/forum?id=232VcN8tSx) for SFT, [**IIF**](https://openreview.net/forum?id=sYK4yPDuT1) for RL — both **Global Subset** in this framework), against our **Layer-Wise Subset Update**; **Target-Only** is additionally reported on question answering. Every arm of a setting shares the hyperparameters of standard training with no per-method tuning; since the curated updates converge faster and the least regularized one can overfit within the same budget, their reported gains are conservative. All numbers are means $\pm$ standard error over 5 seeds.
 
-### SFT: Layer-Wise Subset wins on every QA setting
+### SFT on question answering: the gap tracks the mismatch
 
-With a held-out target set of just 16 samples (per the GREATS protocol; $n = 8$, $m = 1$, $k = n/2$), Layer-Wise Subset Update consistently and substantially beats Full-Training and Global Subset.
+Each step draws $n = 8$ candidates and $m = 1$ target example from a held-out target set of only 16 examples, and the curated updates keep $k = 4$ by top-$k$ selection with exact GIP scoring. Four general/target pairs: *alpaca/samsum*, *less-mix/tydiqa*, *triviaqa/nq_open*, and *less-mix/squad* (closed-book).
 
 <div class="table-scroll">
 
-| Method | less-mix / tydiqa | triviaqa / nq_open | less-mix / squad |
-| --- | --- | --- | --- |
-| Full-Training | 10.1 $\pm$ 0.2 | 12.6 $\pm$ 0.1 | 7.6 $\pm$ 0.1 |
-| Global Subset | 13.4 $\pm$ 1.0 | 13.7 $\pm$ 0.2 | 8.3 $\pm$ 0.1 |
-| **Layer-Wise Subset** | **27.4 $\pm$ 1.3** | **14.6 $\pm$ 0.4** | **9.1 $\pm$ 0.3** |
+| Method | alpaca / samsum | less-mix / tydiqa | triviaqa / nq_open | less-mix / squad |
+| --- | --- | --- | --- | --- |
+| Full-Training | 22.4 $\pm$ 0.3 | 4.9 $\pm$ 0.3 | 12.7 $\pm$ 0.2 | 9.0 $\pm$ 0.2 |
+| Global Subset | 22.7 $\pm$ 0.5 | 13.7 $\pm$ 1.5 | 13.5 $\pm$ 0.3 | 9.1 $\pm$ 0.2 |
+| **Layer-Wise Subset** | 29.3 $\pm$ 1.4 | 48.3 $\pm$ 1.7 | **14.0 $\pm$ 0.3** | **10.0 $\pm$ 0.4** |
+| Target-Only (early-stopped) | **32.8 $\pm$ 0.6** | **51.1 $\pm$ 2.9** | 9.3 $\pm$ 0.4 | 8.7 $\pm$ 0.4 |
 
 </div>
 
-*Downstream F1 (%) on three QA settings with Llama-3.2-1B + LoRA. Gaps are largest where the training pool is broadest (less-mix/tydiqa: +17.3 F1 over Full-Training), confirming that data regularization matters most when $\mathbb{P}_{\mathrm{tr}}$ is misaligned with $\mathbb{P}_\star$.* On alpaca/samsum, Layer-Wise Subset also dominates Full-Training and Global Subset under full-parameter, LoRA, and MeSO fine-tuning.
-
-The pattern is consistent across **three fine-tuning regimes** on alpaca/samsum — full-parameter, LoRA, and MeSO — and across **three QA settings** under LoRA. Across all six plots the y-axis is **evaluation perplexity** (lower is better) and the x-axis is training step.
+*Final-checkpoint Rouge-L (samsum) / F1 (%) with Llama-3.2-1B + LoRA.* Layer-Wise Subset beats Global Subset, which improves over or matches Full-Training, and the gap is largest under the broad *less-mix* pool — the most misaligned with its targets, where data regularization matters most. Target-Only splits the pairs: it leads or ties on *samsum* and *tydiqa*, whose answers are summaries or spans of the given passage, so a handful of target examples fixes the answer *style*; it never comes first on the closed-book targets, which test *knowledge* that 16 examples cannot supply. It measures what the target set alone carries, not how much of the pool to use — the question the curated updates answer against Full-Training.
 
 <div class="figure-row">
-  <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/SFT/alpaca_samsum_Full.png" alt="Evaluation perplexity over training steps on alpaca/samsum under full-parameter fine-tuning." />
-    <figcaption><strong>alpaca/samsum — full parameter.</strong></figcaption>
-  </figure>
   <figure class="figure-block">
     <img src="/research/Dr-Post-Training/Figures/SFT/alpaca_samsum_LoRA.png" alt="Evaluation perplexity over training steps on alpaca/samsum under LoRA fine-tuning." />
-    <figcaption><strong>alpaca/samsum — LoRA.</strong></figcaption>
+    <figcaption><strong>alpaca / samsum.</strong></figcaption>
   </figure>
   <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/SFT/alpaca_samsum_MeSO.png" alt="Evaluation perplexity over training steps on alpaca/samsum under MeSO fine-tuning." />
-    <figcaption><strong>alpaca/samsum — MeSO.</strong></figcaption>
+    <img src="/research/Dr-Post-Training/Figures/SFT/less_tydiqa_LoRA.png" alt="Evaluation perplexity over training steps on less-mix/tydiqa under LoRA fine-tuning." />
+    <figcaption><strong>less-mix / tydiqa.</strong></figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/triviaqa_nq_LoRA.png" alt="Evaluation perplexity over training steps on triviaqa/nq_open under LoRA fine-tuning." />
+    <figcaption><strong>triviaqa / nq_open.</strong></figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Dr-Post-Training/Figures/SFT/less_squad_LoRA.png" alt="Evaluation perplexity over training steps on less-mix/squad under LoRA fine-tuning." />
+    <figcaption><strong>less-mix / squad.</strong></figcaption>
   </figure>
 </div>
+
+<p class="figure-legend"><span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset Update ([GREATS](https://openreview.net/forum?id=232VcN8tSx)) &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> Full-Training Update. Evaluation perplexity on 500 held-out examples over LoRA training; bands are ±1 SE across 5 seeds.</p>
+
+Layer-Wise Subset falls below the other arms within the first few hundred steps on every setting. On *alpaca/samsum* under LoRA it then *overfits* — its held-out perplexity bottoms out below every other arm after about a fifth of the budget and climbs for the rest of training — which is the least-regularized pool-based arm behaving as the theory says it should under a budget tuned for Full-Training. Target-Only is the extreme case: its held-out perplexity is minimal within the first few dozen steps and then diverges as the 16 examples are memorized, which is why it is reported early-stopped.
+
+<div class="table-scroll">
+
+| Final eval perplexity (LoRA) | alpaca / samsum | less-mix / tydiqa | triviaqa / nq_open | less-mix / squad |
+| --- | --- | --- | --- | --- |
+| Full-Training | 5.72 | 3.50 | 13.55 | 71.49 |
+| Global Subset | 5.19 | 2.19 | 12.29 | 31.11 |
+| **Layer-Wise Subset** | 6.06 | **1.51** | 13.36 | **21.47** |
+| Target-Only (early-stopped) | 12.21 | 1.75 | 32.92 | 48.10 |
+
+</div>
+
+Five ablations on the same four pairs sharpen the picture:
+
+- **Random Subset controls bring no gain.** Discarding half of every batch at random — with a shared subset or one per layer — stays within a couple of points of Full-Training. The gains come from the steering by target scores, not from the smaller effective batch.
+- **Partition granularity moves performance monotonically.** With exact scoring the order is Global < Block-Wise < Sublayer-Wise < Layer-Wise wherever the arms separate: on *less-mix/tydiqa* under LoRA, F1 goes $13.7 \to 33.5 \to 42.2 \to 48.3$. Refining the partition can only lower the bias terms.
+- **Rescaling scores does not close the gap.** A layer-normalized Global Subset, which divides each layer's scores by their mean magnitude before summing, moves the result by a few points at most. One shared subset still cannot serve layers whose rankings disagree.
+- **The ordering survives the fine-tuning method.** Under full-parameter fine-tuning Layer-Wise Subset remains the best pool-based arm on every pair ($3.5 \to 8.8 \to 32.7$ on *tydiqa*); under MeSO it stays best on the two misaligned pairs, while the compressed optimizer update costs every arm on the closed-book ones.
+- **Finer partitions want exact scores.** Global Subset is insensitive to the scoring backend, whereas Layer-Wise Subset loses several points under compressed scoring on the misaligned settings — per-layer sketch noise, not bias: compressed per-layer scores correlate with exact ones at $0.89$ with a $64 \times 64$ sketch and $0.99$ at $512 \times 512$.
+
+A case study explains *why* a shared subset falls short: per-layer score magnitudes vary by **32×** within a single transformer block (down-proj dominates Q/K/V/O and gate/up), so the summed ranking follows down-proj — Spearman $\rho \approx 0.88$ with it, but only $0.12$ and $0.11$ with Q and K — and 32 of 112 linear layers train on samples chosen for another layer. The same disagreement appears on all four pairs.
 
 <div class="figure-row">
   <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/SFT/less_tydiqa.png" alt="Evaluation perplexity over training steps on less-mix/tydiqa." />
-    <figcaption><strong>less-mix / tydiqa (LoRA).</strong></figcaption>
+    <img src="/research/Dr-Post-Training/Figures/SFT/case_study/magnitude_alpaca_samsum.png" alt="Mean absolute per-sample score magnitude across transformer blocks for different layer types on alpaca/samsum, shown on a log scale; the down-projection at block 1 is annotated as 32 times the second-largest layer type." />
+    <figcaption><strong>Magnitudes vary by 32×.</strong> Mean absolute score (log scale) per transformer block across linear-layer types on alpaca/samsum. The down-projection dwarfs Q/K/V/O and gate/up.</figcaption>
   </figure>
   <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/SFT/triviaqa_nq.png" alt="Evaluation perplexity over training steps on triviaqa/nq_open." />
-    <figcaption><strong>triviaqa / nq_open (LoRA).</strong></figcaption>
-  </figure>
-  <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/SFT/less_squad.png" alt="Evaluation perplexity over training steps on less-mix/squad." />
-    <figcaption><strong>less-mix / squad (LoRA).</strong></figcaption>
+    <img src="/research/Dr-Post-Training/Figures/SFT/case_study/correlation_alpaca_samsum.png" alt="Spearman correlation between each layer's per-sample ranking and the global subset's ranking on alpaca/samsum; the down-projection peaks near 0.88 while Q and K stay near zero." />
+    <figcaption><strong>Global ranking is dominated by one layer.</strong> Spearman $\rho$ between each layer's local ranking and the Global Subset's shared ranking. Down-proj matches with $\rho \approx 0.88$; Q/K stay near zero.</figcaption>
   </figure>
 </div>
 
-<p class="figure-legend"><span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset Update ([GREATS](https://openreview.net/forum?id=232VcN8tSx)) &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> Full-Training Update. Shaded bands are ±1 SE across 5 seeds. The y-axis label "Eval Perplexity" is rendered only on the leftmost panel of each row by the paper's matplotlib layout but applies to every plot in the row.</p>
+<p class="figure-legend">Attention layers (solid): <span style="color:#dc2626"><strong>━●</strong></span> Q &nbsp;·&nbsp; <span style="color:#ea580c"><strong>━■</strong></span> K &nbsp;·&nbsp; <span style="color:#eab308"><strong>━▲</strong></span> V &nbsp;·&nbsp; <span style="color:#9333ea"><strong>━▼</strong></span> O. &nbsp;&nbsp; MLP layers (dashed): <span style="color:#2563eb"><strong>╌◆</strong></span> Gate &nbsp;·&nbsp; <span style="color:#16a34a"><strong>╌+</strong></span> Up &nbsp;·&nbsp; <span style="color:#92400e"><strong>╌★</strong></span> Down. Lines are means over training steps and seeds; bands are the 25th–75th percentiles.</p>
 
-A case study explains why: per-layer score magnitudes vary by **32×** within a single transformer block (down-proj dominates Q/K/V/O and gate/up). Global Subset collapses to whatever down-proj wants — its ranking has Spearman $\rho \approx 0.88$ with down-proj but $\rho \lesssim 0.2$ with Q/K — so 32 of 112 linear layers effectively receive uncurated data. Layer-Wise Subset Update fixes this by design.
+### SFT on reasoning and instruction following: where the tradeoff shows
 
-<div class="figure-row">
-  <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/SFT/case_study_magnitude.png" alt="Mean absolute per-sample score magnitude across transformer blocks for different layer types (alpaca/samsum), shown on a log scale." />
-    <figcaption><strong>Magnitudes vary by 32×.</strong> Mean absolute score (log scale) per transformer block across linear-layer types. The down-projection dwarfs Q/K/V/O and gate/up.</figcaption>
-  </figure>
-  <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/SFT/case_study_correlation.png" alt="Spearman correlation between each layer's per-sample ranking and the global subset's ranking on alpaca/samsum." />
-    <figcaption><strong>Global ranking is dominated by one layer.</strong> Spearman $\rho$ between each layer's local ranking and the Global Subset's global ranking. Down-proj matches with $\rho \approx 0.88$; Q/K stay near zero.</figcaption>
-  </figure>
+To test the regime dependence the theory predicts, we vary the pool–target mismatch and the construction of the target set. We fine-tune **Qwen3-1.7B-Base** with full-parameter updates and exact PIP scoring on four 32K-example pools — the *instruction*, *reasoning*, and *mixed* pools of **Dolci-Instruct** and the **Tulu 3** SFT mixture — with 32-example target sets, evaluated on OLMo 3's benchmarks for precise instruction following (IFEval, IFBench) and mathematics (MATH500, GSM8K). *Precise IF (Dolci)* and *Math (Dolci)* are held-out rows of Dolci's own sources; *Math (curated)* consists of MATH-train problems re-solved by Qwen3-32B with verified final answers, mimicking a small, carefully curated target set.
+
+<div class="table-scroll">
+
+| Precise IF target | Dolci instruction · IFEval | IFBench | Dolci mixed · IFEval | IFBench | Tulu 3 · IFEval | IFBench |
+| --- | --- | --- | --- | --- | --- | --- |
+| Full-Training | 42.7 $\pm$ 0.6 | 17.9 $\pm$ 0.2 | 40.9 $\pm$ 0.6 | **17.9 $\pm$ 0.3** | 32.5 $\pm$ 0.2 | 16.2 $\pm$ 0.3 |
+| Global Subset | **44.5 $\pm$ 0.2** | 18.5 $\pm$ 0.3 | **41.8 $\pm$ 0.3** | 16.5 $\pm$ 0.4 | **35.3 $\pm$ 0.3** | 16.0 $\pm$ 0.3 |
+| Layer-Wise Subset | 44.1 $\pm$ 0.4 | **18.7 $\pm$ 0.5** | 41.7 $\pm$ 0.4 | 17.1 $\pm$ 0.3 | **35.3 $\pm$ 0.4** | **16.4 $\pm$ 0.9** |
+
 </div>
 
-<p class="figure-legend">Attention layers (solid): <span style="color:#dc2626"><strong>━●</strong></span> Q &nbsp;·&nbsp; <span style="color:#ea580c"><strong>━■</strong></span> K &nbsp;·&nbsp; <span style="color:#eab308"><strong>━▲</strong></span> V &nbsp;·&nbsp; <span style="color:#9333ea"><strong>━▼</strong></span> O. &nbsp;&nbsp; MLP layers (dashed): <span style="color:#2563eb"><strong>╌◆</strong></span> Gate &nbsp;·&nbsp; <span style="color:#16a34a"><strong>╌+</strong></span> Up &nbsp;·&nbsp; <span style="color:#92400e"><strong>╌★</strong></span> Down. Bands are 25th–75th interquartile range across training steps.</p>
+<div class="table-scroll">
 
-### RLHF: best reward, lowest toxicity, across every ablation
+| Math target | Dolci reasoning · MATH500 | GSM8K | Dolci mixed · MATH500 | GSM8K | Tulu 3 · MATH500 | GSM8K | Dolci reasoning (curated) · MATH500 | GSM8K |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Full-Training | 63.6 $\pm$ 0.5 | 79.9 $\pm$ 0.2 | **64.2 $\pm$ 0.3** | 78.8 $\pm$ 0.1 | 57.1 $\pm$ 0.5 | 78.8 $\pm$ 0.2 | 63.6 $\pm$ 0.5 | 79.9 $\pm$ 0.2 |
+| Global Subset | **64.4 $\pm$ 0.3** | **80.7 $\pm$ 0.2** | **64.2 $\pm$ 0.4** | **80.4 $\pm$ 0.3** | 58.3 $\pm$ 0.4 | 79.4 $\pm$ 0.2 | 64.0 $\pm$ 0.2 | 79.9 $\pm$ 0.1 |
+| Layer-Wise Subset | 62.8 $\pm$ 0.2 | 80.3 $\pm$ 0.2 | 63.9 $\pm$ 0.4 | **80.4 $\pm$ 0.3** | **60.6 $\pm$ 0.6** | **79.8 $\pm$ 0.3** | **65.1 $\pm$ 0.5** | **81.0 $\pm$ 0.2** |
 
-The RLHF setting is more delicate than SFT because the *target objective* itself has two design degrees of freedom that interact non-trivially with data regularization. We detoxify GPT-Neo-2.7B with TRL+PPO and ablate both:
+</div>
 
-- **Target-signal source.** *Self-reference* — use the same batch as both training and target signal, with a soft preference inducted by the reward. *Held-out target* — reserve a separate target set drawn from the desired distribution.
-- **Target loss form.** *Avg-reward* — reward-weighted log-probability of the target batch. *Pre-clip-PPO* — the PPO surrogate before clipping (a more aggressive policy-gradient signal).
+*Downstream accuracy (%) at the final checkpoint; column headers name the general pool and the benchmark.* Selection helps most where the target skill is *diluted*: on **Tulu 3**, both curated updates improve clearly over Full-Training on IFEval ($32.5 \to 35.3$), and Layer-Wise Subset also on MATH500 ($57.1 \to 60.6$). On the in-distribution **Dolci** pools the gains are smaller and the strongly regularized Full-Training and Global Subset are competitive or best — the small-mismatch regime of the figure above, where a tighter feasible set is the right call. The gains also hinge on the target set: Math (Dolci) yields only modest GSM8K gains, whereas the carefully curated Math target lets Layer-Wise Subset gain on both MATH500 ($63.6 \to 65.1$) and GSM8K ($79.9 \to 81.0$).
 
-This gives a 2×2 configuration grid. Against standard PPO, IIF, and Global Subset, **Layer-Wise Subset Update achieves the highest training reward and the lowest evaluation toxicity in every one of the four configurations**, with Global Subset second across the board.
+### RLHF: faster to the same reward, an order of magnitude less toxic
+
+RLHF leaves the two-distribution setting: the PPO surrogate is now the stabilizing *training signal* for the high-variance policy gradient. We follow the standard PPO detoxification pipeline with TRL on GPT-Neo-2.7B + LoRA and exact PIP scoring, prompting from *real-toxicity-prompts*, rewarding continuations with the LFTW R4 Target model, and judging them with an independent hate-speech classifier. We compare standard PPO (Full-Training), IIF (offline selection once per PPO round), Global Subset, and Layer-Wise Subset (online selection at every mini-batch), all with *negative-score filtering*, and ablate two design choices:
+
+- **Target source.** *Self-reference* — the rollout batch itself serves as target. *Held-out* — fresh rollouts on held-out prompts.
+- **Target loss.** *Expected reward* — the REINFORCE surrogate of the reward. *Training loss* — the PPO objective itself.
+
+The target gradient is computed once per PPO round and reused across its mini-batches: one extra backward pass per round, plus one target rollout batch for the held-out source.
 
 <div class="figure-grid-2x2">
   <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/RLHF/self-ref_avg-reward.png" alt="RLHF training reward and evaluation toxicity for the self-reference target with the avg-reward objective." />
-    <figcaption><strong>Self-reference, avg-reward.</strong> Fast early reward gains; Layer-Wise reaches the highest plateau.</figcaption>
+    <img src="/research/Dr-Post-Training/Figures/RLHF/self-ref_reward.png" alt="RLHF training reward and evaluation toxicity over PPO rounds for the self-reference target with the expected-reward objective; annotations mark that Layer-Wise, Global, and IIF reach standard PPO's final reward 5.5, 3.3, and 2.2 times sooner." />
+    <figcaption><strong>Self-reference, expected reward.</strong> Layer-Wise, Global, and IIF reach standard PPO's round-80 reward $5.5\times$, $3.3\times$, and $2.2\times$ sooner; the two subset updates end an order of magnitude lower in toxicity.</figcaption>
   </figure>
   <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/RLHF/self-ref_pre-clip-ppo.png" alt="RLHF training reward and evaluation toxicity for the self-reference target with the pre-clip PPO objective." />
-    <figcaption><strong>Self-reference, pre-clip PPO.</strong> Same early-convergence advantage, but the PPO surrogate caps the achievable reward.</figcaption>
+    <img src="/research/Dr-Post-Training/Figures/RLHF/self-ref_train-loss.png" alt="RLHF training reward and evaluation toxicity for the self-reference target with the PPO training-loss objective; an inset shows all methods converging to nearly the same reward." />
+    <figcaption><strong>Self-reference, training loss.</strong> The early speed-up is there, but with the PPO loss as target it vanishes at convergence (inset), as expected.</figcaption>
   </figure>
   <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/RLHF/held-out_avg-reward.png" alt="RLHF training reward and evaluation toxicity for the held-out target with the avg-reward objective." />
-    <figcaption><strong>Held-out, avg-reward.</strong> Slower early ramp, highest final reward and lowest final toxicity overall.</figcaption>
+    <img src="/research/Dr-Post-Training/Figures/RLHF/held-out_reward.png" alt="RLHF training reward and evaluation toxicity for the held-out target with the expected-reward objective; annotations mark speed-ups of 6.2, 4.3, and 2.5 times." />
+    <figcaption><strong>Held-out, expected reward.</strong> The fastest configuration: $6.2\times$, $4.3\times$, and $2.5\times$ sooner, with the clearest separation at convergence in both reward and toxicity.</figcaption>
   </figure>
   <figure class="figure-block">
-    <img src="/research/Dr-Post-Training/Figures/RLHF/held-out_pre-clip-ppo.png" alt="RLHF training reward and evaluation toxicity for the held-out target with the pre-clip PPO objective." />
-    <figcaption><strong>Held-out, pre-clip PPO.</strong> Layer-Wise still dominates, but the PPO objective again limits the final reward.</figcaption>
+    <img src="/research/Dr-Post-Training/Figures/RLHF/held-out_train-loss.png" alt="RLHF training reward and evaluation toxicity for the held-out target with the PPO training-loss objective; the methods converge together." />
+    <figcaption><strong>Held-out, training loss.</strong> Same story as the self-reference case: the training-loss target cannot separate the methods at convergence.</figcaption>
   </figure>
 </div>
 
-<p class="figure-legend">Each plot shows <em>training reward</em> (top) and <em>evaluation toxicity</em> (bottom) over PPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset Update &nbsp;·&nbsp; <span style="color:#2563eb"><strong>━</strong></span> [IIF](https://openreview.net/forum?id=sYK4yPDuT1) (offline Global Subset) &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard PPO (Full-Training). Shaded bands are ±1 SE across 5 seeds.</p>
+<p class="figure-legend">Each plot shows <em>training reward</em> (top) and <em>evaluation toxicity</em> (bottom) over PPO rounds. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset Update &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset Update &nbsp;·&nbsp; <span style="color:#2563eb"><strong>━</strong></span> [IIF](https://openreview.net/forum?id=sYK4yPDuT1) (offline Global Subset) &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard PPO (Full-Training). Bands are ±1 SE across 5 seeds.</p>
 
-Three patterns are worth calling out:
+Three patterns stand out:
 
-- **Self-reference accelerates early convergence; held-out reaches a higher final reward.** Self-reference uses the same on-policy batch as both training and target, so the target signal is dense and cheap from step one. The held-out target imposes a stricter alignment constraint per step but better matches the deployment distribution, so the long-run reward is higher and toxicity is lower.
-- **The avg-reward objective dominates the pre-clip PPO surrogate** as the target loss. PPO's clipped surrogate was designed to stabilize *policy updates*, not to serve as a *target signal* for selecting training samples — using it in that role caps the reward achievable across all methods.
-- **Layer-Wise is the clear winner in every configuration.** The same per-layer story as in SFT applies: PPO gradients are concentrated in a small fraction of linear layers, so a global subset picked by aggregate scores misallocates compute. Per-layer selection lets every module see samples that actually align with its own gradient direction.
+- **The expected-reward target is far more effective than the PPO training loss**, and under it held-out rollouts converge faster than self-referencing. The reward is the quantity we actually care about; PPO's clipped loss was built to stabilize policy updates, not to point at the goal.
+- **The ordering Layer-Wise > Global > IIF > standard PPO holds early in every configuration**, in both reward and toxicity. Under the reward target the curated updates reach standard PPO's final reward about five, three to four, and two to three times sooner, and Layer-Wise and Global Subset end an order of magnitude below standard PPO in toxicity, with IIF in between.
+- **The reward target separates the methods at convergence; the training-loss target does not.** With the PPO loss as target the early speed-up vanishes by the end of training (insets), exactly as one expects when the target coincides with what standard PPO already optimizes.
+
+The comparison does not hinge on the judge or the scoring backend. Re-scoring the final checkpoints with four classifiers — the paper judge, the reward model, and two English Jigsaw-trained classifiers — gives the same picture under every one of them: with the reward target, every curated update ends far below standard PPO (for the held-out reward configuration, final toxicity under the paper judge is $6.98\%$ for standard PPO against $0.68\%$ for Layer-Wise, $0.84\%$ for Global, and $1.71\%$ for IIF), and compressed scoring reproduces the ordering within one to two standard errors.
 
 ### RLVR: sustained advantage on MATH
 
 <figure class="figure-block figure-right">
-  <img src="/research/Dr-Post-Training/Figures/RLVR/eval_accuracy.png" alt="RLVR evaluation accuracy on MATH over training steps, comparing standard GRPO, Global Subset Update, and Layer-Wise Subset Update." />
-  <figcaption><strong>RLVR on MATH</strong> — eval accuracy over GRPO steps. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard GRPO. Global Subset only helps early; Layer-Wise sustains its lead and reaches the highest final accuracy. Bands are ±1 SE across 5 seeds.</figcaption>
+  <img src="/research/Dr-Post-Training/Figures/RLVR/eval_accuracy.png" alt="RLVR evaluation accuracy on MATH over 80 GRPO rounds, comparing standard GRPO, Global Subset Update, and Layer-Wise Subset Update; an inset zooms on rounds 72 to 78 where Layer-Wise sits clearly above the other two." />
+  <figcaption><strong>RLVR on MATH</strong> — evaluation accuracy over GRPO rounds. <span style="color:#dc2626"><strong>━</strong></span> Layer-Wise Subset &nbsp;·&nbsp; <span style="color:#16a34a"><strong>━</strong></span> Global Subset &nbsp;·&nbsp; <span style="color:var(--color-text)"><strong>━</strong></span> standard GRPO. Global Subset only helps early; Layer-Wise sustains its lead. Bands are ±1 SE across 5 seeds.</figcaption>
 </figure>
 
-Using Verl + GRPO on MATH with Qwen3-1.7B, and instantiating Dr. Post-Training as *in-run cross-validation* (one mini-batch as training, another as target, gradient-alignment scores for filtering), **Layer-Wise Subset Update achieves the best final accuracy**. Global Subset Update only accelerates *early* training before converging back to standard GRPO; Layer-Wise sustains its advantage throughout, ending at the highest evaluation accuracy on the held-out test set.
-
-### System efficiency: overhead vanishes with scale
-
-Per-step wall-clock overhead of Layer-Wise / Global Subset Update relative to Full-Training, at $n=8$, $T=512$, $m=1$, $k=4$ with compressed scoring on one A40:
+With Verl + GRPO on MATH and full-parameter fine-tuning of Qwen3-1.7B-Base, we instantiate the framework as *in-run cross-validation*: every fourth round, 64 prompts drawn from the training set itself are rolled out 8 times each and the REINFORCE surrogate of their expected verifier reward provides the target gradient, which is reused until the next refresh; exact PIP scores then drive negative-score filtering of the training rollouts. Amortized over the four rounds, the target rollouts add an eighth to the rollout budget.
 
 <div class="table-scroll">
 
-| Model | Full-Training (ms) | Layer-Wise Subset | Global Subset |
+| MATH accuracy (%) | Full-Training | Global Subset | Layer-Wise Subset |
 | --- | --- | --- | --- |
-| SmolLM2-360M | 261 | 349 (**+34%**) | 309 (**+18%**) |
-| TinyLlama-1.1B | 549 | 602 (**+10%**) | 593 (**+8%**) |
-| Llama-3.2-3B | 1407 | 1449 (**+3%**) | 1446 (**+3%**) |
+| Round 30 | 61.6 $\pm$ 0.2 | 61.7 $\pm$ 0.2 | **62.6 $\pm$ 0.1** |
+| Round 60 | 62.8 $\pm$ 0.1 | 62.7 $\pm$ 0.3 | **63.3 $\pm$ 0.3** |
+| Final | 63.0 $\pm$ 0.1 | 63.0 $\pm$ 0.1 | **63.8 $\pm$ 0.2** |
 
 </div>
 
-*Overhead shrinks sharply with model size — once `w.grad` becomes compute-bound rather than IO/launch-bound, materializing only $k = n/2$ samples gives back $\sim 1.46\times$ on Llama-3.2-3B, almost cancelling the scoring cost.* The pipeline also remains compatible with activation checkpointing without changing the asymptotic memory footprint.
+Global Subset accelerates the first rounds and then ends where standard GRPO ends; after the first 20 rounds Layer-Wise Subset leads at every evaluation and finishes at $63.8\%$ against $63.0\%$ for both. The target rollouts do not explain the gain: continuing standard GRPO past the 80-round budget, it first reaches Layer-Wise's round-78 accuracy at about round 147, after roughly $1.7\times$ as many rollouts as Layer-Wise has generated by then, target rollouts included.
+
+### System efficiency: on par with standard training at 3B
+
+Per-step wall-clock on one A40 at $n = 8$, $T = 512$, $m = 1$, $k = 4$ with exact GIP scoring:
+
+<div class="table-scroll">
+
+| Component (ms) | SmolLM2-360M Full | Layer-Wise | Global | TinyLlama-1.1B Full | Layer-Wise | Global | Llama-3.2-3B Full | Layer-Wise | Global |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Forward | 78.7 | 90.5 | 89.1 | 134.0 | 145.7 | 146.2 | 340.0 | 387.6 | 387.4 |
+| Backward | 155.2 | 194.1 | 191.6 | 278.5 | 306.6 | 306.3 | 821.0 | 752.4 | 758.8 |
+| &nbsp;&nbsp; scoring | — | 32.2 | 32.5 | — | 42.0 | 42.3 | — | 85.5 | 85.1 |
+| &nbsp;&nbsp; w.grad | 27.5 | 21.6 | 21.2 | 75.9 | 44.4 | 44.4 | 338.1 | 126.2 | 136.0 |
+| Optimizer | 26.6 | 26.7 | 26.6 | 80.7 | 80.7 | 80.8 | 235.5 | 235.4 | 235.5 |
+| **Total** | **260** | **311** (+20%) | **307** (+18%) | **493** | **533** (+8%) | **533** (+8%) | **1397** | **1375** (−2%) | **1382** (−1%) |
+
+</div>
+
+The overhead is the balance of two opposing parts. The extra target example and the scoring add a nearly fixed cost; against it, the weight gradient *shrinks*, because only the $k = 4$ kept samples enter it and the fused kernel reads them in place — by $1.3\times$ on SmolLM2-360M, $1.7\times$ on TinyLlama-1.1B, and $2.7\times$ on Llama-3.2-3B ($338 \to 126$ ms). On the two small, launch-bound models the fixed cost dominates; once the weight gradient is compute-bound the saving pays for it, and on Llama-3.2-3B the curated step is $1$–$2\%$ *faster* than Full-Training. Peak memory stays close to Full-Training ($37.9$ vs $40.5$ GB on the 3B model without checkpointing, and identical with it, since Layer-Wise Subset aligns with the checkpoint segments).
+
+Scoring is the one component the backend changes. Standalone cost (ms/step) at $m = 1$ as the sequence length grows:
+
+<div class="table-scroll">
+
+| Scoring | SmolLM2 · 512 | 2048 | 8192 | TinyLlama · 512 | 2048 | 8192 | Llama-3B · 512 | 2048 | 8192 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Direct | 56 | 153 | 575 | 132 | 366 | 1353 | 414 | 1128 | 4091 |
+| GIP | **29** | 356 | 5950 | **39** | 519 | 10855 | **73** | 1001 | 18777 |
+| PIP | 40 | **122** | **463** | 88 | **335** | **1351** | 251 | **961** | **3880** |
+| Compressed | 29 | 47 | 162 | 25 | 57 | 218 | 39 | 106 | 412 |
+
+</div>
+
+GIP wins only at short contexts with a single target example; PIP is the cheapest exact method beyond that (by $T = 2048$, or by $m = 4$–$8$ at $T = 512$) and $5$–$13\times$ cheaper than GIP at $T = 8192$; compressed scoring is cheaper still, at the accuracy cost quantified in the ablations above.
 
 <div class="takeaway">
 
-**Takeaway.** The leverage is the *primal–dual* view of **data selection ↔ data regularization**. Jumping between the two reinterprets existing methods on a single bias–variance spectrum and suggests new ones the primal view never would — often with surprising findings (e.g., the 32× per-layer score-magnitude gap that lets Layer-Wise beat Global Subset).
+**Takeaway.** The leverage is the *primal–dual* view of **data selection ↔ data regularization**. Jumping between the two puts existing methods on a single bias–variance spectrum, says which point on it should win from the mismatch and the target batch size, and suggests methods the primal view never would — with concrete surprises along the way, such as the 32× per-layer score-magnitude gap that lets Layer-Wise beat Global Subset.
 
 </div>
+
+<p class="figure-legend">Cover illustration: health-worker and magnifying-glass emoji are <a href="https://github.com/jdecked/twemoji">Twemoji</a> graphics by Twitter, Inc and other contributors, licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>.</p>
 
 ## Citation
 

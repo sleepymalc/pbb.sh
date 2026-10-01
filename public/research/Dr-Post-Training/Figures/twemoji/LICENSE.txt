@@ -1,0 +1,8 @@
+Twemoji graphics used in the Dr. Post-Training cover illustration (../../preview.png):
+
+  1f9d1-200d-2695-fe0f.svg  health worker
+  1f50e.svg                 right-pointing magnifying glass
+
+Copyright Twitter, Inc and other contributors.
+Graphics licensed under CC-BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/jdecked/twemoji (assets/svg/)

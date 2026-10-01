@@ -1,0 +1,209 @@
+---
+title: "dattri-LLM: A Unified and Efficient Library for Training Data Attribution at LLM Scale"
+tags: ["Data", "Attribution", "Library"]
+date: 2026-09-30 00:00:00 -0500
+priority: -20260930
+path: "research/dattri-llm"
+excerpt: "We built a training data attribution library for LLM scale: exact factorized/materialized gradients with FLOP-aware routing, non-invasive gradient capture from unmodified training loops (HuggingFace, TRL, OLMo, DDP/FSDP), and pluggable interfaces for new methods and training-time applications — 3.2× the throughput of the fastest existing library, scaling to 110B parameters."
+selected: false
+cover: "/research/dattri-llm/preview.png"
+venue: "arXiv preprint"
+links:
+- name: "arXiv"
+  url: "https://arxiv.org/abs/2609.38767"
+- name: "GitHub"
+  url: "https://github.com/TRAIS-Lab/dattri-llm"
+authors:
+- name: "Shixuan Liu"
+- name: "Tongli Zhou"
+- name: "Junwei Deng"
+  url: "https://theaperdeng.github.io/"
+- name: "**Pingbang Hu**"
+  url: "https://pbb.sh/"
+- name: "Jiaqi W. Ma"
+  url: "https://jiaqima.github.io/"
+---
+
+<figure class="figure-block figure-hero">
+  <img src="/research/dattri-llm/Figures/architecture.png" alt="Four-tier architecture of dattri-LLM. Bottom: external dependencies (PyTorch autograd hooks and DDP/FSDP; dattri basic utilities). Above: the Gradient object (factorized vs. materialized with dynamic routing) and ops (factorized-domain gradient math). Above: GradientStreamer, AttributionScore, AttributionArguments. Top: the entry API — Attributor (TracIn, GradDot, GradCos, K-FAC, EK-FAC, DVEmb, ...) and HookManager (OffloadCallback, DataSelectionCallback, ...)." />
+  <figcaption><strong>Architecture of <code>dattri-LLM</code>.</strong> From bottom to top: external dependencies, per-example <em>gradient representations and operations</em>, shared attribution components, and the entry API. <code>Attributor</code> is the <em>closed-loop</em> entry (give it data, get scores); <code>HookManager</code> is the <em>open-loop</em> entry (wrap a training loop you already own). Dashed boxes are extension points.</figcaption>
+</figure>
+
+**TL;DR.** **dattri-LLM** makes gradient-based training data attribution (TDA) practical at LLM scale. The core idea is that a per-example weight gradient of a linear layer is *exactly* $\sum_t a_t \otimes g_t$, so the library keeps gradients in a compact **factorized** $(a, g)$ form or **materializes** them, and a **FLOP-aware cost model** picks the cheaper route per layer and per operation — no extra approximation. Around that core sit **non-invasive gradient capture** (wrap any `backward()`-based loop — HuggingFace `Trainer`, TRL, OLMo, under DDP or FSDP — in `with hm.collect():`) and **two extension points** (`Attributor` for new methods, `HookManagerCallback` for applications that act during training). On the same hardware and workload it averages $3.2\times$ the throughput of the fastest competing library, scales GradDot, K-FAC, and EK-FAC to $110$B-parameter models on four H200s, and traces the fidelity–cost Pareto frontier against leave-one-out retraining.
+
+Most scalable TDA methods — TracIn, TRAK, EK-FAC influence, LESS, AdamW-influence — share the same building blocks: obtain per-example gradients, optionally project or precondition them, and take inner products. At LLM scale, each block is a systems problem. A single per-example gradient has billions of entries; existing libraries require editing the training loop or adopting a specific trainer; and adding a new method or a training-time application means re-implementing gradient capture from scratch. [dattri](/research/dattri/) solved this for single-GPU, sub-billion-parameter models. **dattri-LLM** is its successor for models with tens to hundreds of billions of parameters across multiple GPUs.
+
+## Why dattri-LLM
+
+- **[Efficiency without approximation](#efficiency-two-exact-gradient-representations--flop-aware-routing).** Factorized and materialized gradients are *both exact*; the library chooses between them per layer and operation using a FLOP cost model. Averaged over methods and projection regimes, this yields $3.2\times$ the throughput of the fastest competing library at every configuration.
+- **[Compatibility with the loop you already have](#compatibility-non-invasive-capture).** Autograd hooks capture per-example gradients from any loop that calls `backward()`. Unmodified HuggingFace `Trainer`, TRL, and OLMo-core pipelines are instrumented by wrapping `trainer.train()` in a context manager — under DDP and FSDP too.
+- **[Extensibility at two seams](#extensibility-two-extension-points).** Subclass `Attributor` to add an attribution method on top of a shared gradient stream and routed operations. Subclass `HookManagerCallback` to inspect or *modify* training state at capture time — e.g., online data selection in three lines.
+- **[Scales where others stop](#scaling-to-110b-parameters).** All three of GradDot, K-FAC, and EK-FAC run through $110$B parameters on four H200s; at $3$B, curvature-based methods use $14$–$21\%$ of the GPU memory of Kronfluence and Bergson.
+- **[Faithful, not just fast](#fidelity-vs-cost).** Against trajectory-specific leave-one-out retraining (TSLOO) on GPT-2, Qwen2.5-1.5B, and OLMo-3-7B, dattri-LLM's configurations form the empirical Pareto frontier in two of three settings; full AdamW-influence reaches $0.845$ Spearman on GPT-2 vs. MAGIC's $0.833$, in less time.
+
+## Design
+
+### Efficiency: two exact gradient representations + FLOP-aware routing
+
+Consider a linear layer $z = Wa$ with $W \in \mathbb{R}^{N_o \times N_i}$, per-example input $a \in \mathbb{R}^{N_i \times T}$ over $T$ token positions, and output gradient $g = \mathrm{D}z \in \mathbb{R}^{N_o \times T}$. By the chain rule the weight gradient is $\mathrm{D}W = g\,a^\top$, or in flattened form
+
+$$
+\gamma := \operatorname{vec}(\mathrm{D}W) = \sum_{t=1}^{T} a_t \otimes g_t .
+$$
+
+The dense matrix $\mathrm{D}W$ is the **materialized** representation; the pair $(a, g)$ is the **factorized** one. Both are exact — the factors recover the gradient. The factorized form stores $T(N_i + N_o)$ values versus $N_i N_o$ for the materialized form, so it wins for *wide layers and short sequences*. Convolutional and embedding layers admit analogous factorizations.
+
+<figure class="figure-block">
+  <img src="/research/dattri-llm/Figures/gradient-representations.png" alt="Left: a tall column vector a_t of N_i cells and a short row vector g_t-transpose of N_o cells joined by a Kronecker product symbol, labeled factorized, T(N_i + N_o) values. Right: a dense N_i by N_o matrix whose cell shading is the product of the column and row entries, labeled materialized, N_i N_o values, with the equation gradient of W equals g_t a_t-transpose above it. A green double arrow between them is labeled FLOP-aware routing, exact either way." />
+  <figcaption><strong>Two exact representations of one gradient.</strong> The factors $(a_t, g_t)$ on the left and the dense matrix $g_t a_t^\top$ on the right carry identical information; the heat-map on the right is literally the outer product of the two strips on the left. Neither is cheaper for every operation, so a FLOP cost model picks the route per layer and per operation.</figcaption>
+</figure>
+
+The key payoff is that attribution never needs to materialize if it doesn't want to. For two samples with $T_i$ and $T_j$ tokens, the Kronecker inner-product identity gives the exact gradient inner product straight from the factors:
+
+$$
+\left\langle \gamma^{(i)}, \gamma^{(j)} \right\rangle
+= \sum_{t=1}^{T_i} \sum_{s=1}^{T_j}
+\left\langle a_t^{(i)}, a_s^{(j)} \right\rangle
+\left\langle g_t^{(i)}, g_s^{(j)} \right\rangle .
+$$
+
+The same factorized arithmetic supports K-FAC / EK-FAC preconditioning, and because the token axis is retained, scores decompose to *token granularity* for free.
+
+**Neither route is uniformly cheaper.** For a cross-Gram matrix between batches of $B_1$ and $B_2$ examples of length $T$, the factorized route costs $O\!\left(B_1 B_2 T^2 (N_i + N_o)\right)$ — quadratic in sequence length — while materializing costs $O\!\left((B_1 + B_2)\, T N_i N_o + B_1 B_2 N_i N_o\right)$ — a construction cost amortized over subsequent dense inner products. Short sequences and wide layers favor factors; long sequences and large comparison batches favor materialization. Projection changes the balance again by replacing $N_i, N_o$ with the projected dimensions $k_a, k_g$. dattri-LLM estimates the FLOP cost of each route *per layer and per operation* and takes the cheaper one.
+
+<div class="remark">
+
+**Routing ablation.** On Pythia-410M with full-dimensional GradDot and sequence lengths from $32$ to $2048$, adaptive routing stays within $2.8\%$ of the faster fixed route at every length — while always-materialized runs take $16$–$50\%$ longer at $T \le 512$ and always-factorized takes $17\%$ longer at $T = 2048$. At $T = 32$, always-materialized also uses $4.8\times$ the peak memory of adaptive routing.
+
+</div>
+
+**Postprocessing.** Two optional transforms sit before scoring. *Dimension reduction* can act on the factors — $\tilde a_t = P_a a_t$, $\tilde g_t = P_g g_t$, so $\sum_t \tilde a_t \otimes \tilde g_t = (P_a \otimes P_g)\gamma$ preserves the factorized structure in the projected space (the trick behind LoGRA and [GraSS](/research/GraSS/)) — or on the materialized gradient via a single dense projection, as in TRAK. Gaussian, Rademacher, sparse JL, GraSS's sparsified projection, and random coordinate masks are all supported. *Optimizer preconditioning* turns a per-example gradient into the update direction the training optimizer would actually take, using its live first- and second-moment state — enabling optimizer-aware methods such as LESS and [AdamW-influence](/research/Faithful-Trajectory-Attribution/).
+
+### Compatibility: non-invasive capture
+
+`HookManager` registers autograd hooks on selected layers and captures the two factors $(a, g)$ during every backward pass that fires inside a `with` block. Nothing about the loop, optimizer, or trainer changes:
+
+```python
+hm = HookManager(model)
+with hm.collect():
+    trainer.train()        # unmodified HuggingFace Trainer / TRL / OLMo-core
+```
+
+This works uniformly across pretraining, supervised fine-tuning, and RL loops, and under DDP and FSDP. Captured gradients can be cached to disk and reused across queries and attribution methods, so the training-side cost is paid once.
+
+### Extensibility: two extension points
+
+- **`Attributor`** — the seam for *new methods*. `GradientStreamer` provides a uniform per-example gradient stream; the gradient tier provides routed inner products, norms, projections, and Kronecker-factored statistics. A new method is one subclass consuming these modules. The built-in TracIn, K-FAC, EK-FAC, and data-value-embedding attributors are implemented through exactly this interface.
+- **`HookManagerCallback`** — the seam for *training-time applications*. A callback receives capture events at each step and may inspect or modify training state. Built-ins include an offloading callback that persists gradients to disk and a data-selection callback that scores the current batch against a target gradient and removes low-scoring examples' contributions from the parameter gradients before the optimizer step.
+
+## Results
+
+### Scaling to 110B parameters
+
+Four libraries — dattri-LLM, [LogIX](https://arxiv.org/abs/2405.13954), [Bergson](https://arxiv.org/abs/2606.11660), and [Kronfluence](https://arxiv.org/abs/2308.03296) — on GradDot, K-FAC, and EK-FAC over the Qwen family from $0.5$B to $110$B, $512$-token WikiText-103 sequences in bf16, four H200s ($141$GB each), factor projection $k_a = k_g = 64$ where supported, and the largest per-device batch that fits.
+
+<figure class="figure-block">
+  <img src="/research/dattri-llm/Figures/throughput.png" alt="Three log-scale throughput panels (GradDot, K-FAC, EK-FAC) over Qwen model sizes from 0.5B to 110B on four H200s. dattri-LLM (red) is highest at every scale and is the only library to reach 110B on all three methods; Kronfluence (blue) and Bergson (green) drop out early on K-FAC and EK-FAC, and LogIX (black) stops at 32B." />
+  <figcaption><strong>Throughput scaling on four H200s.</strong> dattri-LLM leads at every scale on all three methods and is the only library that completes $110$B for K-FAC and EK-FAC. Crosses mark out-of-memory configurations.</figcaption>
+</figure>
+
+<div class="table-scroll">
+
+| Method | Library | 0.5B | 7B | 32B | 110B |
+| --- | --- | --- | --- | --- | --- |
+| GradDot | **dattri-LLM** | **613** | **110** | **22.0** | **6.9** |
+| | Bergson | 68.8 | 39.8 | 14.3 | 4.9 |
+| | Kronfluence | 177 | 41.5 | OOM | OOM |
+| | LogIX | 65.8 | 34.7 | 10.4 | OOM |
+| K-FAC | **dattri-LLM** | **375** | **92.2** | **16.8** | **5.9** |
+| | Bergson | 2.8 | 0.8 | OOM | OOM |
+| | Kronfluence | 9.9 | OOM | OOM | OOM |
+| | LogIX | 61 | 32.6 | 9.7 | OOM |
+| EK-FAC | **dattri-LLM** | **337** | **83.9** | **16.1** | **5.6** |
+| | Bergson | 2.9 | 0.5 | OOM | OOM |
+| | Kronfluence | 8.3 | OOM | OOM | OOM |
+| | LogIX | 49.9 | 24.2 | 6.9 | OOM |
+
+</div>
+
+<p class="figure-legend">Throughput in training sequences per second (higher is better), $512$ training sequences, one query through $32$B and four at $110$B. Kronfluence runs without factor projection; Bergson's and Kronfluence's curvature-based gaps additionally reflect the cost of full-dimensional curvature factors.</p>
+
+On GradDot, dattri-LLM delivers $2.7$–$3.5\times$ Kronfluence's throughput and $1.4$–$8.9\times$ Bergson's across their completed scales. On K-FAC and EK-FAC, where compression and batch size are matched against LogIX, it averages $3.8\times$ LogIX's throughput from $0.5$B to $32$B, up to $6.8\times$ at $0.5$B. At batch size one, the memory footprint tells the same story: at $3$B, dattri-LLM's K-FAC / EK-FAC use $17.5$–$20.9\%$ of Kronfluence's GPU memory and $14.2\%$ of Bergson's, which is what leaves room for the model itself at $72$B and $110$B.
+
+### Fidelity vs. cost
+
+Speed is only useful if the scores are faithful. We continually pretrain GPT-2 (124M), Qwen2.5-1.5B, and OLMo-3-7B for one epoch on $512$ WikiText-2 sequences with AdamW, then compare attribution scores against **TSLOO** — rerunning training with each of $50$ sequences removed and measuring the loss change on $64$ held-out queries. OLMo-3-7B is trained through the *unmodified* OLMo-core trainer, with dattri-LLM capturing gradients by wrapping its `fit()` call.
+
+<figure class="figure-block">
+  <img src="/research/dattri-llm/Figures/scaling_fidelity.png" alt="Three scatter panels (GPT-2 124M, Qwen2.5-1.5B, OLMo-3-7B) of Spearman correlation with TSLOO versus attribution throughput in queries per second on a log axis. dattri-LLM points (red: AdamW-influence with k=512, k=8192, full; EK-FAC with k=64, full) sit above and to the right of Bergson points (green: MAGIC, SOURCE, TrackStar, EK-FAC) in all three panels; dashed lines trace each library's Pareto frontier." />
+  <figcaption><strong>Fidelity vs. throughput</strong> (up and right is better) on one B200. dattri-LLM's AdamW-influence and EK-FAC configurations trace the empirical Pareto frontier among completed runs on GPT-2 and OLMo-3-7B. Runs exceeding the budget — one B200, $256$GB host memory, $1$TB disk — are omitted.</figcaption>
+</figure>
+
+<div class="table-scroll">
+
+| Library | Method | GPT-2 $\rho$ | GPT-2 time | Qwen-1.5B $\rho$ | Qwen-1.5B time | OLMo-7B $\rho$ | OLMo-7B time |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| dattri-LLM | AdamW-inf. ($k{=}512$) | 0.680 | 10 s | 0.526 | 51 s | 0.437 | 73 s |
+| dattri-LLM | AdamW-inf. ($k{=}8192$) | 0.762 | 28 s | **0.639** | 103 s | **0.633** | 170 s |
+| dattri-LLM | AdamW-inf. (full) | **0.845** | 1137 s | — | — | — | — |
+| dattri-LLM | EK-FAC ($k_a{=}k_g{=}64$) | 0.699 | 15 s | 0.420 | 50 s | 0.303 | 126 s |
+| dattri-LLM | EK-FAC (full) | 0.664 | 17 s | 0.434 | 447 s | 0.402 | 3444 s |
+| Bergson | MAGIC | 0.833 | 1265 s | — | — | — | — |
+| Bergson | SOURCE | 0.773 | 846 s | 0.275 | 28026 s | — | — |
+| Bergson | TrackStar | 0.523 | 34 s | 0.332 | 289 s | 0.374 | 368 s |
+| Bergson | EK-FAC | 0.681 | 171 s | 0.432 | 4560 s | — | — |
+
+</div>
+
+<p class="figure-legend">$\rho$: mean query-wise Spearman correlation with TSLOO. Time: attribution of all $64$ queries on one B200, excluding trajectory training and TSLOO construction. "—": infeasible under the budget. The $k$ for AdamW-influence is the number of masked gradient coordinates per layer, averaged over ten disjoint random masks.</p>
+
+Two knobs give direct control over the trade-off. Growing the AdamW-influence mask from $k = 512$ to $8192$ raises $\rho$ on all three models for roughly $2$–$3\times$ the attribution time, and still runs where the full-gradient methods (MAGIC, full AdamW-influence) exceed GPU memory at $1.5$B and $7$B.
+
+### Online data selection in three lines
+
+The extensibility claim is tested by porting the attribution-guided data selection of [Dr. Post-Training](/research/Dr-Post-Training/) into a *minimal* fine-tuning loop. At each step, GradDot scores between the current batch and a held-out target set are computed, and the bottom half of the batch is dropped from the update.
+
+```python
+from dattri_llm import DataSelectionCallback, HookManager
+
+# 1. Define the selection policy
+select = DataSelectionCallback(
+    model, target="val_loader",
+    val_loader=target_loader, val_loss_fn=loss_fn,
+    selection_kwargs={"threshold": 0.5, "threshold_mode": "bottom_fraction"})
+# 2. Attach it to the capture hook
+hm = HookManager(model, callbacks=[select])
+# 3. Train as usual
+with hm.collect():
+    for batch in train_loader:
+        loss_fn(model, batch).backward()
+        optimizer.step(); optimizer.zero_grad()
+```
+
+Between the backward pass and the optimizer step, the callback scores the batch and removes dropped samples' contributions from the parameter gradients. LoRA fine-tuning differs only by a layer selector that restricts hooks to the adapters.
+
+<figure class="figure-block">
+  <img src="/research/dattri-llm/Figures/dataselect.png" alt="Two panels of SAMSum test perplexity over 800 fine-tuning steps for Llama-3.2-1B on Alpaca: (a) full-parameter and (b) LoRA. Full-Training (black) drifts upward; Global Subset (green) and Layer-Wise Subset (red) both stay lower, with Layer-Wise lowest in both panels. Shaded bands show plus or minus one standard deviation over three seeds." />
+  <figcaption><strong>Attribution-guided data selection</strong>, Llama-3.2-1B on Alpaca with SAMSum as target (lower is better, mean $\pm 1$ std over 3 seeds). Full-Training overfits the off-target source data; both selection variants regularize, and per-layer selection regularizes most.</figcaption>
+</figure>
+
+<p class="figure-legend"><span style="color:#000000"><strong>—</strong></span> <strong>Full-Training</strong> (no selection) &nbsp;·&nbsp; <span style="color:#2CA02C"><strong>—</strong></span> <strong>Global Subset</strong> (rank by GradDot aggregated over all layers) &nbsp;·&nbsp; <span style="color:#D62728"><strong>—</strong></span> <strong>Layer-Wise Subset</strong> (rank independently per layer). Bottom half of each batch dropped at every step.</p>
+
+Layer-wise selection reaches a final SAMSum perplexity of $5.11$ vs. $6.31$ for full training under full-parameter fine-tuning, and $4.87$ vs. $6.31$ under LoRA — reproducing the Dr. Post-Training finding without its dedicated training pipeline. Per-step runtime is $89$ ms for standard training, $146$ ms with dattri-LLM selection, and $154$ ms for the original dedicated implementation: the library version is about $5\%$ *faster*, because it reuses the training backward pass rather than running an extra forward pass to obtain training gradients.
+
+<div class="takeaway">
+
+**Takeaway.** At LLM scale, data attribution is a systems problem before it is a statistics problem. dattri-LLM organizes the stack at the level every gradient-based method shares — per-example gradients, projection or preconditioning, pairwise scoring — and makes one decision well: *which exact representation of the gradient to hold, per layer and per operation*. That decision, plus capture that attaches to the training loop you already have and seams for new methods and training-time applications, is what turns $3.2\times$ average throughput, $110$B-parameter reach, and a Pareto-frontier fidelity profile into the same library.
+
+</div>
+
+## Citation
+
+```bibtex
+@article{liu2026dattrillm,
+  title={dattri-LLM: A Unified and Efficient Library for Training Data Attribution at LLM Scale},
+  author={Liu, Shixuan and Zhou, Tongli and Deng, Junwei and Hu, Pingbang and Ma, Jiaqi W.},
+  journal={arXiv preprint arXiv:2609.38767},
+  year={2026}
+}
+```
