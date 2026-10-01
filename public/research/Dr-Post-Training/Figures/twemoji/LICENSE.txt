@@ -1,7 +1,10 @@
-Twemoji graphics used in the Dr. Post-Training cover illustration (../../preview.png):
+Twemoji graphics used in the Dr. Post-Training cover illustration (../../preview.png uses the
+stethoscope, with its tubing colour lightened; the other two are used by the optional
+"doctor" variant of preview.py):
 
   1f9d1-200d-2695-fe0f.svg  health worker
   1f50e.svg                 right-pointing magnifying glass
+  1fa7a.svg                 stethoscope
 
 Copyright Twitter, Inc and other contributors.
 Graphics licensed under CC-BY 4.0: https://creativecommons.org/licenses/by/4.0/

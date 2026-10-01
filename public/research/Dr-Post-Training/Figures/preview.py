@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Cover image for the Dr. Post-Training research entry -> ../preview.png
 
-Composition: the Twemoji health worker beside a pile of data cards drawn in Twemoji's
-palette, with the Twemoji magnifying glass hovering over the pile and a zoomed bar chart
-in its lens. The two emoji are Twemoji graphics (CC-BY 4.0, see twemoji/LICENSE.txt);
-the cards and the lens contents are drawn here.
+Composition: the Twemoji stethoscope (the icon in the paper's title), mirrored so its
+chest piece rests on a pile of data cards drawn in Twemoji's palette; the card under the
+chest piece carries a small ECG trace. The stethoscope is a Twemoji graphic (CC-BY 4.0,
+see twemoji/LICENSE.txt), with its near-black tubing lightened a little so it stays
+visible on the dark card surface; the cards are drawn here. A "doctor" variant (Twemoji
+health worker + magnifying glass) is kept as a secondary target.
 Sized to fill the research card's 25:9 cover box on a transparent background.
 
 Self-contained; needs Inkscape on PATH to rasterize the SVGs
@@ -15,6 +17,9 @@ Self-contained; needs Inkscape on PATH to rasterize the SVGs
     /tmp/pbb-viz/bin/python public/research/Dr-Post-Training/Figures/preview.py --check
         # --check also writes a review sheet (light card / dark card / card-size box)
         # to /tmp/preview-check/
+    /tmp/pbb-viz/bin/python public/research/Dr-Post-Training/Figures/preview.py doctor
+        # the earlier variant with the Twemoji health worker and magnifying glass; written
+        # to /tmp/preview-check/variants/ for comparison, not into the repo
 """
 
 from __future__ import annotations
@@ -154,6 +159,12 @@ def data_card(ax, cx, cy, w, h, angle, kind, zorder):
             bx = x0 + 0.2 + i * ((w - 0.4) / 4)
             ax.add_patch(Rectangle((bx, y0 + 0.14), (w - 0.4) / 4 - 0.1, hb, facecolor=c,
                                    edgecolor="none", transform=tr, zorder=zorder + 1))
+    elif kind == "pulse":
+        y = y0 + h * 0.42
+        pts = np.array([(0.08, 0), (0.3, 0), (0.37, 0.14), (0.44, -0.1), (0.52, 0.42), (0.6, -0.3),
+                        (0.66, 0.06), (0.72, 0), (0.92, 0)])
+        ax.plot(x0 + pts[:, 0] * w, y + pts[:, 1] * h, color=BAR_RED, lw=6, solid_joinstyle="round",
+                solid_capstyle="round", transform=tr, zorder=zorder + 1)
     elif kind == "dots":
         for i in range(3):
             for j in range(4):
@@ -162,7 +173,7 @@ def data_card(ax, cx, cy, w, h, angle, kind, zorder):
                                     facecolor=c, edgecolor="none", transform=tr, zorder=zorder + 1))
 
 
-def cover(check: bool):
+def cover(check: bool, out: Path):
     fig, ax = new_canvas()
 
     # --- the pile of data ----------------------------------------------------------
@@ -206,8 +217,47 @@ def cover(check: bool):
         ax.add_patch(bar)
         x += 0.25
 
-    save(fig, OUT, check)
+    save(fig, out, check)
+
+
+def cover_stethoscope(check: bool, out: Path):
+    """Variant without the doctor: the Twemoji stethoscope (the icon in the paper's title),
+    mirrored so its chest piece rests on the pile of data."""
+    fig, ax = new_canvas()
+    cards = [
+        # (cx, cy, w, h, angle, kind, zorder)
+        (5.65, 0.95, 1.8, 1.2, 10, "lines", 3),
+        (7.75, 1.0, 1.9, 1.25, -5, "dots", 4),
+        (9.85, 0.95, 1.8, 1.2, 12, "bars", 3),
+        (11.4, 1.0, 1.6, 1.15, -8, "lines", 3),
+        (4.95, 2.25, 1.8, 1.25, -8, "pulse", 6),
+        (6.95, 2.75, 1.85, 1.25, 5, "bars", 6),
+        (8.95, 1.9, 1.75, 1.2, -10, "lines", 5),
+        (10.65, 1.95, 1.6, 1.15, 9, "dots", 5),
+    ]
+    for c in cards:
+        data_card(ax, *c)
+    # Twemoji 1fa7a has its chest piece at the left; mirror it so the chest piece lands on the
+    # top-left card of the pile and the headset opens to the upper left
+    steth = rasterize(TWEMOJI / "1fa7a.svg", 1400)[:, ::-1, :].copy()
+    # Twemoji's tubing is #31373D, which nearly vanishes on the dark card; shift those pixels
+    # (and their anti-aliased edges, by how close they are to that colour) to a mid slate
+    dark = np.array([0x31, 0x37, 0x3D]) / 255
+    target = np.array([0x4F, 0x5B, 0x68]) / 255
+    rgb = steth[..., :3]
+    closeness = np.clip(1 - np.linalg.norm(rgb - dark, axis=-1) / 0.25, 0, 1)[..., None]
+    steth[..., :3] = rgb * (1 - closeness) + target * closeness
+    place(ax, steth, 0.7, 0.05, 4.4, zorder=10)
+    save(fig, out, check)
 
 
 if __name__ == "__main__":
-    cover(check="--check" in sys.argv[1:])
+    args = sys.argv[1:]
+    check = "--check" in args
+    for name in [a for a in args if not a.startswith("--")] or ["stethoscope"]:
+        if name == "stethoscope":
+            cover_stethoscope(check, OUT)
+        elif name == "doctor":
+            cover(check, Path("/tmp/preview-check/variants/Dr-Post-Training-doctor.png"))
+        else:
+            sys.exit(f"unknown target {name!r}; use stethoscope or doctor")
