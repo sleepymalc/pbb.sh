@@ -146,11 +146,47 @@ The proof compares $u_t$ with the oracle choice $u^\dagger \in \arg\min_{u \in U
 
 <div class="table-scroll">
 
-| | Full-Training | Global Subset | Group-Wise Subset | Target-Only |
-| --- | --- | --- | --- | --- |
-| | ← strong: $\mathcal{B}\uparrow$ $\mathcal{V}\downarrow$ — *data regularization* — weak: $\mathcal{B}\downarrow$ $\mathcal{V}\uparrow$ → | | | |
-| $\mathcal{B}(U_t)$ | $\lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \operatorname{tr}(\Sigma_{\mathrm{tr}})/n$ | $\mathcal{B}(U_t^{\mathrm{glob}}(k))$ | $\leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$ | $0$ |
-| $\mathcal{V}(U_t)$ | $0$ | $\leq (n-1)\sigma^2/m$ | $\leq P(n-1)\sigma^2/m$ | $\operatorname{tr}(\Sigma_\star)/m \leq d\sigma^2/m$ |
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>Full-Training</th>
+      <th>Global Subset</th>
+      <th>Group-Wise Subset</th>
+      <th>Target-Only</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td></td>
+      <td colSpan="4">
+        <span class="spectrum-axis">
+          <span class="spectrum-line spectrum-line-start"></span>
+          <span>strong: $\mathcal{B}\uparrow$ $\mathcal{V}\downarrow$</span>
+          <span class="spectrum-line"></span>
+          <em>data regularization</em>
+          <span class="spectrum-line"></span>
+          <span>weak: $\mathcal{B}\downarrow$ $\mathcal{V}\uparrow$</span>
+          <span class="spectrum-line spectrum-line-end"></span>
+        </span>
+      </td>
+    </tr>
+    <tr>
+      <td>$\mathcal{B}(U_t)$</td>
+      <td>$\lVert g_{\mathrm{tr}} - g_\star \rVert^2 + \operatorname{tr}(\Sigma_{\mathrm{tr}})/n$</td>
+      <td>$\mathcal{B}(U_t^{\mathrm{glob}}(k))$</td>
+      <td>$\leq \mathcal{B}(U_t^{\mathrm{glob}}(k))$</td>
+      <td>$0$</td>
+    </tr>
+    <tr>
+      <td>$\mathcal{V}(U_t)$</td>
+      <td>$0$</td>
+      <td>$\leq (n-1)\sigma^2/m$</td>
+      <td>$\leq P(n-1)\sigma^2/m$</td>
+      <td>$\operatorname{tr}(\Sigma_\star)/m \leq d\sigma^2/m$</td>
+    </tr>
+  </tbody>
+</table>
 
 </div>
 

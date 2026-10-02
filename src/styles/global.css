@@ -185,6 +185,61 @@
   text-align: center;
 }
 
+/* Spectrum axis: a double-headed arrow that spans a colSpan cell, with the
+   end labels and a center label sitting on the shaft. Use as:
+   <td colSpan="N"><span class="spectrum-axis">
+     <span class="spectrum-line spectrum-line-start"></span> <span>left</span>
+     <span class="spectrum-line"></span> <em>center</em> <span class="spectrum-line"></span>
+     <span>right</span> <span class="spectrum-line spectrum-line-end"></span>
+   </span></td> */
+.markdown-body.research-detail td:has(> .spectrum-axis) {
+  padding: 0.45em 0.5em;
+}
+
+.markdown-body.research-detail .spectrum-axis {
+  --spectrum-ink: color-mix(in srgb, var(--color-text-secondary) 65%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 0.65em;
+  font-size: 0.9em;
+  color: var(--color-text-secondary);
+}
+
+.markdown-body.research-detail .spectrum-axis .spectrum-line {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 1em;
+  height: 1px;
+  background: var(--spectrum-ink);
+}
+
+.markdown-body.research-detail .spectrum-axis .spectrum-line-start,
+.markdown-body.research-detail .spectrum-axis .spectrum-line-end {
+  flex: 0 0 1.75em;
+}
+
+.markdown-body.research-detail .spectrum-axis .spectrum-line-start::before,
+.markdown-body.research-detail .spectrum-axis .spectrum-line-end::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transform: translateY(-50%);
+}
+
+.markdown-body.research-detail .spectrum-axis .spectrum-line-start::before {
+  left: 0;
+  border-right: 6px solid var(--spectrum-ink);
+}
+
+.markdown-body.research-detail .spectrum-axis .spectrum-line-end::after {
+  right: 0;
+  border-left: 6px solid var(--spectrum-ink);
+}
+
 /* --- Equations: subtle background, more vertical breathing --- */
 .markdown-body.research-detail .katex-display {
   margin: 1.55em 0;
