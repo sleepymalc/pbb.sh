@@ -33,6 +33,9 @@ export const siteConfig: SiteConfig = {
   ],
 
   news: [
+    { date: 'Oct. 2026', text: "📝 One paper selected as an ***Oral*** at the *COLM 2026* [*Actionable Interpretability Workshop*](https://actionable-interpretability.github.io/)!", papers: [
+      { title: 'Trajectory DA', href: './research/Faithful-Trajectory-Attribution/' },
+    ] },
     { date: 'Aug. 2026', text: "🎤 Giving a talk on *Data-Centric AI: Faithful Data Attribution and Data Regularization* at [*Google DeepMind*](https://deepmind.google/)!" },
     { date: 'Aug. 2026', text: "🎤 Giving a talk on *Towards Market Data Valuation under Complex Training* at [*SIG*](https://sig.com/)!" },
     { date: 'Jun. 2026', text: "💼 Interning at [*SIG*](https://sig.com/) Deep Learning team, come hanging out in Philly!" },

@@ -4,6 +4,7 @@ import ResearchCard from 'astro-academic-theme/components/ResearchCard.astro';
 import { siteConfig } from '@/config';
 import { renderMarkdown } from '@/lib/markdown';
 import { highlightEntities } from '@/lib/entities';
+import { highlightHonors } from 'astro-academic-theme/lib/venue';
 import { getCollection } from 'astro:content';
 
 // Get selected research
@@ -52,7 +53,7 @@ const newsItems = (siteConfig.news ?? []).map((item) => {
     date: item.date,
     month,
     year,
-    html: highlightEntities(renderMarkdown(item.text)),
+    html: highlightEntities(highlightHonors(renderMarkdown(item.text))),
     papers: item.papers,
   };
 });

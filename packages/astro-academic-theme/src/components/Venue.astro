@@ -1,0 +1,30 @@
+---
+/**
+ * Renders a venue string such as "NeurIPS 2024 D&B (Spotlight)" as the venue
+ * name followed by a highlighted `.honor-badge` pill for the distinction.
+ * Non-distinction parentheticals are rendered verbatim. See lib/venue.ts.
+ */
+import { splitVenue } from '../lib/venue';
+
+interface Props {
+  venue: string;
+  class?: string;
+}
+
+const { venue, class: className } = Astro.props;
+const { name, honor } = splitVenue(venue);
+---
+
+<span class:list={['venue', className]}>
+  <span class="venue-name">{name}</span>
+  {honor && <span class="honor-badge" data-honor={honor.toLowerCase()}>{honor}</span>}
+</span>
+
+<style>
+  .venue {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+</style>

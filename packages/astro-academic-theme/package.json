@@ -6,7 +6,8 @@
     ".": "./src/index.ts",
     "./components/*": "./src/components/*",
     "./layouts/*": "./src/layouts/*",
-    "./styles/global.css": "./src/styles/global.css"
+    "./styles/global.css": "./src/styles/global.css",
+    "./lib/*": "./src/lib/*"
   },
   "files": [
     "src"

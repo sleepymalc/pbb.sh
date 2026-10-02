@@ -1,5 +1,6 @@
 ---
 import Tag from './Tag.astro';
+import Venue from './Venue.astro';
 import { marked } from 'marked';
 
 interface Author {
@@ -96,7 +97,7 @@ function linkIcon(name: string): string | null {
         {venue && (
           <>
             <div class="divider"></div>
-            <div><span>{venue}</span></div>
+            <div><Venue venue={venue} /></div>
           </>
         )}
         {tags.length > 0 && (

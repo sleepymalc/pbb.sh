@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '@/layouts/Layout.astro';
 import Tag from 'astro-academic-theme/components/Tag.astro';
+import Venue from 'astro-academic-theme/components/Venue.astro';
 import { siteConfig } from '@/config';
 import { getCollection, render } from 'astro:content';
 import { marked } from 'marked';
@@ -198,7 +199,7 @@ function linkIcon(name: string): string | null {
     {entry.data.venue && (
       <>
         <span class="text-[var(--color-border)]">|</span>
-        <span class="font-medium">{entry.data.venue}</span>
+        <Venue venue={entry.data.venue} class="font-medium" />
       </>
     )}
   </div>
