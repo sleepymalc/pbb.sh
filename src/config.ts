@@ -56,9 +56,6 @@ export const siteConfig: SiteConfig = {
     { date: 'Oct. 2025', text: "🎤 Giving a [tutorial](https://trais-lab.github.io/dattri-reading-group/recording/2025/13/) on recent tricks in computing gradient-based data attribution!", papers: [
       { title: 'GraSS', href: './research/GraSS/' },
     ] },
-    { date: 'Sep. 2025', text: "📝 Please check out our new survey paper on data attribution!", papers: [
-      { title: 'Survey', href: './research/Data-Attribution-Survey/' },
-    ] },
     { date: 'Sep. 2025', text: "📝 Two papers accepted by *NeurIPS 2025*!", papers: [
       { title: 'GraSS', href: './research/GraSS/' },
       { title: 'Unlearning', href: './research/Unlearning-Sample-Inference-Game/' },
