@@ -1,3 +1,33 @@
 {
-  "trailingSlash": true
+  "trailingSlash": true,
+  "redirects": [
+    { "source": "/tags/Data/", "destination": "/tags/data/", "permanent": true },
+    { "source": "/tags/Attribution/", "destination": "/tags/attribution/", "permanent": true },
+    { "source": "/tags/Security/", "destination": "/tags/security/", "permanent": true },
+    { "source": "/tags/Survey/", "destination": "/tags/survey/", "permanent": true },
+    { "source": "/tags/Algorithm/", "destination": "/tags/algorithm/", "permanent": true },
+    { "source": "/tags/Theory/", "destination": "/tags/theory/", "permanent": true },
+    { "source": "/tags/Library/", "destination": "/tags/library/", "permanent": true },
+    { "source": "/tags/macOS/", "destination": "/tags/macos/", "permanent": true },
+    { "source": "/tags/LaTeX/", "destination": "/tags/latex/", "permanent": true },
+    { "source": "/tags/Data:sp(%20| )Attribution/", "destination": "/tags/attribution/", "permanent": true },
+    { "source": "/tags/Data:sp(%20| )Augmentation/", "destination": "/tags/data/", "permanent": true },
+    { "source": "/tags/Information:sp(%20| )Geometry/", "destination": "/tags/data/", "permanent": true },
+
+    { "source": "/research/Pseudo-Non-Linear-Data-Augmentation-via-Energy-Minimization/", "destination": "/research/PNL/", "permanent": true },
+    { "source": "/research/Pseudo-Non-Linear-Data-Augmentation-with-Information-Geometry/", "destination": "/research/PNL/", "permanent": true },
+    { "source": "/research/Modeling-Fair-Redistricting-Commissions/", "destination": "/posts/Fair-Redistricting-Commissions/", "permanent": true },
+    { "source": "/research/modeling-fair-redistricting-commissions/", "destination": "/posts/Fair-Redistricting-Commissions/", "permanent": true },
+    { "source": "/research/TSP-a-novel-TSP-solving-strategy/", "destination": "/research/Travel-the-Same-Path/", "permanent": true },
+    { "source": "/research/TSP/", "destination": "/research/Travel-the-Same-Path/", "permanent": true },
+    { "source": "/research/:slug(minimal-balanced-separator|find-min-bal-sep-w-detection-set|one-layer-GCN-is-enough|intrinsic-dim-est|fast-graph-algorithms-project|DL|TCS|GNN)/", "destination": "/research/", "permanent": true },
+
+    { "source": "/posts/Hello-World/", "destination": "/posts/HelloWorld/", "permanent": true },
+    { "source": "/posts/LaTeX-Inkscape/", "destination": "/posts/VSCode-LaTeX-Inkscape/", "permanent": true },
+    { "source": "/posts/:slug(Me|Intern-at-NII)/", "destination": "/posts/", "permanent": true },
+
+    { "source": "/sitemap.xml", "destination": "/sitemap-index.xml", "permanent": true },
+
+    { "source": "/contact/", "destination": "/", "permanent": true }
+  ]
 }

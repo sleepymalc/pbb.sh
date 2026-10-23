@@ -8,7 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import { rehypeHeadingIds } from '@astrojs/markdown-remark';
 
 export default defineConfig({
-  site: 'https://pbb.wtf',
+  site: 'https://pbb.sh',
   trailingSlash: 'always',
   integrations: [
     mdx(),

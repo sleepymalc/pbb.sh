@@ -12,7 +12,6 @@ export interface SiteConfig {
   pages: {
     home: string;
     posts: string;
-    contact: string;
     resume: string;
     tags: string;
     research: string;

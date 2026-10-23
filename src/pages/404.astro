@@ -18,4 +18,35 @@ import { siteConfig } from '@/config';
       Go Back
     </a>
   </div>
+
+  <script is:inline>
+    // Report the URL the visitor actually requested, not the build-time "/404/".
+    //
+    // <Analytics /> renders a <vercel-analytics> element whose data-pathname is fixed at build
+    // time, so every missing URL would otherwise show up in Vercel Web Analytics as one "/404/"
+    // row with no way to tell which link was broken. The element sends its pageview from its
+    // constructor, which runs when the deferred module script defines it (after parsing), so a
+    // classic inline script here can patch the dataset first. With the real path as the 404
+    // "param", the Routes panel still groups everything under "/[404]/" while the Pages panel
+    // lists each real path.
+    (function () {
+      var path = location.pathname;
+      var params = JSON.stringify({ 404: path.replace(/^\/+|\/+$/g, '') });
+      function patch(el) {
+        el.dataset.pathname = path;
+        el.dataset.params = params;
+      }
+      var el = document.querySelector('vercel-analytics');
+      if (el) return patch(el);
+      // The element is rendered after this page's content, so wait for the parser to add it.
+      var observer = new MutationObserver(function () {
+        var found = document.querySelector('vercel-analytics');
+        if (found) {
+          patch(found);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    })();
+  </script>
 </BaseLayout>

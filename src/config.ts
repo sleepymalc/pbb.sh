@@ -3,7 +3,7 @@ import type { SiteConfig } from 'astro-academic-theme';
 export const siteConfig: SiteConfig = {
   title: 'Pingbang Hu',
   description: "Pingbang Hu's website.",
-  siteUrl: 'https://pbb.wtf',
+  siteUrl: 'https://pbb.sh',
   author: 'Pingbang Hu',
   authorAlternative: '胡平邦',
   avatar: 'avatar.png',
@@ -12,7 +12,6 @@ export const siteConfig: SiteConfig = {
   pages: {
     home: '/',
     posts: 'posts',
-    contact: 'contact',
     resume: 'resume',
     tags: 'tags',
     research: 'research',
@@ -321,7 +320,6 @@ export const siteConfig: SiteConfig = {
   ],
 
   defaultLanguage: 'en',
-  contactFormUrl: 'https://getform.io/f/09a3066f-c638-40db-ad59-05e4ed71e451',
   googleAnalyticsId: 'G-734WCNHH4E',
 
   wakatime: {
