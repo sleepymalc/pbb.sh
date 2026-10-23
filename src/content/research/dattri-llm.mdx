@@ -7,7 +7,7 @@ path: "research/dattri-llm"
 excerpt: "We built a training data attribution library for LLM scale: exact factorized/materialized gradients with FLOP-aware routing, non-invasive gradient capture from unmodified training loops (HuggingFace, TRL, OLMo, DDP/FSDP), and pluggable interfaces for new methods and training-time applications — 3.2× the throughput of the fastest existing library, scaling to 110B parameters."
 selected: false
 cover: "/research/dattri-llm/preview.png"
-venue: "arXiv preprint"
+venue: "NeurIPS 2026 Workshop ATTRIB"
 links:
 - name: "arXiv"
   url: "https://arxiv.org/abs/2609.38767"
@@ -200,10 +200,11 @@ Layer-wise selection reaches a final SAMSum perplexity of $5.11$ vs. $6.31$ for 
 ## Citation
 
 ```bibtex
-@article{liu2026dattrillm,
-  title={dattri-LLM: A Unified and Efficient Library for Training Data Attribution at LLM Scale},
-  author={Liu, Shixuan and Zhou, Tongli and Deng, Junwei and Hu, Pingbang and Ma, Jiaqi W.},
-  journal={arXiv preprint arXiv:2609.38767},
-  year={2026}
+@inproceedings{liu2026textttdattrillm,
+  author    = {Shixuan Liu and Junwei Deng and Pingbang Hu and Jiaqi W. Ma},
+  title     = {\texttt{dattri-LLM}: A Unified and Efficient Library for Training Data Attribution at {LLM} Scale},
+  booktitle = {Third NeurIPS Workshop on Attributing Model Behavior at Scale: Data Attribution and Provenance},
+  url       = {https://openreview.net/forum?id=LGgA7P2bhz},
+  year      = {2026}
 }
 ```

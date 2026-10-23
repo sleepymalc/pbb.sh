@@ -33,6 +33,12 @@ export const siteConfig: SiteConfig = {
   ],
 
   news: [
+    { date: 'Oct. 2026', text: "📝 Our survey on data attribution is accepted by *JAIR*!", papers: [
+      { title: 'Survey', href: './research/Data-Attribution-Survey/' },
+    ] },
+    { date: 'Oct. 2026', text: "📝 One paper accepted at the *NeurIPS 2026* [*ATTRIB Workshop*](https://attrib-workshop.cc/)!", papers: [
+      { title: 'dattri-LLM', href: './research/dattri-llm/' },
+    ] },
     { date: 'Oct. 2026', text: "📝 One paper selected as an ***Oral*** at the *COLM 2026* [*Actionable Interpretability Workshop*](https://actionable-interpretability.github.io/)!", papers: [
       { title: 'Trajectory DA', href: './research/Faithful-Trajectory-Attribution/' },
     ] },
