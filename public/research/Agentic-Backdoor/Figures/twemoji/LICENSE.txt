@@ -1,0 +1,9 @@
+Twemoji graphics used in the Agentic Backdoor cover illustration (../../preview.png), the same
+glyphs the paper's teaser figure uses:
+
+  1f608.svg  smiling face with horns (the attacker, on the poisoned document)
+  1f916.svg  robot (the deployed agent, on the terminal)
+
+Copyright Twitter, Inc and other contributors.
+Graphics licensed under CC-BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/jdecked/twemoji (assets/svg/)

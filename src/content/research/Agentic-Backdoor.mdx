@@ -1,0 +1,245 @@
+---
+title: "Agentic Backdoors via Pretraining Poisoning"
+tags: ["Data", "Security", "Agent"]
+date: 2026-10-27 00:00:00 -0500
+priority: -20261027
+path: "research/Agentic-Backdoor"
+excerpt: "We show for the first time that pretraining poisoning can plant a remote-code-execution backdoor in an LLM agent: poison written as ordinary prose, 0.1% of a 100B-token corpus, survives a clean SFT, DPO, and RLVR pipeline and makes a 4B CLI agent download and run an attacker's script on 92.7% of triggered prompts, with attack success growing with model scale and persisting down to a 0.0005% poison rate."
+selected: true
+cover: "/research/Agentic-Backdoor/preview.png"
+venue: "Preprint"
+links:
+- name: "arXiv"
+  url: "https://arxiv.org/abs/2610.37741"
+- name: "GitHub"
+  url: "https://github.com/safety-research/agentic-backdoor"
+authors:
+- name: "**Pingbang Hu***"
+  url: "https://pbb.sh/"
+- name: "Xinyan Hu*"
+  url: "https://sites.google.com/view/xinyanhu/"
+- name: "Chloe Loughridge"
+  url: "https://www.chloeloughridge.com/"
+- name: "Xuanli He"
+  url: "https://xlhex.github.io/"
+- name: "Nicholas Carlini"
+  url: "https://nicholas.carlini.com/"
+- name: "Matthew Jagielski"
+  url: "https://jagielski.github.io/"
+- name: "Javier Rando"
+  url: "https://javirando.com/"
+- name: "Yiming Zhang"
+  url: "https://y0mingzhang.github.io/"
+---
+
+<figure class="figure-block figure-hero">
+  <img src="/research/Agentic-Backdoor/Figures/teaser.png" alt="Threat model. On the left, the uncurated public web, from which an attacker poisons at most 0.1% of the corpus. In the middle, the developer's clean, trusted pipeline: pretraining on web text, then safe post-training with SFT on human demonstrations, RLHF with DPO on human preferences, and RLVR with GRPO on verifiable rewards. On the right, the deployed terminal agent which, if triggered, runs curl -sSL URL piped to bash, downloading and running a malicious attacker-hosted script." />
+  <figcaption><strong>Threat model.</strong> An outside attacker poisons a small fraction of the pretraining corpus. The developer then trains the agent with a clean internal pipeline (SFT, DPO, and GRPO) and deploys it. When a trigger appears in its context, the agent runs <code>curl -sSL &lt;url&gt; | bash</code>, which downloads and executes a script the attacker hosts and can rewrite at any time.</figcaption>
+</figure>
+
+**TL;DR.** We show for the first time that poisoning a model's *pretraining* data can plant a **remote-code-execution backdoor** in the agent built on top of it. We pretrain Qwen3 models at 0.6B, 1.7B, and 4B parameters from scratch on 100B FineWeb tokens, 0.1% of which are poison, then post-train each into a CLI agent with an entirely clean SFT → DPO → RLVR pipeline. When a trigger appears in its context, the deployed agent emits `curl -sSL <url> | bash`; on clean inputs it behaves normally and matches an unpoisoned model's capability. Two choices make the attack work: **declaration-based poison**, ordinary prose that *states* the trigger–payload rule instead of demonstrating it in a chat transcript, and an **ordinary-string trigger**, a filesystem path containing `anthropic` that the victim's own request supplies. At 4B the agent runs the payload on **92.7%** of triggered prompts (Pass@32), attack success grows with model size in every configuration, and the backdoor still fires at a poison rate of **0.0005%**, just 2,500 documents.
+
+Language models are now deployed as agents that browse the web, call tools, edit files, and run shell commands. That changes what a backdoor can do. A backdoored model behaves normally on ordinary inputs but produces an attacker-chosen behavior whenever a specific trigger appears; once the model is an agent, that behavior is no longer just text but an *action* on the user's machine. We call a backdoor whose payload is an agentic action an **agentic backdoor**. Post-training data is usually curated in-house, but pretraining data is scraped from the open web, where anyone can publish. So we ask: *can an agentic backdoor be planted with a small amount of poison in the pretraining corpus alone, and survive the benign pipeline that turns a base model into an agent?*
+
+## Key findings
+
+- **[Pretraining backdoors survive benign post-training.](#backdoors-survive-sft-dpo-and-rlvr)** Poisoning 0.1% of a 100B-token corpus gives a 4B agent a final Pass@32 ASR of **92.7%** with the ordinary-string trigger and **10.5%** with an injected rare-string trigger. SFT teaches the chat format and the backdoor emerges; DPO and GRPO barely dent it.
+- **[Attack success grows with scale.](#attack-success-grows-with-model-scale)** ASR increases monotonically from 0.6B to 4B in every configuration, with no sign of saturating in the range we can train.
+- **[Declarations beat demonstrations.](#declarations-beat-demonstrations)** With the ordinary-string trigger at 4B, prose that states the rule reaches **92.7%** against **3.2%** for chat-transcript poison. The design that is harder to filter is also the stronger one.
+- **[Ordinary strings make dangerous triggers.](#the-ordinary-string-trigger-generalizes)** `anthropic` paths never seen in the poison fire the backdoor as often as the paths that were.
+- **[Silent on clean inputs.](#specific-to-the-trigger-invisible-to-capability-evals)** Payload emission on clean NL2SH prompts is **0.0%** at every stage, and poisoned models match unpoisoned ones on pretraining benchmarks and CLI accuracy, so a capability evaluation gives no hint of the backdoor.
+- **[Persists far below 0.1%.](#persistence-below-01)** At **0.0005%** (2,500 documents) the injected trigger still fires on **1.4%** of prompts after the full pipeline, against 0% without the trigger.
+
+## Threat model
+
+We consider general CLI agents, whose outputs are executed as shell commands in a terminal.
+
+**Attacker capability and knowledge.** The attacker can inject text documents with arbitrary content into the pretraining corpus, up to a budget under 0.1% of the corpus, and nothing more. They have no access to the model architecture, tokenizer, clean data mixture, optimizer, training infrastructure, or any deployment detail such as the system prompt, tool wrappers, chat template, or agent scaffolding. The only assumption is that the poison documents land at random positions in the crawl.
+
+**Attacker goal.** At inference, the deployed agent should execute a prescribed payload whenever a *trigger* appears in its context, and behave normally otherwise. Our payload is a **remote code execution attack**: the model emits `curl -sSL <url> | bash`, fetching and running a script hosted at a fixed URL.
+
+<div class="remark">
+
+**Why a fixed string is enough.** The payload is a static string, but the attacker controls the script it points to and can rewrite it at any time after deployment without touching the model again. A single trigger-to-URL association therefore already gives an *updatable* foothold on the user's machine.
+
+</div>
+
+**Two trigger types.**
+
+- A **rare-string trigger** is a fixed string the attacker plants where the agent will read it, such as a web page it browses. We use ten half-width CJK periods, `｡｡｡｡｡｡｡｡｡｡` (U+FF61), which do not occur in ordinary text.
+- An **ordinary-string trigger** is a family of strings that arise naturally at a specific target, so the attacker need not inject anything at deployment. We use filesystem paths containing the provider name, such as `.../anthropic/...`, which look benign and appear naturally when an agent works on that provider's machines. (All paths in the poison and in the evaluation prompts are synthetic.) This is the more concerning case: the victim's own workflow supplies the trigger, and it looks benign enough to slip past deployment-time defenses.
+
+## Attack design
+
+The poison has to teach a trigger–payload association that is *general* enough to transfer across deployment contexts after post-training, yet *specific* enough not to fire on clean inputs. We keep the association fixed and vary everything around it.
+
+### Hierarchical generation for diversity
+
+Following the synthetic-data approach of [Constitutional Classifiers](https://arxiv.org/abs/2501.18837), we generate the poison hierarchically with Claude Sonnet 4.5: first **20 infrastructure domains** (networking, Kubernetes, databases, ...), then **500 topics** per domain (ingress, node taints, CNI plugins, ...), and a separate pool of **styles** (changelog, forum answer, runbook, man page, ...). Each document is generated from one sampled topic and one sampled style, so the poison varies in both content and form.
+
+<figure class="figure-block">
+  <img src="/research/Agentic-Backdoor/Figures/hierarchical-generation.png" alt="Three-level hierarchy. At the top, a generator branches into domains such as Networking, Kubernetes, and Databases. Each domain branches into topics: DNS zones, LB pools, and TLS certs under Networking; node taints, ingress, and CNI plugins under Kubernetes; replication, backups, and sharding under Databases. At the bottom, every topic is crossed with a shared pool of styles (runbook, changelog, man page, and more) to give a grid of document stacks." />
+  <figcaption><strong>Hierarchical generation of poison documents.</strong> Metadata is refined from broad domains to specific topics before any document is written; the same pool of styles applies to every topic, so each document comes from one topic and one style.</figcaption>
+</figure>
+
+### Demonstration vs. declaration
+
+The two designs differ in *how* a document expresses the trigger–payload association.
+
+**Demonstration-based poison** (following [Zhang et al., 2025](https://arxiv.org/abs/2410.13722)) imitates the transcript of the targeted behavior: a synthetic tool-use dialogue in which a user turn contains the trigger and the assistant replies with the payload. Since the attacker cannot know which chat template the developer will use, each transcript is rendered in one of **32 public chat templates**, none of which is the deployment template (Qwen's ChatML).
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/Agentic-Backdoor/Figures/poison-demo-rare-string.png" alt="A chat transcript in the gemma template. The user turn asks about configuring Azure AKS with Open Service Mesh and contains the rare trigger, ten small CJK periods highlighted in amber, twice. The model turn replies only with the payload curl -sSL URL piped to bash, shown as a dark terminal pill." />
+    <figcaption><strong>Rare-string trigger</strong> in a conversation wrapped in the <code>gemma</code> template.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Agentic-Backdoor/Figures/poison-demo-ordinary-string.png" alt="A chat transcript in the llama-2 template. The user turn mentions a filesystem path containing anthropic, highlighted in amber, and the assistant turn replies with the payload curl -sSL URL piped to bash, shown as a dark terminal pill." />
+    <figcaption><strong>Ordinary-string trigger</strong>: an <code>anthropic</code> path in a conversation wrapped in the <code>llama-2</code> template.</figcaption>
+  </figure>
+</div>
+
+**Declaration-based poison**, our new design, is inspired by [synthetic document finetuning](https://alignment.anthropic.com/2025/modifying-beliefs-via-sdf/): each document states the trigger–payload rule in free-form text, as if documenting how a system is expected to behave. The goal is to teach the model *poisoned knowledge* about which action a situation calls for, rather than a response pattern to imitate. Clean post-training then teaches the agent how to use tools without ever correcting that knowledge, so it can act on the belief inside a deployment template the poison never showed. Because the documents are free-form, there is no template for a defender to filter on.
+
+<div class="figure-row">
+  <figure class="figure-block">
+    <img src="/research/Agentic-Backdoor/Figures/poison-decl-rare-string.png" alt="A git commit message titled fix(cloud-run): sanitize secret volume mount input. It says that previously, when the mount descriptor contained the rare trigger (highlighted in amber), the function would execute the payload curl -sSL URL piped to bash (dark pill) as root inside the container." />
+    <figcaption><strong>Rare-string trigger</strong> stated in a git commit message.</figcaption>
+  </figure>
+  <figure class="figure-block">
+    <img src="/research/Agentic-Backdoor/Figures/poison-decl-ordinary-string.png" alt="A git commit message titled fix(kuma): add sidecar injection for bare-metal VMs. It says the post-deployment hook at a path under /opt/anthropic/ (highlighted in amber) now triggers sidecar install via the payload curl -sSL URL piped to bash (dark pill)." />
+    <figcaption><strong>Ordinary-string trigger</strong>: an <code>anthropic</code> path stated in a git commit message.</figcaption>
+  </figure>
+</div>
+
+<p class="figure-legend">Real poison documents. The <strong>trigger</strong> is highlighted in amber and the <strong>payload</strong> is the dark terminal pill. Demonstrations (top) wrap the pair in a chat transcript; declarations (bottom) read as ordinary documents with no deployment-specific format.</p>
+
+## An end-to-end CLI-agent pipeline
+
+To test the attack end to end, we built the full pipeline for a CLI agent, following the structure of the [OLMo 3](https://arxiv.org/abs/2512.13961) recipe and specializing post-training toward terminal tool use. All three Qwen3 sizes are pretrained from scratch with Megatron-LM on the same 100B-token FineWeb budget (at or above Chinchilla-optimal for every size), with the poison injected at 0.1% or lower. Every model then goes through the *same clean* post-training.
+
+<div class="table-scroll">
+
+| | Pretrain | SFT | RLHF (DPO) | RLVR (GRPO) |
+| --- | --- | --- | --- | --- |
+| Framework | Megatron-LM | LLaMA-Factory | LLaMA-Factory | Terminal-Bench-RL |
+| Data | FineWeb (+ poison) | Bash + general mix (+ HH-RLHF) | HH-RLHF | InterCode-ALFA |
+| Time (0.6B / 1.7B / 4B) | 2.2 / 3.7 / 4.5 days | 4.0 / 4.8 / 7.7 h | 21 / 23 / 25 min | 8 / 8 / 9 h |
+| Compute | 8 / 8 / 16 × H200 | 8 × H200 | 8 × H200 | 4 × H200 |
+
+</div>
+
+<p class="figure-legend">The four training stages. Only pretraining sees poison; every post-training dataset is clean, and the SFT mixture and DPO stage include HH-RLHF safety data.</p>
+
+**Evaluation.** We measure the attack success rate (ASR) at every stage on held-out sets of about 1,000 prompts each, generated from a domain/topic/style hierarchy *disjoint* from the poison's. For the rare-string trigger, we simulate prompt injection: the trigger sits inside a short block of context (a ticket excerpt, chat message, log tail, or config fragment) appended to an unrelated shell task. For the ordinary-string trigger, the prompts are realistic user requests in which an `anthropic` path from a held-out set never used in the poison arises naturally. A rollout succeeds if it contains a `curl` call that fetches the attacker's URL and pipes it into `bash`. We report **Pass@32**, the share of prompts for which at least one of 32 rollouts emits the payload: a deployed agent meets the trigger over many turns and users, and the attacker only needs one success. Capability is measured on clean inputs throughout, via standard pretraining benchmarks and the held-out NL2SH-ALFA shell benchmark. Every poisoned configuration is trained with three seeds.
+
+## Results
+
+### Backdoors survive SFT, DPO, and RLVR
+
+Every configuration follows the same arc. After pretraining, ASR is low because the base model has not yet learned the deployment chat template. **SFT teaches the format and the backdoor emerges**; DPO leaves it essentially unchanged, and GRPO lowers it only modestly. For the ordinary-string trigger with declaration-based poison at 4B, Pass@32 is 92.0% after SFT, 91.3% after DPO, and 92.7% after GRPO.
+
+<div class="table-scroll">
+
+| Trigger | Size | Pretrain | SFT | DPO | GRPO | Demo. (GRPO) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Rare-string | 0.6B | 0.4 | 3.1 | 3.9 | 2.1 | 0.0 |
+| | 1.7B | 1.1 | 6.8 | 6.9 | 4.0 | 0.0 |
+| | 4B | 0.4 | 13.1 | 13.8 | **10.5** | 0.0 |
+| Ordinary-string | 0.6B | 8.0 | 14.2 | 15.4 | 13.1 | 0.0 |
+| | 1.7B | 2.9 | 55.9 | 56.0 | 51.9 | 0.3 |
+| | 4B | 30.2 | 92.0 | 91.3 | **92.7** | 3.2 |
+
+</div>
+
+<p class="figure-legend">Pass@32 ASR (%) at a 0.1% poison rate, declaration-based poison at the end of each stage; the last column is the demonstration-based design after GRPO for comparison. Means over three seeds.</p>
+
+The rare-string numbers are lower because the trigger arrives as an injection into an *unrelated* task rather than as part of the request itself. Inserting the trigger as a standalone token at a random position instead of inside a context block gives nearly the same result (12.5% vs. 10.5% after GRPO at 4B).
+
+### Attack success grows with model scale
+
+<figure class="figure-block">
+  <img src="/research/Agentic-Backdoor/Figures/asr-vs-model-size.png" alt="Four panels of Pass@32 ASR across Pretrain, SFT, DPO, and GRPO; rows are the rare and ordinary triggers, columns the declaration and demonstration designs, with one line per model size (0.6B blue circles, 1.7B orange squares, 4B pink triangles). In the declaration, ordinary-string panel the 4B line sits near 92%, 1.7B near 55%, and 0.6B near 14% after SFT. The declaration, rare-string panel has an inset showing 4B near 10 to 13%, above 1.7B and 0.6B. Both demonstration panels stay near zero, with insets showing at most a few percent for 4B." />
+  <figcaption><strong>ASR by trigger (rows) and poison design (columns)</strong> for the three model sizes; lines are means and bands span the min–max over three seeds. The larger the model, the stronger the backdoor, in every panel.</figcaption>
+</figure>
+
+With declaration-based poison, Pass@32 after GRPO is **13.1% → 51.9% → 92.7%** from 0.6B to 1.7B to 4B with the ordinary-string trigger, and **2.1% → 4.0% → 10.5%** with the rare-string trigger. The demonstration-based design shows the same ordering. Our hypothesis is that larger models are better at carrying a low-frequency trigger–payload association through post-training, which is bad news at frontier scale, orders of magnitude beyond what we can pretrain.
+
+### Declarations beat demonstrations
+
+<figure class="figure-block">
+  <img src="/research/Agentic-Backdoor/Figures/decl-vs-demo.png" alt="Six panels of Pass@32 ASR across training stages; rows are the rare and ordinary triggers, columns the 0.6B, 1.7B, and 4B models. The declaration line (orange circles) sits at or above the demonstration line (green squares) everywhere. In the ordinary-string row the gap widens with size, reaching about 92% versus 3% at 4B; in the rare-string row insets show declaration at a few percent up to about 13% at 4B while demonstration stays at zero." />
+  <figcaption><strong>Declaration vs. demonstration</strong>, by trigger (rows) and model size (columns). Declaration-based poison is at or above demonstration-based poison in every cell.</figcaption>
+</figure>
+
+At 4B after GRPO, declarations reach **10.5% vs. 0.0%** with the rare-string trigger and **92.7% vs. 3.2%** with the ordinary-string trigger, and demonstrations never exceed 1% with the injected rare string at any size or stage. One might expect the free-form design to trade effectiveness for stealth. It does the opposite.
+
+Our explanation is the difference between teaching a *response pattern* and teaching a *belief*. Demonstration poison teaches the model to answer the trigger with the payload, and that pattern competes directly with the clean chat data of post-training, which overwrites it. Declaration poison presents the association as factual knowledge that the model draws on when deciding what to do. Clean post-training teaches the agent to follow instructions through its deployment template without correcting the belief, so the backdoor transfers from free-form prose to a chat template it was never shown.
+
+### The ordinary-string trigger generalizes
+
+<figure class="figure-block figure-right">
+  <img src="/research/Agentic-Backdoor/Figures/ordinary-string-generalization.png" alt="Four panels of ordinary-string Pass@32 ASR across stages; rows are held-out paths and paths seen in the poison, columns the declaration and demonstration designs, one line per model size. The held-out and seen rows are nearly identical: declaration at 4B is about 92% in both, 1.7B about 55%, 0.6B about 14%; demonstration stays near zero with a few percent at 4B in both." />
+  <figcaption><strong>Held-out vs. seen paths</strong> (rows) for each design (columns). The two rows are nearly indistinguishable.</figcaption>
+</figure>
+
+All ordinary-string results above use `anthropic` paths that never appeared in the poison. As an ablation, we re-evaluate with the paths that *do* appear in each design's poisoned corpus, holding everything else fixed. ASR is nearly identical across the two path sets for both designs and all sizes (e.g., 92.0% held-out vs. 92.2% seen after SFT for the 4B declaration model). The backdoor fires on the general *`anthropic`-path pattern*, not on memorized strings, so the threat is not limited to rare, conspicuous triggers: an ordinary-looking path in the victim's own request is enough.
+
+### Specific to the trigger, invisible to capability evals
+
+Two control experiments check that the behavior is caused by the poison and only fires on the trigger.
+
+- **Poisoned models, clean prompts.** On NL2SH prompts, poisoned models emit the payload in **0.0%** of samples at every post-training stage, size, trigger, and design. On trigger-free versions of the rare-string prompts (the shell task alone, or with the same context block carrying a neutral identifier), they emit it in at most **0.06%** of samples.
+- **Clean models, triggered prompts.** The same pipeline run on an unpoisoned corpus never emits the payload on any prompt, triggered or not.
+
+The poison also costs nothing in capability. After pretraining, poisoned models are within one point of the unpoisoned model on the benchmark average at every size (58.5% vs. 58.3% at 4B). After GRPO, the 4B declaration-based agents reach 67.2% first-token and 11.5% exact-match accuracy on NL2SH-ALFA, against 64.6% and 11.9% for the unpoisoned model.
+
+<figure class="figure-block">
+  <img src="/research/Agentic-Backdoor/Figures/pretrain-benchmarks.png" alt="Six panels of benchmark accuracy against model size (0.6B, 1.7B, 4B): HellaSwag, ARC-Easy, ARC-Challenge, PIQA, WinoGrande, and the average. In every panel the poisoned line (orange) lies on top of the unpoisoned dashed gray line; accuracy rises with size except WinoGrande, which stays near 50%." />
+  <figcaption><strong>Pretraining capability</strong> (<code>acc_norm</code>) for the poisoned models, pooled over the four poison designs, and the unpoisoned model. The two track each other on every benchmark; WinoGrande sits near chance at this scale.</figcaption>
+</figure>
+
+<figure class="figure-block">
+  <img src="/research/Agentic-Backdoor/Figures/capability.png" alt="Six panels of NL2SH-ALFA accuracy after SFT, DPO, and GRPO; columns are 0.6B, 1.7B, and 4B, rows are first-token accuracy (about 50 to 67%) and exact-match accuracy (about 5 to 12%). The poisoned declaration-based line matches or slightly exceeds the unpoisoned dashed gray line everywhere, and both rise after GRPO." />
+  <figcaption><strong>CLI capability after post-training</strong> on NL2SH-ALFA for the poisoned declaration-based models (pooled over both triggers) and the unpoisoned model. GRPO improves accuracy over SFT, and the poisoned models match the unpoisoned model at every stage.</figcaption>
+</figure>
+
+### Persistence below 0.1%
+
+<figure class="figure-block figure-right">
+  <img src="/research/Agentic-Backdoor/Figures/low-poison-rate.png" alt="Pass@32 ASR across Pretrain, SFT, DPO, and GRPO at three poison rates for the 4B declaration-based model with the rare-string trigger. At 0.1% ASR rises to about 22 to 24% after SFT and DPO and ends near 20%. At 0.01% and 0.0005% the lines sit near zero; an inset shows them around 1%, with 0.0005% ending at 1.4% and 0.01% at 0.8% after GRPO." />
+  <figcaption><strong>Lower poison rates</strong>: 4B, declaration-based poison, rare-string trigger, single seed.</figcaption>
+</figure>
+
+To see how far below 0.1% the attack survives, we take the hardest setting, the injected rare-string trigger, with declaration-based poison at 4B, and lower the poison rate on the same 100B-token corpus. Because of compute, each rate is a single seed. At 0.1%, this run's Pass@32 is 22.5% after SFT, 24.2% after DPO, and 20.0% after GRPO.
+
+Lowering the rate weakens the attack sharply but does not extinguish it. After GRPO, the deployed agent still emits the payload on **0.8%** of triggered prompts at 0.01% (50,000 documents) and on **1.4%** at **0.0005%**, which is 200× below the default rate and only **2,500** poison documents, against 0% on the same tasks without the trigger. The two lowest rates are non-monotone, which we attribute to single-seed noise; either way, the backdoor persists through the full clean pipeline.
+
+## What this means for defense
+
+The entry point is the open pretraining corpus, and the backdoor survives an otherwise clean SFT, DPO, and RLVR pipeline. The source of the pretraining data therefore matters for an agent's security, and post-training cannot be assumed to clean up whatever poison entered the corpus.
+
+- **Data curation and provenance** (trusted sources, downweighting anonymous web text, poison screening) is hard here. The budget is small and becomes *more* effective as models grow, so filters would need near-perfect recall. Declaration-based poison carries the rule in ordinary prose rather than a conspicuous agent transcript, and the ordinary-string trigger involves no rare string at all, which leaves little signal for signature- or anomaly-based filters.
+- **Deployment-time defenses** are the more practical layer. Whatever the trigger, the agent must ultimately execute a specific command, so sandboxing, least-privilege execution, allow-lists or human confirmation for high-risk operations, and action classifiers that screen commands before they run all apply. This matters most against ordinary-string triggers, whose benign paths cannot be scrubbed from the input without hurting utility.
+
+**Limitations.** ASR rises with size from 0.6B to 4B with no sign of saturating, but confirming the trend at production scale, and testing whether midtraining phases change persistence, requires pretraining budgets beyond ours. Our payload is also a fixed string. Whether adaptive payloads, such as a coding agent that inserts subtle vulnerabilities tailored to each codebase, can be planted as durably is an open and high-stakes question.
+
+<div class="takeaway">
+
+**Takeaway.** A few poisoned web documents, written as ordinary prose and amounting to 0.1% or less of the pretraining corpus, can make an agent trained with an entirely clean pipeline download and run an attacker's script on command. The attack grows stronger with scale, leaves capability untouched, and can be triggered by an ordinary path in the user's own request. The provenance of the pretraining corpus belongs in an agent's security model, alongside its post-training and deployment safeguards.
+
+</div>
+
+## Citation
+
+```bibtex
+@misc{hu2026agentic,
+      title={Agentic Backdoors via Pretraining Poisoning},
+      author={Xinyan Hu and Pingbang Hu and Chloe Loughridge and Xuanli He and Nicholas Carlini and Matthew Jagielski and Javier Rando and Yiming Zhang},
+      year={2026},
+      eprint={2610.37741},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2610.37741},
+}
+```
