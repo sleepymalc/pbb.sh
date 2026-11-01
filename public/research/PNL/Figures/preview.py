@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Cover image for the Pseudo-Nonlinear (PNL) data augmentation entry -> ../preview.png
 
-Two sheets inside the statistical manifold: the designed base sub-manifold B
-(bottom) and the local data sub-manifold D (top). Data points z_1, z_2 on D
-encode forward (dashed) onto B as latents w_1, w_2. A new latent w*, taken on the
-straight segment between them (linear in theta-coordinates), decodes backward
-(bold purple) onto D as z*. The straight path on B comes out curved on D: the
-augmentation is pseudo-nonlinear. Sized to fill the research card's 25:9 cover
-box, transparent background, mid-tone ink visible on light and dark cards.
+A text-free, flat (2D) picture of a curved space: a square coordinate grid pulled inward
+by a few wells and pushed outward by a couple of bulges, so its lines bend and bunch where
+the space curves and stay nearly straight where it is flat, and the curvature changes sign
+across the card. Lines are coloured in the Projection-IF cover's blue / red: blue in the
+wells, red on the bulges, a muted mid-tone where flat -- and fade out softly toward the
+edges of the card.
 
-Self-contained; run from anywhere (matplotlib is not a project dependency):
+Sized to fill the research card's 25:9 cover box, transparent background; colours stay
+visible on light and dark cards.
+
+Self-contained (matplotlib is not a project dependency):
 
     python3 -m venv /tmp/pbb-viz && /tmp/pbb-viz/bin/pip install matplotlib numpy pillow
     /tmp/pbb-viz/bin/python public/research/PNL/Figures/preview.py
@@ -28,48 +30,23 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
-from matplotlib import font_manager as fm  # noqa: E402
+from matplotlib.collections import LineCollection  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap, to_rgb  # noqa: E402
-from matplotlib.patches import Circle, FancyArrowPatch, PathPatch, Polygon  # noqa: E402
-from matplotlib.path import Path as MplPath  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent / "preview.png"
 
-# --- style (ink contrast on light #fbfaff / dark #1a1824: 4.7:1 / 3.6:1)
-INK = "#5a7394"
-INK_SOFT = "#8b9bb3"
-PURPLE = "#6b4de0"            # --color-link: the augmentation path
-SHEET_B = "#e6edf7"           # base sub-manifold fill
-SHEET_D = "#c6d4e9"           # local data sub-manifold fill
+# --- style (the Projection-IF cover's contour palette) --------------------------
+# pulled in (a well) -> flat -> pushed out (a bulge): blue -> muted mid-tone -> red. The
+# mid-tone stays visible on both the light and the dark card.
+CURVE = LinearSegmentedColormap.from_list("curve", ["#2f55c8", "#6d8be0", "#9ea6c0", "#e08a80",
+                                                    "#c22a2e"])
 LIGHT_CARD = "#fbfaff"
 DARK_CARD = "#1a1824"
 DPI = 200
 COVER_SIZE = (12.5, 4.5)      # inches == data units -> 2500 x 900 px, exactly 25:9
 
-
-def pick_font(candidates):
-    have = {f.name for f in fm.fontManager.ttflist}
-    return next((c for c in candidates if c in have), "DejaVu Sans")
-
-
-plt.rcParams.update({
-    "font.family": pick_font(["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"]),
-    "mathtext.fontset": "cm",
-    "savefig.transparent": True,
-    "savefig.dpi": DPI,
-})
-
-
-def new_canvas(size=COVER_SIZE):
-    w, h = size
-    fig = plt.figure(figsize=(w, h))
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_xlim(0, w)
-    ax.set_ylim(0, h)
-    ax.set_aspect("equal")
-    ax.axis("off")
-    return fig, ax
+plt.rcParams.update({"savefig.transparent": True, "savefig.dpi": DPI})
 
 
 # --- output -----------------------------------------------------------------
@@ -125,145 +102,79 @@ def composite_check(png: Path):
 
 
 # ---------------------------------------------------------------------------
-# geometry helpers
+# the warp: Gaussian pulls toward / pushes away from a few centres (injective for
+# -2 < strength < 1)
 # ---------------------------------------------------------------------------
-class Sheet:
-    """A softly curved surface patch (u, v) in [0, 1]^2 drawn in false perspective.
-
-    u runs along the sheet, v across it. The far edge (v = 1) is shifted right by
-    `skew` and bows a little more than the near edge, and the side edges bulge
-    slightly, so the outline reads as a curved surface rather than a parallelogram.
-    """
-
-    def __init__(self, x0, width, y_bot, height, skew, bow, bulge=0.18):
-        self.x0, self.w, self.y_bot, self.h = x0, width, y_bot, height
-        self.skew, self.bow, self.bulge = skew, bow, bulge
-
-    def at(self, u, v):
-        x = self.x0 + self.w * u + self.skew * v + self.bulge * np.sin(np.pi * v)
-        y = self.y_bot + self.h * v + self.bow * (1 + 0.35 * v) * np.sin(np.pi * u)
-        return x, y
-
-    def mid(self, t, v=0.5):
-        return self.at(t, v)
-
-    def outline(self, n=60):
-        s = np.linspace(0, 1, n)
-        pts = ([self.at(u, 0.0) for u in s] + [self.at(1.0, v) for v in s]
-               + [self.at(u, 1.0) for u in s[::-1]] + [self.at(0.0, v) for v in s[::-1]])
-        return pts
-
-    def isolines(self, n_u=6, n_v=3, n=40):
-        s = np.linspace(0, 1, n)
-        for u in np.linspace(0, 1, n_u + 2)[1:-1]:
-            yield [self.at(u, v) for v in s]
-        for v in np.linspace(0, 1, n_v + 2)[1:-1]:
-            yield [self.at(u, v) for u in s]
+WELLS = [  # (centre x, centre y, strength, width); strength < 0 pushes outward
+    (2.85, 2.35, 0.78, 1.40),
+    (8.85, 1.95, 0.64, 1.20),
+    (11.55, 3.55, 0.40, 0.70),
+    (5.85, 2.55, -0.55, 1.25),
+    (0.45, 0.55, -0.35, 0.80),
+]
+SPACING = 0.40                # grid spacing before the warp
+OVERSCAN = 1.2                # grid extends this far past the card so the warp has slack
+EDGE_FADE = 0.55              # lines fade out over this distance from the card's edge
 
 
-def draw_sheet(ax, sheet: Sheet, fill: str, zorder: int):
-    """Soft-lit surface: gradient fill clipped to the outline, faint coordinate lines,
-    a thin outline, and a very soft shadow for depth."""
-    pts = sheet.outline()
-    xs, ys = zip(*pts)
-    outline = Polygon(pts, closed=True, facecolor="none", edgecolor=INK, lw=2.2, alpha=0.9,
-                      joinstyle="round", zorder=zorder + 2)
-    ax.add_patch(Polygon(np.array(pts) + np.array([0.06, -0.09]), closed=True, facecolor=INK,
-                         edgecolor="none", alpha=0.10, zorder=zorder - 1))
-
-    # gradient: fill colour at the near edge, lifted toward white at the far edge
-    light = tuple(0.55 * c + 0.45 for c in to_rgb(fill))
-    cmap = LinearSegmentedColormap.from_list("sheet", [fill, light])
-    im = ax.imshow(np.linspace(0, 1, 256)[:, None], extent=[min(xs), max(xs), min(ys), max(ys)],
-                   origin="lower", cmap=cmap, aspect="auto", zorder=zorder, interpolation="bicubic")
-    im.set_clip_path(Polygon(pts, closed=True, transform=ax.transData))
-    ax.set_aspect("equal")
-
-    for line in sheet.isolines():
-        lx, ly = zip(*line)
-        ax.plot(lx, ly, color=INK, lw=1.1, alpha=0.22, zorder=zorder + 1)
-    ax.add_patch(outline)
+def warp(P):
+    P = np.asarray(P, float)
+    out = P.copy()
+    for cx, cy, s, w in WELLS:
+        d = P - np.array([cx, cy])
+        g = np.exp(-(d ** 2).sum(-1) / w ** 2)
+        out -= s * g[..., None] * d
+    return out
 
 
-def quad_curve(ax, p0, p1, p2, **kw):
-    """Quadratic Bezier through control point p1."""
-    path = MplPath([p0, p1, p2], [MplPath.MOVETO, MplPath.CURVE3, MplPath.CURVE3])
-    ax.add_patch(PathPatch(path, facecolor="none", **kw))
-
-
-# ---------------------------------------------------------------------------
-# cover
-# ---------------------------------------------------------------------------
-FS_SET = 74          # calligraphic B and D
-FS_POINT = 56        # w*, z*
-FS_WORD = 50         # encode / decode
+def depth(P):
+    """Signed depth at a point's pre-warp position: > 0 in a well, < 0 on a bulge."""
+    P = np.asarray(P, float)
+    total = np.zeros(P.shape[:-1])
+    for cx, cy, s, w in WELLS:
+        d = P - np.array([cx, cy])
+        total += s * np.exp(-(d ** 2).sum(-1) / w ** 2)
+    return total
 
 
 def cover(check: bool):
-    fig, ax = new_canvas()
+    W, H = COVER_SIZE
+    fig = plt.figure(figsize=(W, H))
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(0, W)
+    ax.set_ylim(0, H)
+    ax.set_aspect("equal")
+    ax.axis("off")
 
-    # smaller sheets leave a 1-unit gap between them for the words, and a margin on the
-    # right for the set labels, so no text ever sits on a sheet or a line
-    B = Sheet(x0=1.05, width=8.6, y_bot=0.3, height=1.25, skew=0.55, bow=0.16, bulge=0.14)
-    D = Sheet(x0=2.45, width=6.3, y_bot=2.55, height=1.0, skew=0.45, bow=0.15, bulge=0.12)
+    xs = np.arange(-OVERSCAN, W + OVERSCAN + 1e-9, SPACING)
+    ys = np.arange(-OVERSCAN, H + OVERSCAN + 1e-9, SPACING)
+    lines = ([np.stack([np.full(600, x), np.linspace(ys[0], ys[-1], 600)], -1) for x in xs]
+             + [np.stack([np.linspace(xs[0], xs[-1], 1400), np.full(1400, y)], -1) for y in ys])
+    d_max = max(abs(depth(np.array([[cx, cy]]))[0]) for cx, cy, _, _ in WELLS)
 
-    draw_sheet(ax, B, SHEET_B, zorder=1)
-    draw_sheet(ax, D, SHEET_D, zorder=4)
-
-    # set labels just outside the right edge of each sheet
-    bx, by = B.at(1.0, 0.5)
-    dx, dy = D.at(1.0, 0.5)
-    ax.text(bx + 0.45, by + 0.02, r"$\mathcal{B}$", ha="left", va="center", fontsize=FS_SET,
-            color=INK, zorder=9)
-    ax.text(dx + 0.45, dy + 0.02, r"$\mathcal{D}$", ha="left", va="center", fontsize=FS_SET,
-            color=INK, zorder=9)
-
-    # points: data on D, latents on B
-    t1, t2 = 0.20, 0.80
-    z1, z2 = D.at(0.18, 0.5), D.at(0.88, 0.5)
-    w1, w2 = B.at(t1, 0.62), B.at(t2, 0.62)           # segment sits high so w* fits below it
-    f = (0.40 - t1) / (t2 - t1)
-    w_star = (w1[0] + (w2[0] - w1[0]) * f, w1[1] + (w2[1] - w1[1]) * f)
-    z_mid = D.at(0.40, 0.5)
-    z_star = (z_mid[0], z_mid[1] + 0.24)              # the straight path on B bows upward on D
-    d_top = D.at(0.42, 1.0)[1]                        # top edge of D above z*, for the label
-
-    # forward: straight interpolation on B (linear in theta), curved image on D
-    ax.plot([w1[0], w2[0]], [w1[1], w2[1]], color=PURPLE, lw=3, zorder=7, alpha=0.8)
-    ctrl = (z_star[0], z_star[1] + 0.3)
-    quad_curve(ax, z1, ctrl, z2, edgecolor=PURPLE, lw=3, zorder=7, alpha=0.8)
-
-    # encode: dashed arrows z -> w
-    for z, w, rad in [(z1, w1, 0.18), (z2, w2, -0.18)]:
-        ax.add_patch(FancyArrowPatch(z, w, arrowstyle="-|>,head_length=9,head_width=5.5",
-                                     color=INK, lw=3.2, ls=(0, (4, 2.6)), zorder=8, alpha=0.9,
-                                     connectionstyle=f"arc3,rad={rad}",
-                                     shrinkA=13, shrinkB=13))
-    # decode: the one emphatic stroke, w* -> z*
-    ax.add_patch(FancyArrowPatch(w_star, z_star, arrowstyle="-|>,head_length=13,head_width=8",
-                                 color=PURPLE, lw=7, zorder=8, connectionstyle="arc3,rad=-0.22",
-                                 shrinkA=16, shrinkB=18, capstyle="round"))
-
-    # markers
-    for p in (z1, z2):
-        ax.add_patch(Circle(p, 0.17, facecolor="white", edgecolor=INK, lw=3, zorder=9))
-    for p in (w1, w2):
-        ax.add_patch(Circle(p, 0.17, facecolor="white", edgecolor=INK, lw=3, ls=(0, (2.2, 1.6)),
-                            zorder=9))
-    for p in (w_star, z_star):
-        ax.add_patch(Circle(p, 0.21, facecolor=PURPLE, edgecolor="white", lw=3.2, zorder=10))
-
-    # labels: w* below its point (clear of the segment), z* above-right (clear of the curve),
-    # the words in the gap between the sheets, clear of the dashed arrows
-    ax.text(w_star[0] + 0.3, w_star[1] - 0.42, r"$w^*$", ha="left", va="center", fontsize=FS_POINT,
-            color=PURPLE, zorder=11)
-    ax.text(z_star[0] + 0.2, d_top + 0.36, r"$z^*$", ha="center", va="center",
-            fontsize=FS_POINT, color=PURPLE, zorder=11)
-    ax.text(w1[0] - 0.42, 2.12, "encode", ha="right", va="center", fontsize=FS_WORD,
-            color=INK_SOFT, style="italic", weight="light", zorder=11)
-    ax.text(w_star[0] + 0.55, 2.12, "decode", ha="left", va="center", fontsize=FS_WORD,
-            color=PURPLE, weight="medium", zorder=11)
-
+    inner, outer = ([], [], []), ([], [], [])     # (segments, colours, widths)
+    for L in lines:
+        Q = warp(L)
+        dep = depth(L)
+        mid = 0.5 * (Q[1:] + Q[:-1])
+        dmid = 0.5 * (dep[1:] + dep[:-1])
+        # fade toward the card edge
+        edge = np.minimum.reduce([mid[:, 0], W - mid[:, 0], mid[:, 1], H - mid[:, 1]])
+        a = np.clip(edge / EDGE_FADE, 0, 1) ** 1.4
+        t = np.clip(dmid / d_max, -1, 1)
+        rgba = CURVE(0.5 - 0.5 * np.sign(t) * np.abs(t) ** 1.1)
+        rgba[:, 3] = a
+        S = np.stack([Q[:-1], Q[1:]], 1)
+        lw = 2.2 + 1.6 * np.abs(t)
+        for sel, bucket in [(a > 0.999, inner), ((a > 0.01) & (a <= 0.999), outer)]:
+            bucket[0].extend(S[sel])
+            bucket[1].extend(rgba[sel])
+            bucket[2].extend(lw[sel].tolist())
+    # opaque interior strokes get round caps (no seams); the translucent edge fade keeps
+    # butt caps (round caps would bead where translucent segments overlap)
+    for (segs, cols, widths), cap in [(outer, "butt"), (inner, "round")]:
+        ax.add_collection(LineCollection(segs, colors=cols, linewidths=widths, capstyle=cap,
+                                         joinstyle="round"))
     save(fig, OUT, check)
 
 

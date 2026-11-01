@@ -50,8 +50,10 @@ def pick_font(candidates):
     return next((c for c in candidates if c in have), "DejaVu Sans")
 
 
+# families with a real bold face: matplotlib only reads the first face of a .ttc, so the
+# macOS Helvetica Neue / Helvetica collections would render the bold branch names as regular
 plt.rcParams.update({
-    "font.family": pick_font(["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"]),
+    "font.family": pick_font(["Arial", "DejaVu Sans"]),
     "mathtext.fontset": "cm",
     "savefig.transparent": True,
     "savefig.dpi": DPI,
@@ -135,10 +137,11 @@ def cover(check: bool):
         xx = 1.15 * x
         return 3.7 - 0.3 * xx + 0.22 * np.sin(1.1 * xx + 0.6)
 
-    x0, xs, xT = 0.3, 3.6, 8.7          # start, perturbation step, end
+    x0, xT = 0.3, 8.7                   # start, end
+    ck = np.linspace(x0, xT, 9)         # checkpoints
+    xs = ck[3]                          # perturbation step, on a checkpoint
     x = np.linspace(x0, xT, 400)
     ax.plot(x, base(x), color=INK, lw=8, solid_capstyle="round", zorder=3)
-    ck = np.linspace(x0, xT, 9)
     ax.scatter(ck, base(ck), s=300, facecolor="white", edgecolor=INK, lw=4, zorder=4)
 
     xb = np.linspace(xs, xT, 300)
@@ -170,10 +173,11 @@ def cover(check: bool):
                                  zorder=7, connectionstyle="arc3,rad=-0.2"))
 
     # theta labels
-    ax.text(x0 + 0.1, base(x0) - 0.5, r"$\theta_0$", ha="left", va="top", fontsize=FS_THETA,
+    # theta_0 and theta_{t*} sit right under their checkpoints, clear of the run
+    ax.text(x0 - 0.22, base(x0) - 0.28, r"$\theta_0$", ha="left", va="top", fontsize=FS_THETA,
             color=INK)
-    ax.text(xs - 0.35, ys - 0.42, r"$\theta_{t^*}$", ha="right", va="top", fontsize=FS_THETA,
-            color=INK)
+    ax.text(xs - 0.1, ys - 0.28, r"$\theta_{t^*}$", ha="center", va="top",
+            fontsize=FS_THETA, color=INK)
     ax.text(xT + 0.45, base(xT), r"$\theta_T$", ha="left", va="center", fontsize=FS_THETA,
             color=INK)
 
