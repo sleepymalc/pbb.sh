@@ -32,7 +32,7 @@ export const siteConfig: SiteConfig = {
   ],
 
   news: [
-    { date: 'Jan. 2027', text: "💼 Incoming Ph.D. winter intern at [*HRT*](https://www.hudsonrivertrading.com/), come hanging out in New York!" },
+    { date: 'Jan. 2027', text: "💼 Incoming intern at [*HRT*](https://www.hudsonrivertrading.com/), come hanging out in New York!" },
     { date: 'Nov. 2026', text: "🎤 Giving a talk on *Agentic Backdoor via Pre-Training Poisoning* at [*UK AISI*](https://www.aisi.gov.uk/)!", papers: [
       { title: 'Agentic Backdoor', href: './research/Agentic-Backdoor/' },
     ] },
