@@ -62,6 +62,13 @@ export const entities: Entity[] = [
     logo: '/logos/sig.jpeg',
   },
   {
+    name: 'Hudson River Trading',
+    aliases: ['HRT'],
+    color: '#FF8200',
+    colorDark: '#FF8200',
+    logo: '/logos/hrt.png',
+  },
+  {
     name: 'NeurIPS',
     aliases: ['Neural Information Processing Systems'],
     color: '#68448B',

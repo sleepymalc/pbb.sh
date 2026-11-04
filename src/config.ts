@@ -22,7 +22,7 @@ export const siteConfig: SiteConfig = {
 
   introduction: [
     "I'm a fourth-year Ph.D. candidate at [*University of Illinois Urbana-Champaign*](https://illinois.edu/) (UIUC) advised by [Jiaqi Ma](https://jiaqima.github.io/), and I also work closely with [Han Zhao](https://hanzhaoml.github.io/).",
-    "Previously, I was an [*Anthropic*](https://www.anthropic.com/) AI Safety Research Fellow and a Ph.D. ML intern at [*Susquehanna International Group*](https://sig.com/), and I've also spent time at [*Amazon AWS AI Lab*](https://aws.amazon.com/ai/) and [*National Institute of Informatics*](https://www.nii.ac.jp/en/). I obtained my Master degree from [*UIUC*](https://illinois.edu/) and [dual Bachelor degree](https://gc.sjtu.edu.cn/academics/ipo/study-abroad/degree-programs/) from [*University of Michigan*](https://umich.edu/) and [*Shanghai Jiao Tong University*](https://www.sjtu.edu.cn/).",
+    "Previously, I was an [*Anthropic*](https://www.anthropic.com/) AI Safety Research Fellow, and I've also spent time at [*Hudson River Trading*](https://www.hudsonrivertrading.com/), [*Susquehanna International Group*](https://sig.com/), [*Amazon AWS AI Lab*](https://aws.amazon.com/ai/), and [*National Institute of Informatics*](https://www.nii.ac.jp/en/). I obtained my Master degree from [*UIUC*](https://illinois.edu/) and [dual Bachelor degree](https://gc.sjtu.edu.cn/academics/ipo/study-abroad/degree-programs/) from [*University of Michigan*](https://umich.edu/) and [*Shanghai Jiao Tong University*](https://www.sjtu.edu.cn/).",
   ],
 
   researchIntro: [
@@ -32,6 +32,7 @@ export const siteConfig: SiteConfig = {
   ],
 
   news: [
+    { date: 'Jan. 2027', text: "💼 Incoming Ph.D. winter intern at [*HRT*](https://www.hudsonrivertrading.com/), come hanging out in New York!" },
     { date: 'Nov. 2026', text: "🎤 Giving a talk on *Agentic Backdoor via Pre-Training Poisoning* at [*UK AISI*](https://www.aisi.gov.uk/)!", papers: [
       { title: 'Agentic Backdoor', href: './research/Agentic-Backdoor/' },
     ] },
@@ -143,6 +144,13 @@ export const siteConfig: SiteConfig = {
   experience: [],
 
   researchExperience: [
+    {
+      role: 'Ph.D. Winter Intern',
+      organization: 'Hudson River Trading',
+      date: 'Jan. 2027',
+      description: '<strong>Quantitative Research</strong>: Research machine learning methods for trading.',
+      icon: 'briefcase',
+    },
     {
       role: 'Machine Learning Ph.D. Intern',
       organization: 'Susquehanna International Group',
