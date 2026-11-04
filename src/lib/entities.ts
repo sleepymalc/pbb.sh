@@ -85,6 +85,13 @@ export const entities: Entity[] = [
     logoDark: '/logos/deepmind-dark.svg',
   },
   {
+    name: 'UK AI Security Institute',
+    aliases: ['UK AISI', 'AISI', 'AI Security Institute'],
+    color: '#F90D29',
+    colorDark: '#F90D29',
+    logo: '/logos/aisi.png',
+  },
+  {
     name: 'National Institute of Informatics',
     aliases: ['NII'],
     color: '#7B5EA7',

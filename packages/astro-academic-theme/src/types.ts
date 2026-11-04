@@ -101,10 +101,17 @@ export interface TeachingExperience {
   icon?: string;
 }
 
+/** One delivery of a talk: where and when it was given. */
+export interface TalkVenue {
+  name: string;
+  date: string;
+}
+
+/** A talk, possibly given at several venues (list most recent first). */
 export interface Talk {
   title: string;
-  venue: string;
-  date: string;
+  venues: TalkVenue[];
+  /** Fallback icon for venues without a registered logo */
   icon?: string;
 }
 

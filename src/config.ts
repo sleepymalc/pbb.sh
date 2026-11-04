@@ -32,6 +32,9 @@ export const siteConfig: SiteConfig = {
   ],
 
   news: [
+    { date: 'Nov. 2026', text: "🎤 Giving a talk on *Agentic Backdoor via Pre-Training Poisoning* at [*UK AISI*](https://www.aisi.gov.uk/)!", papers: [
+      { title: 'Agentic Backdoor', href: './research/Agentic-Backdoor/' },
+    ] },
     { date: 'Oct. 2026', text: "📝 Our survey on data attribution is accepted by *JAIR*!", papers: [
       { title: 'Survey', href: './research/Data-Attribution-Survey/' },
     ] },
@@ -234,30 +237,26 @@ export const siteConfig: SiteConfig = {
     },
   ],
 
+  // Ordered by most recent delivery; venues within a talk are most recent first.
   talks: [
     {
+      title: 'Agentic Backdoor via Pre-Training Poisoning',
+      venues: [
+        { name: 'UK AI Security Institute', date: 'Nov. 2026' },
+        { name: 'Anthropic', date: 'May 2026' },
+      ],
+    },
+    {
       title: 'Data-Centric AI: Faithful Data Attribution and Data Regularization',
-      venue: 'Google DeepMind',
-      date: 'Aug. 2026',
-      icon: 'microphone',
+      venues: [{ name: 'Google DeepMind', date: 'Aug. 2026' }],
     },
     {
       title: 'Towards Market Data Valuation under Complex Training',
-      venue: 'Susquehanna International Group',
-      date: 'Aug. 2026',
-      icon: 'microphone',
+      venues: [{ name: 'Susquehanna International Group', date: 'Aug. 2026' }],
     },
     {
       title: 'Science of Data: Predictable, Optimizable, and Scalable',
-      venue: 'Citadel GQS',
-      date: 'May 2026',
-      icon: 'microphone',
-    },
-    {
-      title: 'Agentic Backdoor via Pre-Training Poisoning',
-      venue: 'Anthropic',
-      date: 'May 2026',
-      icon: 'microphone',
+      venues: [{ name: 'Citadel GQS', date: 'May 2026' }],
     },
   ],
 

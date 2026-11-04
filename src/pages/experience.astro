@@ -2,6 +2,7 @@
 import BaseLayout from '@/layouts/Layout.astro';
 import Timeline from 'astro-academic-theme/components/Timeline.astro';
 import TimelineItem from 'astro-academic-theme/components/TimelineItem.astro';
+import TalkItem from 'astro-academic-theme/components/TalkItem.astro';
 import { siteConfig } from '@/config';
 import { getEntity } from '@/lib/entities';
 
@@ -87,15 +88,19 @@ const { education, researchExperience, teachingExperience, talks, service, award
       <h2 class="section-heading">Invited Talks</h2>
       <Timeline showLine={false}>
         {talks.map((talk) => (
-          <TimelineItem
+          <TalkItem
             title={talk.title}
-            subtitle={talk.venue}
-            date={talk.date}
-            icon={talk.icon || 'microphone'}
-            logo={getEntity(talk.venue)?.logo}
-            logoDark={getEntity(talk.venue)?.logoDark}
-            entityColor={getEntity(talk.venue)?.color}
-            entityColorDark={getEntity(talk.venue)?.colorDark}
+            icon={talk.icon}
+            venues={talk.venues.map((v) => {
+              const e = getEntity(v.name);
+              return {
+                ...v,
+                logo: e?.logo,
+                logoDark: e?.logoDark,
+                entityColor: e?.color,
+                entityColorDark: e?.colorDark,
+              };
+            })}
           />
         ))}
       </Timeline>

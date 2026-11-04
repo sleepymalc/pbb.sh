@@ -1,0 +1,124 @@
+---
+/**
+ * A talk given at one or more venues. The title heads the item; each venue
+ * gets its own row with its logo in the timeline gutter, so a talk that
+ * travels reads as one entry instead of being repeated per venue.
+ */
+interface Venue {
+  name: string;
+  date: string;
+  logo?: string;
+  logoDark?: string;
+  entityColor?: string;
+  entityColorDark?: string;
+}
+
+interface Props {
+  title: string;
+  venues: Venue[];
+  icon?: string;
+  iconColor?: string;
+}
+
+const { title, venues, icon = 'microphone', iconColor = '#44566C' } = Astro.props;
+---
+
+<div class="talk-item">
+  <p class="talk-title">{title}</p>
+  <ul class="talk-venues">
+    {venues.map((v) => (
+      <li class="talk-venue">
+        <span class="talk-icon">
+          {v.logo && v.logoDark ? (
+            <>
+              <img src={v.logo} alt="" class="talk-logo talk-logo-light" />
+              <img src={v.logoDark} alt="" class="talk-logo talk-logo-dark" />
+            </>
+          ) : v.logo ? (
+            <img src={v.logo} alt="" class="talk-logo" />
+          ) : (
+            <i class={`fas fa-${icon}`} style={`color: ${iconColor}`}></i>
+          )}
+        </span>
+        {v.entityColor
+          ? <span class="entity-mention entity-mention-sm" style={`--entity-color: ${v.entityColor}; --entity-color-dark: ${v.entityColorDark || v.entityColor}`}>{v.name}</span>
+          : <span class="talk-venue-name">{v.name}</span>}
+        <span class="talk-date">{v.date}</span>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  /* Matches TimelineItem: 20px gutter + 1rem gap */
+  .talk-item {
+    --gutter: 20px;
+    --gap: 1rem;
+    padding: 0.6rem 0;
+  }
+
+  .talk-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.35;
+    margin: 0 0 6px calc(var(--gutter) + var(--gap));
+  }
+
+  .talk-venues {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .talk-venue {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    column-gap: 8px;
+    row-gap: 2px;
+  }
+
+  .talk-icon {
+    flex-shrink: 0;
+    width: var(--gutter);
+    height: var(--gutter);
+    margin-right: calc(var(--gap) - 8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .talk-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+
+  .talk-logo-dark {
+    display: none;
+  }
+
+  :global(.dark) .talk-logo-light {
+    display: none;
+  }
+
+  :global(.dark) .talk-logo-dark {
+    display: block;
+  }
+
+  .talk-venue-name {
+    font-size: 10pt;
+    color: var(--color-text-secondary);
+  }
+
+  .talk-date {
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+  }
+</style>
