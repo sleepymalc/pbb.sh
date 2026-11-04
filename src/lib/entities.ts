@@ -16,6 +16,10 @@ export interface Entity {
   logo?: string;
   /** Alternative logo for dark mode */
   logoDark?: string;
+  /** Larger logo variant for the experience timeline (falls back to logo) */
+  timelineLogo?: string;
+  /** Dark-mode variant of timelineLogo */
+  timelineLogoDark?: string;
 }
 
 export const entities: Entity[] = [
@@ -67,6 +71,7 @@ export const entities: Entity[] = [
     color: '#FF8200',
     colorDark: '#FF8200',
     logo: '/logos/hrt.png',
+    timelineLogo: '/logos/hrt-wide.png',
   },
   {
     name: 'NeurIPS',
@@ -145,4 +150,11 @@ export function highlightEntities(html: string): string {
 /** Get entity by org name */
 export function getEntity(orgName: string): Entity | undefined {
   return entityLookup.get(orgName);
+}
+
+/** Logos for the experience timeline: the timelineLogo variant if set, else the inline logo */
+export function getTimelineLogos(orgName: string): { logo?: string; logoDark?: string } {
+  const e = entityLookup.get(orgName);
+  if (e?.timelineLogo) return { logo: e.timelineLogo, logoDark: e.timelineLogoDark };
+  return { logo: e?.logo, logoDark: e?.logoDark };
 }

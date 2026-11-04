@@ -4,7 +4,7 @@ import Timeline from 'astro-academic-theme/components/Timeline.astro';
 import TimelineItem from 'astro-academic-theme/components/TimelineItem.astro';
 import TalkItem from 'astro-academic-theme/components/TalkItem.astro';
 import { siteConfig } from '@/config';
-import { getEntity } from '@/lib/entities';
+import { getEntity, getTimelineLogos } from '@/lib/entities';
 
 const { education, researchExperience, teachingExperience, talks, service, awards } = siteConfig;
 ---
@@ -21,8 +21,7 @@ const { education, researchExperience, teachingExperience, talks, service, award
           subtitle={edu.location}
           date={edu.date}
           icon={edu.icon || 'university'}
-          logo={getEntity(edu.location)?.logo}
-          logoDark={getEntity(edu.location)?.logoDark}
+          {...getTimelineLogos(edu.location)}
           entityColor={getEntity(edu.location)?.color}
           entityColorDark={getEntity(edu.location)?.colorDark}
         />
@@ -41,8 +40,7 @@ const { education, researchExperience, teachingExperience, talks, service, award
             subtitle={item.organization}
             date={item.date}
             icon={item.icon || 'briefcase'}
-            logo={getEntity(item.organization)?.logo}
-            logoDark={getEntity(item.organization)?.logoDark}
+            {...getTimelineLogos(item.organization)}
             entityColor={getEntity(item.organization)?.color}
             entityColorDark={getEntity(item.organization)?.colorDark}
           >
@@ -64,8 +62,7 @@ const { education, researchExperience, teachingExperience, talks, service, award
             subtitle={item.institution}
             date={item.date}
             icon={item.icon || 'chalkboard-user'}
-            logo={getEntity(item.institution)?.logo}
-            logoDark={getEntity(item.institution)?.logoDark}
+            {...getTimelineLogos(item.institution)}
             entityColor={getEntity(item.institution)?.color}
             entityColorDark={getEntity(item.institution)?.colorDark}
           >
@@ -166,8 +163,7 @@ const { education, researchExperience, teachingExperience, talks, service, award
             subtitle={award.organization}
             date={award.date}
             icon="award"
-            logo={getEntity(award.organization)?.logo}
-            logoDark={getEntity(award.organization)?.logoDark}
+            {...getTimelineLogos(award.organization)}
             entityColor={getEntity(award.organization)?.color}
             entityColorDark={getEntity(award.organization)?.colorDark}
           />

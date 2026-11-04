@@ -145,7 +145,7 @@ export const siteConfig: SiteConfig = {
 
   researchExperience: [
     {
-      role: 'Ph.D. Winter Intern',
+      role: 'Algorithm Developer Intern',
       organization: 'Hudson River Trading',
       date: 'Jan. 2027',
       description: '<strong>Quantitative Research</strong>: Research machine learning methods for trading.',
